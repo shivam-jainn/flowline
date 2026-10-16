@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page 9: Data Table & Filter Grid — StepIt Playground</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    .data-table th, .data-table td {
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .data-table th {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .data-table tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+  </style>
+</head>
+<body>
+  <header class="app-navbar">
+    <a href="index.html" class="brand-container">
+      <div class="brand-icon">⚡️</div>
+      <div class="brand-name">StepIt UI Playground</div>
+    </a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-item">&larr; Directory</a>
+      <span class="brand-tag">Page 09 of 10</span>
+      <a href="page10_diagnostics.html" class="btn btn-secondary">Next App &rarr;</a>
+    </div>
+  </header>
+
+  <main class="page-container">
+    <div class="page-header">
+      <div class="page-badge">Workflow 09</div>
+      <h1 class="page-title">📋 Enterprise Data Grid & Batch Actions</h1>
+      <p class="page-desc">Test real-time search filtering, row selection checkboxes, bulk action triggers, and pagination controls.</p>
+    </div>
+
+    <div class="card">
+      <!-- Toolbar -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <input type="text" id="input-search-table" class="form-input" placeholder="Search by name, role, or team..." style="width: 280px;" oninput="filterTable(this.value)">
+          <select id="select-status-filter" class="form-select" style="width: 160px;" onchange="filterStatus(this.value)">
+            <option value="all">All Statuses</option>
+            <option value="Active">Active</option>
+            <option value="On Leave">On Leave</option>
+            <option value="Pending">Pending</option>
+          </select>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <button id="btn-batch-export" class="btn btn-secondary" onclick="showToast('Exporting selected records to JSON')">Export Selected</button>
+          <button id="btn-batch-delete" class="btn btn-rose" onclick="showToast('Warning: Deletion requires confirmation.')">Delete Selected</button>
+        </div>
+      </div>
+
+      <!-- Table View -->
+      <div style="overflow-x: auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width: 30px;"><input type="checkbox" id="check-all-rows" onchange="toggleAllRows(this.checked)"></th>
+              <th>Member Name</th>
+              <th>Assigned Department</th>
+              <th>Security Access Tier</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <tr>
+              <td><input type="checkbox" class="row-checkbox"></td>
+              <td><strong>Shivam Jain</strong><br><small style="color: var(--text-dim)">shivam@stepit.internal</small></td>
+              <td>Core Architecture</td>
+              <td><span style="font-family: var(--font-mono); color: var(--accent-cyan);">Tier 0 (Root)</span></td>
+              <td><span class="status-pill status-online">Active</span></td>
+              <td><button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.75rem;" onclick="showToast('Inspecting Shivam Jain profile')">View</button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" class="row-checkbox"></td>
+              <td><strong>Elena Rostova</strong><br><small style="color: var(--text-dim)">elena@stepit.internal</small></td>
+              <td>AI Gateway / Vision</td>
+              <td><span style="font-family: var(--font-mono); color: var(--accent-cyan);">Tier 1 (Admin)</span></td>
+              <td><span class="status-pill status-online">Active</span></td>
+              <td><button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.75rem;" onclick="showToast('Inspecting Elena Rostova profile')">View</button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" class="row-checkbox"></td>
+              <td><strong>Marcus Vance</strong><br><small style="color: var(--text-dim)">marcus@stepit.internal</small></td>
+              <td>macOS Native Capture</td>
+              <td><span style="font-family: var(--font-mono); color: var(--accent-cyan);">Tier 2 (Eng)</span></td>
+              <td><span class="status-pill status-busy">On Leave</span></td>
+              <td><button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.75rem;" onclick="showToast('Inspecting Marcus Vance profile')">View</button></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox" class="row-checkbox"></td>
+              <td><strong>Aria Tanaka</strong><br><small style="color: var(--text-dim)">aria@stepit.internal</small></td>
+              <td>Design & Documentation</td>
+              <td><span style="font-family: var(--font-mono); color: var(--accent-cyan);">Tier 2 (Eng)</span></td>
+              <td><span class="status-pill status-online">Active</span></td>
+              <td><button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.75rem;" onclick="showToast('Inspecting Aria Tanaka profile')">View</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border-subtle);">
+        <span style="font-size: 0.85rem; color: var(--text-muted);">Showing 1 to 4 of 48 records</span>
+        <div style="display: flex; gap: 6px;">
+          <button id="btn-page-prev" class="btn btn-secondary" style="padding: 6px 12px;" onclick="showToast('Page 1 is first page')">&larr; Prev</button>
+          <button class="btn btn-secondary active" style="padding: 6px 12px;">1</button>
+          <button class="btn btn-secondary" style="padding: 6px 12px;" onclick="showToast('Navigating to Page 2')">2</button>
+          <button id="btn-page-next" class="btn btn-secondary" style="padding: 6px 12px;" onclick="showToast('Navigating to Page 2')">Next &rarr;</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="action-toast">✓ Action Complete!</div>
+
+  <script>
+    function toggleAllRows(checked) {
+      document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = checked);
+      showToast(checked ? 'Selected all 4 members' : 'Deselected all rows');
+    }
+
+    function filterTable(val) {
+      const q = val.toLowerCase();
+      const rows = document.querySelectorAll('#table-body tr');
+      rows.forEach(r => {
+        const text = r.textContent.toLowerCase();
+        r.style.display = text.includes(q) ? '' : 'none';
+      });
+    }
+
+    function filterStatus(status) {
+      const rows = document.querySelectorAll('#table-body tr');
+      rows.forEach(r => {
+        if (status === 'all') r.style.display = '';
+        else {
+          r.style.display = r.textContent.includes(status) ? '' : 'none';
+        }
+      });
+      showToast('Filtered by status: ' + status);
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('action-toast');
+      toast.textContent = '✓ ' + msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+  </script>
+</body>
+</html>

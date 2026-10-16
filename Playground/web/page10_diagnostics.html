@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page 10: System Diagnostics & Health — StepIt Playground</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-navbar">
+    <a href="index.html" class="brand-container">
+      <div class="brand-icon">⚡️</div>
+      <div class="brand-name">StepIt UI Playground</div>
+    </a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-item">&larr; Directory</a>
+      <span class="brand-tag">Page 10 of 10</span>
+      <a href="index.html" class="btn btn-primary">Back to Hub ⚡️</a>
+    </div>
+  </header>
+
+  <main class="page-container">
+    <div class="page-header">
+      <div class="page-badge">Workflow 10</div>
+      <h1 class="page-title">🛠️ System Diagnostics & Service Control</h1>
+      <p class="page-desc">Monitor hardware health gauges, restart background daemons, clear buffer caches, and inspect real-time log streams.</p>
+    </div>
+
+    <!-- 3 Live Gauge Cards -->
+    <div class="grid-3col" style="margin-bottom: 24px;">
+      <div class="card">
+        <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700;">CPU Utilization</div>
+        <div id="gauge-cpu" style="font-size: 2rem; font-weight: 800; color: var(--accent-cyan); margin: 6px 0;">18.4%</div>
+        <div style="height: 6px; width: 100%; background: #1e293b; border-radius: 999px; overflow: hidden;">
+          <div id="bar-cpu" style="height: 100%; width: 18%; background: var(--accent-cyan); transition: width 0.3s ease;"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700;">Screen Capture Buffer</div>
+        <div id="gauge-buffer" style="font-size: 2rem; font-weight: 800; color: var(--accent-emerald); margin: 6px 0;">32 Frames</div>
+        <div style="height: 6px; width: 100%; background: #1e293b; border-radius: 999px; overflow: hidden;">
+          <div id="bar-buffer" style="height: 100%; width: 70%; background: var(--accent-emerald); transition: width 0.3s ease;"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700;">WebKit PDF Heap</div>
+        <div id="gauge-heap" style="font-size: 2rem; font-weight: 800; color: var(--accent-amber); margin: 6px 0;">42.8 MB</div>
+        <div style="height: 6px; width: 100%; background: #1e293b; border-radius: 999px; overflow: hidden;">
+          <div id="bar-heap" style="height: 100%; width: 35%; background: var(--accent-amber); transition: width 0.3s ease;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2col">
+      <!-- Service Manager -->
+      <div class="card">
+        <h2 class="card-title">Background Services</h2>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-subtle);">
+          <div>
+            <div style="font-weight: 600;">Global Event Tap (CGEventTap)</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">Active &bull; PID 4910</div>
+          </div>
+          <button id="btn-restart-eventtap" class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.8rem;" onclick="restartService('EventTap')">Restart</button>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-subtle);">
+          <div>
+            <div style="font-weight: 600;">Micro-Clip Rolling Buffer</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">Buffering @ 15fps</div>
+          </div>
+          <button id="btn-clear-buffer" class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.8rem;" onclick="clearBuffer()">Flush Buffer</button>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-subtle);">
+          <div>
+            <div style="font-weight: 600;">OpenAI SSE Streaming Gateway</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">Idle &bull; Keep-Alive Ready</div>
+          </div>
+          <button id="btn-ping-gateway" class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.8rem;" onclick="pingGateway()">Ping Gateway</button>
+        </div>
+
+        <button id="btn-kill-all" class="btn btn-rose" style="width: 100%; margin-top: 20px;" onclick="killAllServices()">🛑 Graceful Service Restart</button>
+      </div>
+
+      <!-- Realtime Log Terminal -->
+      <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h2 class="card-title" style="margin: 0;">Live System Logs</h2>
+            <button id="btn-clear-logs" class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.75rem;" onclick="clearLogs()">Clear</button>
+          </div>
+
+          <pre id="log-terminal" style="background: rgba(10, 13, 20, 0.95); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px; font-family: var(--font-mono); font-size: 0.78rem; color: #a5b4fc; height: 180px; overflow-y: auto;">[20:40:01.120] [INFO] StepIt Core 1.0 initialized
+[20:40:01.128] [INFO] ScreenCaptureKit display stream ready: Display 1 (3024x1964)
+[20:40:01.134] [INFO] AXUIElementCopyElementAtPosition hook attached
+[20:40:01.140] [INFO] ImageIO GIF encoder initialized
+[20:40:01.145] [INFO] WebKit WKWebView PDF pipeline stand-by</pre>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-top: 14px;">
+          <input type="text" id="input-log-filter" class="form-input" placeholder="Inject test log message..." style="font-size: 0.85rem;">
+          <button id="btn-inject-log" class="btn btn-primary" onclick="injectLog()">Inject</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="action-toast">✓ Done!</div>
+
+  <script>
+    function restartService(name) {
+      appendLog('[INFO] ' + name + ' service restarted gracefully');
+      showToast(name + ' restarted.');
+    }
+
+    function clearBuffer() {
+      document.getElementById('gauge-buffer').textContent = '0 Frames';
+      document.getElementById('bar-buffer').style.width = '0%';
+      appendLog('[INFO] Frame buffer cleared (0 frames)');
+      showToast('Frame buffer flushed.');
+      setTimeout(() => {
+        document.getElementById('gauge-buffer').textContent = '30 Frames';
+        document.getElementById('bar-buffer').style.width = '65%';
+      }, 1500);
+    }
+
+    function pingGateway() {
+      appendLog('[INFO] Ping to gateway returned 200 OK (38ms)');
+      showToast('Gateway Ping: 38ms');
+    }
+
+    function killAllServices() {
+      appendLog('[WARN] Full stack reload initiated by user');
+      showToast('All StepIt services reloaded!');
+    }
+
+    function injectLog() {
+      const input = document.getElementById('input-log-filter');
+      if (input.value.trim()) {
+        appendLog('[USER] ' + input.value.trim());
+        input.value = '';
+      }
+    }
+
+    function clearLogs() {
+      document.getElementById('log-terminal').textContent = '[CLEARED] Logs reset.\n';
+      showToast('Logs cleared.');
+    }
+
+    function appendLog(text) {
+      const term = document.getElementById('log-terminal');
+      const time = new Date().toTimeString().split(' ')[0] + '.' + String(Date.now() % 1000).padStart(3, '0');
+      term.textContent += `\n[${time}] ${text}`;
+      term.scrollTop = term.scrollHeight;
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('action-toast');
+      toast.textContent = '✓ ' + msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+  </script>
+</body>
+</html>

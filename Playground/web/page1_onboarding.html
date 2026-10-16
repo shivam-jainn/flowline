@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page 1: Auth & User Onboarding — StepIt Playground</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-navbar">
+    <a href="index.html" class="brand-container">
+      <div class="brand-icon">⚡️</div>
+      <div class="brand-name">StepIt UI Playground</div>
+    </a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-item">&larr; Directory</a>
+      <span class="brand-tag">Page 01 of 10</span>
+      <a href="page2_checkout.html" class="btn btn-secondary">Next App &rarr;</a>
+    </div>
+  </header>
+
+  <main class="page-container">
+    <div class="page-header">
+      <div class="page-badge">Workflow 01</div>
+      <h1 class="page-title">🔐 Auth & User Onboarding</h1>
+      <p class="page-desc">Complete user registration form with password complexity indicator, role selection, 2FA toggle, and terms agreement.</p>
+    </div>
+
+    <div class="grid-2col">
+      <!-- Registration Card -->
+      <div class="card">
+        <h2 class="card-title">Create Account</h2>
+        <form id="onboarding-form" onsubmit="event.preventDefault(); handleRegister();">
+          <div class="form-group">
+            <label for="input-fullname" class="form-label">Full Name</label>
+            <input type="text" id="input-fullname" class="form-input" placeholder="Shivam Jain" required>
+          </div>
+
+          <div class="form-group">
+            <label for="input-email" class="form-label">Work Email</label>
+            <input type="email" id="input-email" class="form-input" placeholder="shivam@example.com" required>
+          </div>
+
+          <div class="form-group">
+            <label for="input-password" class="form-label">Password</label>
+            <input type="password" id="input-password" class="form-input" placeholder="••••••••••••" oninput="checkPasswordStrength(this.value)" required>
+            <div style="margin-top: 6px; font-size: 0.8rem; display: flex; justify-content: space-between;">
+              <span id="pwd-strength-label" style="color: var(--text-muted)">Strength: None</span>
+              <span id="pwd-strength-bar" style="color: var(--accent-emerald)"></span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="select-role" class="form-label">Primary Organization Role</label>
+            <select id="select-role" class="form-select">
+              <option value="lead">Engineering Lead / Architect</option>
+              <option value="dev">Full-Stack Software Engineer</option>
+              <option value="devops">Site Reliability / DevOps</option>
+              <option value="pm">Technical Product Manager</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <div class="slider-container">
+              <div class="slider-header">
+                <span>Team Size Capacity</span>
+                <span id="val-team-size">12 members</span>
+              </div>
+              <input type="range" id="range-team-size" class="form-range" min="1" max="100" value="12" oninput="document.getElementById('val-team-size').textContent = this.value + ' members'">
+            </div>
+          </div>
+
+          <div class="toggle-wrapper" style="margin-bottom: 18px;">
+            <div>
+              <div style="font-weight: 600; font-size: 0.9rem;">Enforce Hardware 2FA (WebAuthn)</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">Require FIDO2 security keys or Touch ID for logins</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-2fa" checked>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 20px;">
+            <input type="checkbox" id="check-terms" required style="accent-color: var(--accent-primary); width: 18px; height: 18px;">
+            <label for="check-terms" style="font-size: 0.85rem; color: var(--text-muted);">
+              I agree to the <a href="#" style="color: var(--accent-primary);">Terms of Service</a> & <a href="#" style="color: var(--accent-primary);">Security Policy</a>
+            </label>
+          </div>
+
+          <button type="submit" id="btn-submit-onboarding" class="btn btn-primary" style="width: 100%;">Create Account &rarr;</button>
+        </form>
+      </div>
+
+      <!-- Live Preview & Onboarding Status Card -->
+      <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <h2 class="card-title">Account Preview & Security Score</h2>
+          <p style="color: var(--text-muted); font-size: 0.92rem; margin-bottom: 20px;">
+            As you interact with the registration fields, your profile configuration is calculated below.
+          </p>
+
+          <div style="background: rgba(16, 21, 34, 0.7); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 18px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+              <span style="font-size: 0.85rem; color: var(--text-muted);">Profile Status:</span>
+              <span id="preview-status" class="status-pill status-busy">Awaiting Details</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+              <span style="font-size: 0.85rem; color: var(--text-muted);">User:</span>
+              <strong id="preview-name">—</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+              <span style="font-size: 0.85rem; color: var(--text-muted);">Email:</span>
+              <span id="preview-email" style="font-family: var(--font-mono); font-size: 0.85rem;">—</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="font-size: 0.85rem; color: var(--text-muted);">Role:</span>
+              <span id="preview-role" style="font-weight: 600; color: #a5b4fc;">Engineering Lead</span>
+            </div>
+          </div>
+
+          <div class="slider-container" style="margin-bottom: 20px;">
+            <div class="slider-header">
+              <span>Security Readiness Score</span>
+              <span id="security-score">75%</span>
+            </div>
+            <div style="height: 8px; width: 100%; background: #1e293b; border-radius: 999px; overflow: hidden;">
+              <div id="security-score-bar" style="height: 100%; width: 75%; background: var(--accent-gradient); transition: width 0.3s ease;"></div>
+            </div>
+          </div>
+        </div>
+
+        <button id="btn-reset-onboarding" class="btn btn-secondary" onclick="resetForm()">Reset Form</button>
+      </div>
+    </div>
+  </main>
+
+  <div id="action-toast">✓ Account registered!</div>
+
+  <script>
+    function checkPasswordStrength(val) {
+      const lbl = document.getElementById('pwd-strength-label');
+      if (val.length === 0) {
+        lbl.textContent = 'Strength: None';
+        lbl.style.color = 'var(--text-muted)';
+      } else if (val.length < 6) {
+        lbl.textContent = 'Strength: Weak';
+        lbl.style.color = 'var(--accent-rose)';
+      } else if (val.length < 10) {
+        lbl.textContent = 'Strength: Moderate';
+        lbl.style.color = 'var(--accent-amber)';
+      } else {
+        lbl.textContent = 'Strength: Very Strong (Hardware Compatible)';
+        lbl.style.color = 'var(--accent-emerald)';
+      }
+    }
+
+    function handleRegister() {
+      const name = document.getElementById('input-fullname').value;
+      const email = document.getElementById('input-email').value;
+      const role = document.getElementById('select-role').selectedOptions[0].text;
+      
+      document.getElementById('preview-name').textContent = name;
+      document.getElementById('preview-email').textContent = email;
+      document.getElementById('preview-role').textContent = role;
+      
+      const statusPill = document.getElementById('preview-status');
+      statusPill.textContent = 'Verified & Ready';
+      statusPill.className = 'status-pill status-online';
+      
+      document.getElementById('security-score').textContent = '100%';
+      document.getElementById('security-score-bar').style.width = '100%';
+      
+      showToast('Registration complete for ' + name + '!');
+    }
+
+    function resetForm() {
+      document.getElementById('onboarding-form').reset();
+      document.getElementById('preview-name').textContent = '—';
+      document.getElementById('preview-email').textContent = '—';
+      const statusPill = document.getElementById('preview-status');
+      statusPill.textContent = 'Awaiting Details';
+      statusPill.className = 'status-pill status-busy';
+      document.getElementById('security-score').textContent = '40%';
+      document.getElementById('security-score-bar').style.width = '40%';
+      showToast('Form reset.');
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('action-toast');
+      toast.textContent = '✓ ' + msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+  </script>
+</body>
+</html>

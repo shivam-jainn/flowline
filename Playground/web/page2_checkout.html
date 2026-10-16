@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page 2: E-Commerce Checkout — StepIt Playground</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-navbar">
+    <a href="index.html" class="brand-container">
+      <div class="brand-icon">⚡️</div>
+      <div class="brand-name">StepIt UI Playground</div>
+    </a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-item">&larr; Directory</a>
+      <span class="brand-tag">Page 02 of 10</span>
+      <a href="page3_analytics.html" class="btn btn-secondary">Next App &rarr;</a>
+    </div>
+  </header>
+
+  <main class="page-container">
+    <div class="page-header">
+      <div class="page-badge">Workflow 02</div>
+      <h1 class="page-title">🛒 E-Commerce Checkout & Cart</h1>
+      <p class="page-desc">Test interactive quantity adjusters, promo code validation, shipping speed selection, and order processing.</p>
+    </div>
+
+    <div class="grid-2col">
+      <!-- Order Items -->
+      <div class="card">
+        <h2 class="card-title">Shopping Cart (2 Items)</h2>
+        
+        <!-- Item 1 -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border-subtle);">
+          <div>
+            <div style="font-weight: 700; font-size: 1rem;">Developer Mechanical Keyboard</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">Gateron Brown Switches &bull; RGB</div>
+            <div style="font-weight: 600; color: var(--accent-cyan); margin-top: 4px;">$149.00</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button id="btn-qty-minus-1" class="btn btn-secondary" style="padding: 4px 10px;" onclick="changeQty(1, -1)">-</button>
+            <span id="qty-item-1" style="font-weight: bold; width: 20px; text-align: center;">1</span>
+            <button id="btn-qty-plus-1" class="btn btn-secondary" style="padding: 4px 10px;" onclick="changeQty(1, 1)">+</button>
+          </div>
+        </div>
+
+        <!-- Item 2 -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border-subtle);">
+          <div>
+            <div style="font-weight: 700; font-size: 1rem;">Ultra-Wide 4K Studio Monitor</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">34-inch Curved &bull; 144Hz</div>
+            <div style="font-weight: 600; color: var(--accent-cyan); margin-top: 4px;">$599.00</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button id="btn-qty-minus-2" class="btn btn-secondary" style="padding: 4px 10px;" onclick="changeQty(2, -1)">-</button>
+            <span id="qty-item-2" style="font-weight: bold; width: 20px; text-align: center;">1</span>
+            <button id="btn-qty-plus-2" class="btn btn-secondary" style="padding: 4px 10px;" onclick="changeQty(2, 1)">+</button>
+          </div>
+        </div>
+
+        <!-- Promo Code Input -->
+        <div style="margin-top: 20px;">
+          <label class="form-label">Promotional Voucher</label>
+          <div style="display: flex; gap: 8px; margin-top: 6px;">
+            <input type="text" id="input-promo" class="form-input" placeholder="Try code 'STEPIT20'">
+            <button id="btn-apply-promo" class="btn btn-secondary" onclick="applyPromo()">Apply</button>
+          </div>
+        </div>
+
+        <!-- Shipping Method Radios -->
+        <div style="margin-top: 24px;">
+          <label class="form-label">Shipping Method</label>
+          <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+            <label class="toggle-wrapper" style="cursor: pointer;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <input type="radio" name="shipping" value="standard" checked onchange="updateTotals()">
+                <div>
+                  <div style="font-weight: 600;">Standard Ground (3-5 Business Days)</div>
+                  <div style="font-size: 0.8rem; color: var(--text-muted);">Carbon-neutral delivery</div>
+                </div>
+              </div>
+              <span style="font-weight: bold; color: var(--accent-emerald);">FREE</span>
+            </label>
+
+            <label class="toggle-wrapper" style="cursor: pointer;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <input type="radio" name="shipping" value="express" onchange="updateTotals()">
+                <div>
+                  <div style="font-weight: 600;">Priority Express (Next Day)</div>
+                  <div style="font-size: 0.8rem; color: var(--text-muted);">Guaranteed 10:30 AM arrival</div>
+                </div>
+              </div>
+              <span style="font-weight: bold;">$25.00</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment & Order Summary -->
+      <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <h2 class="card-title">Order Summary & Payment</h2>
+
+          <div style="background: rgba(16, 21, 34, 0.7); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 18px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+              <span style="color: var(--text-muted);">Subtotal</span>
+              <span id="summary-subtotal" style="font-weight: 600;">$748.00</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+              <span style="color: var(--text-muted);">Shipping</span>
+              <span id="summary-shipping" style="font-weight: 600;">$0.00</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+              <span style="color: var(--text-muted);">Discount (Promo)</span>
+              <span id="summary-discount" style="font-weight: 600; color: var(--accent-emerald);">-$0.00</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding-top: 10px; border-top: 1px solid var(--border-subtle); font-size: 1.15rem; font-weight: 800;">
+              <span>Total Due</span>
+              <span id="summary-total" style="color: var(--accent-cyan);">$748.00</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Payment Method</label>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+              <button id="btn-pay-apple" class="btn btn-secondary active" style="font-size: 0.85rem;" onclick="selectPayment(this)"> Pay</button>
+              <button id="btn-pay-card" class="btn btn-secondary" style="font-size: 0.85rem;" onclick="selectPayment(this)">💳 Credit Card</button>
+              <button id="btn-pay-crypto" class="btn btn-secondary" style="font-size: 0.85rem;" onclick="selectPayment(this)">₿ Crypto</button>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 14px;">
+            <label for="input-cardholder" class="form-label">Cardholder / Name on Account</label>
+            <input type="text" id="input-cardholder" class="form-input" value="Shivam Jain">
+          </div>
+        </div>
+
+        <button id="btn-complete-order" class="btn btn-primary" style="width: 100%; margin-top: 20px;" onclick="completeOrder()">Complete Order &rarr;</button>
+      </div>
+    </div>
+  </main>
+
+  <div id="action-toast">✓ Order Placed!</div>
+
+  <script>
+    let qty1 = 1;
+    let qty2 = 1;
+    let discountPct = 0;
+
+    function changeQty(item, delta) {
+      if (item === 1) {
+        qty1 = Math.max(1, qty1 + delta);
+        document.getElementById('qty-item-1').textContent = qty1;
+      } else {
+        qty2 = Math.max(1, qty2 + delta);
+        document.getElementById('qty-item-2').textContent = qty2;
+      }
+      updateTotals();
+    }
+
+    function applyPromo() {
+      const code = document.getElementById('input-promo').value.trim().toUpperCase();
+      if (code === 'STEPIT20') {
+        discountPct = 0.20;
+        showToast('Promo code STEPIT20 applied (-20%)!');
+      } else {
+        showToast('Invalid promo code. Try STEPIT20');
+      }
+      updateTotals();
+    }
+
+    function updateTotals() {
+      const subtotal = (qty1 * 149) + (qty2 * 599);
+      const isExpress = document.querySelector('input[name="shipping"]:checked').value === 'express';
+      const shipping = isExpress ? 25 : 0;
+      const discount = subtotal * discountPct;
+      const total = subtotal + shipping - discount;
+
+      document.getElementById('summary-subtotal').textContent = '$' + subtotal.toFixed(2);
+      document.getElementById('summary-shipping').textContent = '$' + shipping.toFixed(2);
+      document.getElementById('summary-discount').textContent = '-$' + discount.toFixed(2);
+      document.getElementById('summary-total').textContent = '$' + total.toFixed(2);
+    }
+
+    function selectPayment(btn) {
+      document.querySelectorAll('#btn-pay-apple, #btn-pay-card, #btn-pay-crypto').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      showToast('Selected ' + btn.textContent.trim());
+    }
+
+    function completeOrder() {
+      showToast('Order confirmed! Receipt #ORD-9481 dispatched.');
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('action-toast');
+      toast.textContent = '✓ ' + msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+  </script>
+</body>
+</html>

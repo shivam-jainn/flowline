@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page 4: Cloud Server Provisioning — StepIt Playground</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-navbar">
+    <a href="index.html" class="brand-container">
+      <div class="brand-icon">⚡️</div>
+      <div class="brand-name">StepIt UI Playground</div>
+    </a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-item">&larr; Directory</a>
+      <span class="brand-tag">Page 04 of 10</span>
+      <a href="page5_media.html" class="btn btn-secondary">Next App &rarr;</a>
+    </div>
+  </header>
+
+  <main class="page-container">
+    <div class="page-header">
+      <div class="page-badge">Workflow 04</div>
+      <h1 class="page-title">☁️ Cloud Server & Cluster Provisioning</h1>
+      <p class="page-desc">Configure compute vCPU & RAM sliders, geographical data center regions, automated backups, and provision instances.</p>
+    </div>
+
+    <div class="grid-2col">
+      <!-- Configurator -->
+      <div class="card">
+        <h2 class="card-title">Instance Specs & Region</h2>
+        
+        <div class="form-group">
+          <label for="select-datacenter" class="form-label">Data Center Region</label>
+          <select id="select-datacenter" class="form-select" onchange="updateEstimates()">
+            <option value="us-east-1">🇺🇸 US East (N. Virginia)</option>
+            <option value="us-west-2">🇺🇸 US West (Oregon)</option>
+            <option value="eu-west-1">🇮🇪 Europe (Ireland)</option>
+            <option value="ap-southeast-1">🇸🇬 Asia Pacific (Singapore)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="select-os" class="form-label">Base Operating System</label>
+          <select id="select-os" class="form-select">
+            <option value="ubuntu-24">Ubuntu Linux 24.04 LTS (Noble Numbat)</option>
+            <option value="debian-12">Debian 12 (Bookworm)</option>
+            <option value="alpine-3">Alpine Linux 3.20 (Minimal)</option>
+            <option value="nixos-24">NixOS 24.05</option>
+          </select>
+        </div>
+
+        <!-- CPU Range Slider -->
+        <div class="slider-container" style="margin-bottom: 18px;">
+          <div class="slider-header">
+            <span>Dedicated vCPUs</span>
+            <span id="val-vcpus">4 Cores</span>
+          </div>
+          <input type="range" id="slider-vcpu" class="form-range" min="1" max="64" value="4" oninput="updateSliders()">
+        </div>
+
+        <!-- RAM Range Slider -->
+        <div class="slider-container" style="margin-bottom: 18px;">
+          <div class="slider-header">
+            <span>Memory (RAM)</span>
+            <span id="val-ram">16 GB</span>
+          </div>
+          <input type="range" id="slider-ram" class="form-range" min="2" max="128" step="2" value="16" oninput="updateSliders()">
+        </div>
+
+        <!-- NVMe Storage Slider -->
+        <div class="slider-container" style="margin-bottom: 22px;">
+          <div class="slider-header">
+            <span>Fast NVMe SSD Storage</span>
+            <span id="val-storage">250 GB</span>
+          </div>
+          <input type="range" id="slider-storage" class="form-range" min="50" max="2000" step="50" value="250" oninput="updateSliders()">
+        </div>
+
+        <div class="toggle-wrapper" style="margin-bottom: 12px;">
+          <div>
+            <div style="font-weight: 600;">Daily Automated Snapshots</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">Encrypted snapshot storage (7-day retention)</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="toggle-snapshots" checked onchange="updateEstimates()">
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-wrapper">
+          <div>
+            <div style="font-weight: 600;">DDoS Shield & Cloud Firewall</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">L3/L4/L7 automated attack mitigation</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="toggle-firewall" checked>
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Pricing & Provisioning Terminal -->
+      <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <h2 class="card-title">Billing Estimate & Deploy</h2>
+
+          <div style="background: rgba(16, 21, 34, 0.7); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 20px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+              <span style="color: var(--text-muted);">Instance Type:</span>
+              <strong id="spec-summary" style="font-family: var(--font-mono); color: #38bdf8;">c6g.xlarge (4vCPU / 16GB)</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+              <span style="color: var(--text-muted);">Storage Quota:</span>
+              <span id="spec-storage">250 GB NVMe</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+              <span style="color: var(--text-muted);">Hourly Cost:</span>
+              <span id="cost-hourly" style="font-family: var(--font-mono); font-weight: bold;">$0.142 / hr</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--border-subtle); font-size: 1.3rem; font-weight: 800;">
+              <span>Monthly Total:</span>
+              <span id="cost-monthly" style="color: var(--accent-emerald);">$102.24 / mo</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="input-ssh-key" class="form-label">Authorized SSH Public Key</label>
+            <textarea id="input-ssh-key" class="form-textarea" rows="4" placeholder="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... dev-laptop"></textarea>
+          </div>
+        </div>
+
+        <div style="margin-top: 20px;">
+          <button id="btn-provision-server" class="btn btn-primary" style="width: 100%;" onclick="provisionServer()">🚀 Provision Cloud Instance</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="action-toast">✓ Instance Provisioning Started!</div>
+
+  <script>
+    function updateSliders() {
+      const vcpu = document.getElementById('slider-vcpu').value;
+      const ram = document.getElementById('slider-ram').value;
+      const storage = document.getElementById('slider-storage').value;
+
+      document.getElementById('val-vcpus').textContent = vcpu + ' Cores';
+      document.getElementById('val-ram').textContent = ram + ' GB';
+      document.getElementById('val-storage').textContent = storage + ' GB';
+      document.getElementById('spec-storage').textContent = storage + ' GB NVMe';
+
+      document.getElementById('spec-summary').textContent = `custom-${vcpu}c-${ram}g`;
+
+      updateEstimates();
+    }
+
+    function updateEstimates() {
+      const vcpu = parseInt(document.getElementById('slider-vcpu').value);
+      const ram = parseInt(document.getElementById('slider-ram').value);
+      const storage = parseInt(document.getElementById('slider-storage').value);
+      const hasSnapshots = document.getElementById('toggle-snapshots').checked;
+
+      const hourly = (vcpu * 0.022) + (ram * 0.005) + (storage * 0.0001) + (hasSnapshots ? 0.015 : 0);
+      const monthly = hourly * 720;
+
+      document.getElementById('cost-hourly').textContent = '$' + hourly.toFixed(3) + ' / hr';
+      document.getElementById('cost-monthly').textContent = '$' + monthly.toFixed(2) + ' / mo';
+    }
+
+    function provisionServer() {
+      showToast('Cloud VM provisioning initiated in ' + document.getElementById('select-datacenter').value + '!');
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('action-toast');
+      toast.textContent = '✓ ' + msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+  </script>
+</body>
+</html>

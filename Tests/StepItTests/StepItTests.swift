@@ -185,4 +185,33 @@ final class StepItTests: XCTestCase {
         XCTAssertNotNil(gifData)
         XCTAssertTrue((gifData?.count ?? 0) > 100)
     }
+    
+    func testPlaygroundPagesIntegrity() {
+        let currentDir = FileManager.default.currentDirectoryPath
+        let webDir = URL(fileURLWithPath: currentDir).appendingPathComponent("Playground/web")
+        
+        let expectedPages = [
+            "index.html",
+            "page1_onboarding.html",
+            "page2_checkout.html",
+            "page3_analytics.html",
+            "page4_cloud.html",
+            "page5_media.html",
+            "page6_apigateway.html",
+            "page7_support.html",
+            "page8_survey.html",
+            "page9_datagrid.html",
+            "page10_diagnostics.html"
+        ]
+        
+        for page in expectedPages {
+            let fileURL = webDir.appendingPathComponent(page)
+            XCTAssertTrue(FileManager.default.fileExists(atPath: fileURL.path), "Missing page: \(page)")
+            
+            if let content = try? String(contentsOf: fileURL) {
+                XCTAssertTrue(content.contains("<button"), "Page \(page) should contain buttons")
+                XCTAssertTrue(content.contains("styles.css"), "Page \(page) should link styles.css")
+            }
+        }
+    }
 }

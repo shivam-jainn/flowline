@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page 6: API Gateway Tester — StepIt Playground</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-navbar">
+    <a href="index.html" class="brand-container">
+      <div class="brand-icon">⚡️</div>
+      <div class="brand-name">StepIt UI Playground</div>
+    </a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-item">&larr; Directory</a>
+      <span class="brand-tag">Page 06 of 10</span>
+      <a href="page7_support.html" class="btn btn-secondary">Next App &rarr;</a>
+    </div>
+  </header>
+
+  <main class="page-container">
+    <div class="page-header">
+      <div class="page-badge">Workflow 06</div>
+      <h1 class="page-title">🔌 Developer API Gateway & Webhook Tester</h1>
+      <p class="page-desc">Generate access tokens, craft REST requests with custom headers and JSON payloads, and inspect live mock responses.</p>
+    </div>
+
+    <div class="grid-2col">
+      <!-- Request Builder -->
+      <div class="card">
+        <h2 class="card-title">HTTP Request Constructor</h2>
+        
+        <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+          <select id="select-http-method" class="form-select" style="width: 120px; font-weight: bold; color: var(--accent-emerald);">
+            <option value="POST">POST</option>
+            <option value="GET">GET</option>
+            <option value="PUT">PUT</option>
+            <option value="DELETE">DELETE</option>
+          </select>
+          <input type="text" id="input-endpoint-url" class="form-input" value="https://api.gateway.stepit.internal/v1/workflows/dispatch" style="font-family: var(--font-mono); font-size: 0.88rem;">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">API Bearer Key</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="input-api-key" class="form-input" value="sk-stepit_live_9a8b7c6d5e4f3a2b1c" style="font-family: var(--font-mono);">
+            <button id="btn-generate-key" class="btn btn-secondary" onclick="generateNewKey()">Rotate</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="textarea-json-payload" class="form-label">JSON Request Body</label>
+          <textarea id="textarea-json-payload" class="form-textarea" rows="6" style="font-family: var(--font-mono); font-size: 0.85rem;">{
+  "workflow_id": "wf_export_009",
+  "priority": "high",
+  "publish_formats": ["web", "pdf", "markdown"],
+  "recipients": ["team@stepit.internal"]
+}</textarea>
+        </div>
+
+        <div class="slider-container" style="margin-bottom: 18px;">
+          <div class="slider-header">
+            <span>Request Timeout (Seconds)</span>
+            <span id="val-timeout">30s</span>
+          </div>
+          <input type="range" id="slider-timeout" class="form-range" min="5" max="120" step="5" value="30" oninput="document.getElementById('val-timeout').textContent = this.value + 's'">
+        </div>
+
+        <button id="btn-send-request" class="btn btn-primary" style="width: 100%;" onclick="sendApiRequest()">⚡️ Send API Request</button>
+      </div>
+
+      <!-- Response Inspector -->
+      <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h2 class="card-title" style="margin: 0;">Response Inspector</h2>
+            <span id="response-status-badge" class="status-pill status-online">HTTP 200 OK</span>
+          </div>
+
+          <div style="background: rgba(16, 21, 34, 0.7); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px; margin-bottom: 14px; font-family: var(--font-mono); font-size: 0.82rem;">
+            <div style="color: var(--text-muted); margin-bottom: 4px;">Content-Type: application/json; charset=utf-8</div>
+            <div style="color: var(--text-muted); margin-bottom: 4px;">X-Request-Id: req_948f2c30ba11</div>
+            <div style="color: var(--text-muted);">Response-Time: <span id="resp-latency" style="color: var(--accent-cyan); font-weight: bold;">42 ms</span></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Response Body (JSON)</label>
+            <pre id="pre-response-body" style="background: rgba(10, 13, 20, 0.9); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 16px; font-family: var(--font-mono); font-size: 0.85rem; color: #a5b4fc; overflow-x: auto; min-height: 180px;">{
+  "status": "success",
+  "dispatched_at": "2026-10-16T15:30:00Z",
+  "execution_id": "exec_88b12f",
+  "targets_queued": 3,
+  "artifacts": {
+    "web_doc": "ready",
+    "pdf": "ready"
+  }
+}</pre>
+          </div>
+        </div>
+
+        <button id="btn-copy-response" class="btn btn-secondary" onclick="copyResponse()">📋 Copy JSON Response</button>
+      </div>
+    </div>
+  </main>
+
+  <div id="action-toast">✓ Request Sent!</div>
+
+  <script>
+    function generateNewKey() {
+      const rand = Math.random().toString(36).substring(2, 15);
+      document.getElementById('input-api-key').value = 'sk-stepit_live_' + rand;
+      showToast('New API Bearer key generated.');
+    }
+
+    function sendApiRequest() {
+      const method = document.getElementById('select-http-method').value;
+      const latency = Math.floor(Math.random() * 40) + 25;
+      document.getElementById('resp-latency').textContent = latency + ' ms';
+      showToast(method + ' request dispatched successfully (200 OK)');
+    }
+
+    function copyResponse() {
+      navigator.clipboard.writeText(document.getElementById('pre-response-body').textContent);
+      showToast('Copied JSON to clipboard!');
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('action-toast');
+      toast.textContent = '✓ ' + msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+  </script>
+</body>
+</html>

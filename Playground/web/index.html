@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StepIt UI Playground — 10 Interactive Workflows</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-navbar">
+    <a href="index.html" class="brand-container">
+      <div class="brand-icon">⚡️</div>
+      <div class="brand-name">StepIt UI Playground</div>
+      <span class="brand-tag">10 Interactive Apps</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-item active">Directory</a>
+      <button id="btn-quick-tour" class="btn btn-secondary" onclick="showToast('Playground Hub loaded with 10 interactive workflow pages')">Quick Tour</button>
+      <button id="btn-trigger-recording" class="btn btn-primary" onclick="showToast('Recording shortcut: Press Option + Space')">Start StepIt (⌥ Space)</button>
+    </div>
+  </header>
+
+  <main class="page-container">
+    <div class="page-header">
+      <div class="page-badge">Comprehensive Component Testbed</div>
+      <h1 class="page-title">10 Real-World Workflow Apps</h1>
+      <p class="page-desc">
+        Explore 10 distinct, fully interactive application workflows featuring buttons, forms, multi-step wizards, range sliders, data grids, audio equalizers, and cloud toggles.
+      </p>
+    </div>
+
+    <div class="grid-3col">
+      <!-- Page 1 -->
+      <a href="page1_onboarding.html" class="card hub-card" id="card-page-1">
+        <div>
+          <div class="hub-num">PAGE 01</div>
+          <h2 class="card-title">🔐 Auth & User Onboarding</h2>
+          <p class="text-muted" style="font-size: 0.9rem; color: var(--text-muted)">
+            Sign up forms, password strength evaluator, role selections, and 2-step verification.
+          </p>
+        </div>
+        <div class="hub-footer">
+          <span class="status-pill status-online">Forms & Sliders</span>
+          <span class="hub-arrow">Open &rarr;</span>
+        </div>
+      </a>
+
+      <!-- Page 2 -->
+      <a href="page2_checkout.html" class="card hub-card" id="card-page-2">
+        <div>
+          <div class="hub-num">PAGE 02</div>
+          <h2 class="card-title">🛒 E-Commerce Checkout</h2>
+          <p class="text-muted" style="font-size: 0.9rem; color: var(--text-muted)">
+            Item quantity counters, promo code discounts, shipping selectors, and order modal.
+          </p>
+        </div>
+        <div class="hub-footer">
+          <span class="status-pill status-online">Steppers & Radios</span>
+          <span class="hub-arrow">Open &rarr;</span>
+        </div>
+      </a>
+
+      <!-- Page 3 -->
+      <a href="page3_analytics.html" class="card hub-card" id="card-page-3">
+        <div>
+          <div class="hub-num">PAGE 03</div>
+          <h2 class="card-title">📊 Analytics Dashboard</h2>
+          <p class="text-muted" style="font-size: 0.9rem; color: var(--text-muted)">
+            KPI metric cards, date range selectors, filter pills, data charts, and CSV exporter.
+          </p>
+        </div>
+        <div class="hub-footer">
+          <span class="status-pill status-online">Metrics & Filters</span>
+          <span class="hub-arrow">Open &rarr;</span>
+        </div>
+      </a>
+
+      <!-- Page 4 -->
+      <a href="page4_cloud.html" class="card hub-card" id="card-page-4">
+        <div>
+          <div class="hub-num">PAGE 04</div>
+          <h2 class="card-title">☁️ Cloud Server Provisioning</h2>
+          <p class="text-muted" style="font-size: 0.9rem; color: var(--text-muted)">
+            CPU/RAM range sliders, regional data centers, SSH key inputs, and firewall toggles.
+          </p>
+        </div>
+        <div class="hub-footer">
+          <span class="status-pill status-online">Range Sliders</span>
+          <span class="hub-arrow">Open &rarr;</span>
+        </div>
+      </a>
+
+      <!-- Page 5 -->
+      <a href="page5_media.html" class="card hub-card" id="card-page-5">
+        <div>
+          <div class="hub-num">PAGE 05</div>
+          <h2 class="card-title">🎛️ Media & Audio Studio</h2>
+          <p class="text-muted" style="font-size: 0.9rem; color: var(--text-muted)">
+            Equalizer sliders, audio gain controls, track scrubber, format encoders, and volume.
+          </p>
+        </div>
+        <div class="hub-footer">
+          <span class="status-pill status-online">Equalizer & Knobs</span>
+          <span class="hub-arrow">Open &rarr;</span>
+        </div>
+      </a>
+
+      <!-- Page 6 -->
+      <a href="page6_apigateway.html" class="card hub-card" id="card-page-6">
+        <div>
+          <div class="hub-num">PAGE 06</div>
+          <h2 class="card-title">🔌 API Gateway Tester</h2>
+          <p class="text-muted" style="font-size: 0.9rem; color: var(--text-muted)">
+            API key generator, HTTP method selector (GET/POST/PUT), JSON headers, and payload editor.
+          </p>
+        </div>
+        <div class="hub-footer">
+          <span class="status-pill status-online">JSON & Endpoints</span>
+          <span class="hub-arrow">Open &rarr;</span>
+        </div>
+      </a>
+
+      <!-- Page 7 -->
+      <a href="page7_support.html" class="card hub-card" id="card-page-7">
+        <div>
+          <div class="hub-num">PAGE 07</div>
+          <h2 class="card-title">🎫 Support Ticket Hub</h2>
+          <p class="text-muted" style="font-size: 0.9rem; color: var(--text-muted)">
+            Severity badges, multi-tag selectors, rich message body, file attachment dropzone.
+          </p>
+        </div>
+        <div class="hub-footer">
+          <span class="status-pill status-online">Tags & Severity</span>
+          <span class="hub-arrow">Open &rarr;</span>
+        </div>
+      </a>
+
+      <!-- Page 8 -->
+      <a href="page8_survey.html" class="card hub-card" id="card-page-8">
+        <div>
+          <div class="hub-num">PAGE 08</div>
+          <h2 class="card-title">⭐️ Multi-Step Feedback Survey</h2>
+          <p class="text-muted" style="font-size: 0.9rem; color: var(--text-muted)">
+            Star ratings, Likert scale sliders, conditional questions, and live progress bar.
+          </p>
+        </div>
+        <div class="hub-footer">
+          <span class="status-pill status-online">Ratings & Scales</span>
+          <span class="hub-arrow">Open &rarr;</span>
+        </div>
+      </a>
+
+      <!-- Page 9 -->
+      <a href="page9_datagrid.html" class="card hub-card" id="card-page-9">
+        <div>
+          <div class="hub-num">PAGE 09</div>
+          <h2 class="card-title">📋 Data Table & Filter Grid</h2>
+          <p class="text-muted" style="font-size: 0.9rem; color: var(--text-muted)">
+            Instant search, column visibility toggles, multi-select rows, sort, and pagination.
+          </p>
+        </div>
+        <div class="hub-footer">
+          <span class="status-pill status-online">Search & Sort</span>
+          <span class="hub-arrow">Open &rarr;</span>
+        </div>
+      </a>
+
+      <!-- Page 10 -->
+      <a href="page10_diagnostics.html" class="card hub-card" id="card-page-10">
+        <div>
+          <div class="hub-num">PAGE 10</div>
+          <h2 class="card-title">🛠️ System Diagnostics & Logs</h2>
+          <p class="text-muted" style="font-size: 0.9rem; color: var(--text-muted)">
+            Memory gauge meters, restart service buttons, live terminal log streamer, and alerts.
+          </p>
+        </div>
+        <div class="hub-footer">
+          <span class="status-pill status-online">Live Gauges</span>
+          <span class="hub-arrow">Open &rarr;</span>
+        </div>
+      </a>
+    </div>
+  </main>
+
+  <div id="action-toast">✓ Action completed!</div>
+
+  <script>
+    function showToast(message) {
+      const toast = document.getElementById('action-toast');
+      toast.textContent = '✓ ' + message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+  </script>
+</body>
+</html>

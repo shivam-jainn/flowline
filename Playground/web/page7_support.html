@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page 7: Support & Bug Ticket Hub — StepIt Playground</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-navbar">
+    <a href="index.html" class="brand-container">
+      <div class="brand-icon">⚡️</div>
+      <div class="brand-name">StepIt UI Playground</div>
+    </a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-item">&larr; Directory</a>
+      <span class="brand-tag">Page 07 of 10</span>
+      <a href="page8_survey.html" class="btn btn-secondary">Next App &rarr;</a>
+    </div>
+  </header>
+
+  <main class="page-container">
+    <div class="page-header">
+      <div class="page-badge">Workflow 07</div>
+      <h1 class="page-title">🎫 Customer Support & Bug Ticket Hub</h1>
+      <p class="page-desc">Create technical support tickets with severity levels, category tags, reproduction attachments, and agent routing.</p>
+    </div>
+
+    <div class="grid-2col">
+      <!-- Ticket Creator -->
+      <div class="card">
+        <h2 class="card-title">Open New Support Incident</h2>
+        
+        <div class="form-group">
+          <label for="input-ticket-subject" class="form-label">Subject / Issue Summary</label>
+          <input type="text" id="input-ticket-subject" class="form-input" value="Screen capture permissions prompt not re-appearing after system update">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Severity Level</label>
+          <div style="display: flex; gap: 8px;">
+            <button id="btn-sev-low" class="btn btn-secondary" onclick="selectSeverity('Low', 'var(--accent-cyan)')">P3 - Low</button>
+            <button id="btn-sev-med" class="btn btn-secondary" onclick="selectSeverity('Medium', 'var(--accent-amber)')">P2 - Medium</button>
+            <button id="btn-sev-high" class="btn btn-secondary active" onclick="selectSeverity('High', 'var(--accent-rose)')">P1 - High</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="select-category" class="form-label">Subsystem Category</label>
+          <select id="select-category" class="form-select">
+            <option value="macos-tcc">macOS TCC & Permissions</option>
+            <option value="capture-engine">Capture Engine & Frame Buffer</option>
+            <option value="ai-gateway">AI Gateway SSE Stream</option>
+            <option value="pdf-webkit">WebKit PDF Publishing</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="textarea-ticket-body" class="form-label">Detailed Reproduction Steps</label>
+          <textarea id="textarea-ticket-body" class="form-textarea" rows="4">1. Open macOS System Settings > Privacy & Security.
+2. Toggle StepIt off and back on.
+3. Observe click overlay ring positions.</textarea>
+        </div>
+
+        <div class="slider-container" style="margin-bottom: 20px;">
+          <div class="slider-header">
+            <span>Estimated Users Impacted</span>
+            <span id="val-impact">25 users</span>
+          </div>
+          <input type="range" id="slider-impact" class="form-range" min="1" max="1000" step="5" value="25" oninput="document.getElementById('val-impact').textContent = this.value + ' users'">
+        </div>
+
+        <button id="btn-submit-ticket" class="btn btn-primary" style="width: 100%;" onclick="submitTicket()">Submit Support Ticket &rarr;</button>
+      </div>
+
+      <!-- Ticket Meta & Assignment -->
+      <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <h2 class="card-title">Routing & SLA Status</h2>
+
+          <div style="background: rgba(16, 21, 34, 0.7); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 18px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+              <span style="color: var(--text-muted);">Current Severity:</span>
+              <span id="ticket-sev-badge" class="status-pill" style="background: rgba(244, 63, 94, 0.2); color: #fb7185;">P1 - High Priority</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+              <span style="color: var(--text-muted);">Target Response SLA:</span>
+              <strong style="color: var(--accent-emerald);">Within 30 Minutes</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: var(--text-muted);">Assigned Escalation Tier:</span>
+              <span>Level 3 macOS Platform Eng</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="select-assignee" class="form-label">Assign Primary Owner</label>
+            <select id="select-assignee" class="form-select">
+              <option value="shivam">Shivam Jain (Platform Lead)</option>
+              <option value="alex">Alex Rivera (Core Capture)</option>
+              <option value="sarah">Sarah Chen (AI & Vision)</option>
+            </select>
+          </div>
+
+          <div style="border: 2px dashed var(--border-subtle); border-radius: var(--radius-md); padding: 24px; text-align: center; margin-top: 14px; cursor: pointer;" onclick="showToast('Simulated attachment stepit_debug.log added.')">
+            <div style="font-size: 1.5rem; margin-bottom: 6px;">📎</div>
+            <div style="font-weight: 600; font-size: 0.9rem;">Drop Diagnostic Bundle or Screenshots</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">PNG, GIF, WebM, or ZIP up to 50MB</div>
+          </div>
+        </div>
+
+        <button id="btn-escalate-ticket" class="btn btn-rose" style="margin-top: 20px;" onclick="escalateIncident()">🚨 Escalate to On-Call Pager</button>
+      </div>
+    </div>
+  </main>
+
+  <div id="action-toast">✓ Ticket Logged!</div>
+
+  <script>
+    function selectSeverity(level, color) {
+      document.querySelectorAll('#btn-sev-low, #btn-sev-med, #btn-sev-high').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+      const badge = document.getElementById('ticket-sev-badge');
+      badge.textContent = level + ' Priority';
+      showToast('Severity changed to ' + level);
+    }
+
+    function submitTicket() {
+      showToast('Ticket #TICK-4910 opened and routed to on-call team.');
+    }
+
+    function escalateIncident() {
+      showToast('Urgent page dispatched to on-call engineer via PagerDuty!');
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('action-toast');
+      toast.textContent = '✓ ' + msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page 5: Media & Audio Studio — StepIt Playground</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-navbar">
+    <a href="index.html" class="brand-container">
+      <div class="brand-icon">⚡️</div>
+      <div class="brand-name">StepIt UI Playground</div>
+    </a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-item">&larr; Directory</a>
+      <span class="brand-tag">Page 05 of 10</span>
+      <a href="page6_apigateway.html" class="btn btn-secondary">Next App &rarr;</a>
+    </div>
+  </header>
+
+  <main class="page-container">
+    <div class="page-header">
+      <div class="page-badge">Workflow 05</div>
+      <h1 class="page-title">🎛️ Media Studio & Audio Equalizer</h1>
+      <p class="page-desc">Tweak multi-band equalizer faders, adjust stereo panning and master volume, choose audio codecs, and process audio tracks.</p>
+    </div>
+
+    <div class="grid-2col">
+      <!-- 5-Band Equalizer -->
+      <div class="card">
+        <h2 class="card-title">5-Band Parametric EQ</h2>
+        
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; height: 220px; padding: 20px 10px; background: rgba(16, 21, 34, 0.7); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 20px;">
+          <!-- Low 60Hz -->
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+            <span id="eq-val-60" style="font-size: 0.75rem; font-family: var(--font-mono); color: var(--accent-cyan);">+3dB</span>
+            <input type="range" id="eq-slider-60" orient="vertical" class="form-range" min="-12" max="12" value="3" style="writing-mode: bt-lr; -webkit-appearance: slider-vertical; width: 8px; height: 140px;" oninput="updateEq(60, this.value)">
+            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">60Hz</span>
+          </div>
+
+          <!-- Mid-Low 250Hz -->
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+            <span id="eq-val-250" style="font-size: 0.75rem; font-family: var(--font-mono); color: var(--accent-cyan);">0dB</span>
+            <input type="range" id="eq-slider-250" orient="vertical" class="form-range" min="-12" max="12" value="0" style="writing-mode: bt-lr; -webkit-appearance: slider-vertical; width: 8px; height: 140px;" oninput="updateEq(250, this.value)">
+            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">250Hz</span>
+          </div>
+
+          <!-- Mid 1kHz -->
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+            <span id="eq-val-1k" style="font-size: 0.75rem; font-family: var(--font-mono); color: var(--accent-cyan);">-2dB</span>
+            <input type="range" id="eq-slider-1k" orient="vertical" class="form-range" min="-12" max="12" value="-2" style="writing-mode: bt-lr; -webkit-appearance: slider-vertical; width: 8px; height: 140px;" oninput="updateEq('1k', this.value)">
+            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">1kHz</span>
+          </div>
+
+          <!-- Mid-High 4kHz -->
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+            <span id="eq-val-4k" style="font-size: 0.75rem; font-family: var(--font-mono); color: var(--accent-cyan);">+4dB</span>
+            <input type="range" id="eq-slider-4k" orient="vertical" class="form-range" min="-12" max="12" value="4" style="writing-mode: bt-lr; -webkit-appearance: slider-vertical; width: 8px; height: 140px;" oninput="updateEq('4k', this.value)">
+            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">4kHz</span>
+          </div>
+
+          <!-- High 16kHz -->
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+            <span id="eq-val-16k" style="font-size: 0.75rem; font-family: var(--font-mono); color: var(--accent-cyan);">+6dB</span>
+            <input type="range" id="eq-slider-16k" orient="vertical" class="form-range" min="-12" max="12" value="6" style="writing-mode: bt-lr; -webkit-appearance: slider-vertical; width: 8px; height: 140px;" oninput="updateEq('16k', this.value)">
+            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700;">16kHz</span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button id="btn-eq-preset-flat" class="btn btn-secondary" style="flex: 1; font-size: 0.85rem;" onclick="setPreset('Flat')">Flat</button>
+          <button id="btn-eq-preset-vocal" class="btn btn-secondary" style="flex: 1; font-size: 0.85rem;" onclick="setPreset('Vocal Boost')">Vocal Boost</button>
+          <button id="btn-eq-preset-bass" class="btn btn-secondary" style="flex: 1; font-size: 0.85rem;" onclick="setPreset('Bass Punch')">Bass Punch</button>
+        </div>
+      </div>
+
+      <!-- Master Controls & Audio Export -->
+      <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <h2 class="card-title">Master Output & Codec</h2>
+
+          <div class="slider-container" style="margin-bottom: 20px;">
+            <div class="slider-header">
+              <span>Master Gain Level</span>
+              <span id="val-master-gain">82%</span>
+            </div>
+            <input type="range" id="slider-master-volume" class="form-range" min="0" max="100" value="82" oninput="document.getElementById('val-master-gain').textContent = this.value + '%'">
+          </div>
+
+          <div class="slider-container" style="margin-bottom: 20px;">
+            <div class="slider-header">
+              <span>Stereo Pan Balance</span>
+              <span id="val-pan">Center (0)</span>
+            </div>
+            <input type="range" id="slider-pan" class="form-range" min="-50" max="50" value="0" oninput="updatePan(this.value)">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Export Audio Codec</label>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+              <button id="btn-codec-aac" class="btn btn-secondary active" style="font-size: 0.85rem;" onclick="selectCodec(this, 'AAC (320kbps)')">AAC (320k)</button>
+              <button id="btn-codec-flac" class="btn btn-secondary" style="font-size: 0.85rem;" onclick="selectCodec(this, 'FLAC Lossless')">FLAC Lossless</button>
+              <button id="btn-codec-opus" class="btn btn-secondary" style="font-size: 0.85rem;" onclick="selectCodec(this, 'Opus (160kbps)')">Opus</button>
+            </div>
+          </div>
+
+          <div class="toggle-wrapper" style="margin-top: 16px;">
+            <span>Apply Dynamic Range Limiter</span>
+            <label class="switch">
+              <input type="checkbox" id="toggle-limiter" checked>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <button id="btn-render-audio" class="btn btn-primary" style="width: 100%; margin-top: 20px;" onclick="renderAudio()">🎚️ Render Master Audio</button>
+      </div>
+    </div>
+  </main>
+
+  <div id="action-toast">✓ Audio Rendered!</div>
+
+  <script>
+    function updateEq(band, val) {
+      const prefix = val > 0 ? '+' : '';
+      document.getElementById('eq-val-' + band).textContent = prefix + val + 'dB';
+    }
+
+    function setPreset(preset) {
+      showToast('Loaded EQ preset: ' + preset);
+    }
+
+    function updatePan(val) {
+      const v = parseInt(val);
+      if (v === 0) document.getElementById('val-pan').textContent = 'Center (0)';
+      else if (v < 0) document.getElementById('val-pan').textContent = 'Left ' + Math.abs(v);
+      else document.getElementById('val-pan').textContent = 'Right ' + v;
+    }
+
+    function selectCodec(btn, name) {
+      document.querySelectorAll('#btn-codec-aac, #btn-codec-flac, #btn-codec-opus').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      showToast('Selected codec: ' + name);
+    }
+
+    function renderAudio() {
+      showToast('High-fidelity audio track mastered successfully!');
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('action-toast');
+      toast.textContent = '✓ ' + msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+  </script>
+</body>
+</html>

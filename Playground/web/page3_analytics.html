@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page 3: Analytics Dashboard — StepIt Playground</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-navbar">
+    <a href="index.html" class="brand-container">
+      <div class="brand-icon">⚡️</div>
+      <div class="brand-name">StepIt UI Playground</div>
+    </a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-item">&larr; Directory</a>
+      <span class="brand-tag">Page 03 of 10</span>
+      <a href="page4_cloud.html" class="btn btn-secondary">Next App &rarr;</a>
+    </div>
+  </header>
+
+  <main class="page-container">
+    <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
+      <div>
+        <div class="page-badge">Workflow 03</div>
+        <h1 class="page-title">📊 Analytics Dashboard</h1>
+        <p class="page-desc">Interactive executive KPI metrics, timeframe filters, chart view toggles, and data export.</p>
+      </div>
+
+      <!-- Action Controls -->
+      <div style="display: flex; gap: 10px;">
+        <select id="select-timeframe" class="form-select" style="width: auto;" onchange="updateMetrics(this.value)">
+          <option value="24h">Last 24 Hours</option>
+          <option value="7d" selected>Last 7 Days</option>
+          <option value="30d">Last 30 Days</option>
+          <option value="1y">Last 12 Months</option>
+        </select>
+        <button id="btn-refresh-data" class="btn btn-secondary" onclick="refreshData()">🔄 Refresh</button>
+        <button id="btn-export-csv" class="btn btn-primary" onclick="exportData()">Export CSV</button>
+      </div>
+    </div>
+
+    <!-- 4 KPI Cards -->
+    <div class="grid-3col" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 24px;">
+      <div class="card" style="padding: 18px;">
+        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Active Users</div>
+        <div id="metric-users" style="font-size: 1.8rem; font-weight: 800; margin: 6px 0;">48,219</div>
+        <span class="status-pill status-online">+14.2% vs last week</span>
+      </div>
+
+      <div class="card" style="padding: 18px;">
+        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Workflow Runs</div>
+        <div id="metric-runs" style="font-size: 1.8rem; font-weight: 800; margin: 6px 0;">1,289,044</div>
+        <span class="status-pill status-online">+28.6% automated</span>
+      </div>
+
+      <div class="card" style="padding: 18px;">
+        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Median Latency</div>
+        <div id="metric-latency" style="font-size: 1.8rem; font-weight: 800; margin: 6px 0;">34.2 ms</div>
+        <span class="status-pill status-online">-8.1 ms faster</span>
+      </div>
+
+      <div class="card" style="padding: 18px;">
+        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Success Rate</div>
+        <div id="metric-success" style="font-size: 1.8rem; font-weight: 800; margin: 6px 0;">99.94%</div>
+        <span class="status-pill status-online">Within SLO</span>
+      </div>
+    </div>
+
+    <!-- Chart & Distribution Card -->
+    <div class="grid-2col">
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h2 class="card-title" style="margin: 0;">Throughput Volume</h2>
+          <div style="display: flex; gap: 6px;">
+            <button id="btn-chart-hourly" class="btn btn-secondary active" style="padding: 4px 10px; font-size: 0.8rem;" onclick="setChartResolution('Hourly')">Hourly</button>
+            <button id="btn-chart-daily" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="setChartResolution('Daily')">Daily</button>
+          </div>
+        </div>
+
+        <!-- Simulated Bar Chart Bars -->
+        <div style="display: flex; align-items: flex-end; gap: 12px; height: 180px; padding-top: 20px; border-bottom: 1px solid var(--border-subtle);">
+          <div style="flex: 1; height: 45%; background: var(--accent-gradient); border-radius: 4px;"></div>
+          <div style="flex: 1; height: 65%; background: var(--accent-gradient); border-radius: 4px;"></div>
+          <div style="flex: 1; height: 35%; background: var(--accent-gradient); border-radius: 4px;"></div>
+          <div style="flex: 1; height: 85%; background: var(--accent-gradient); border-radius: 4px;"></div>
+          <div style="flex: 1; height: 50%; background: var(--accent-gradient); border-radius: 4px;"></div>
+          <div style="flex: 1; height: 95%; background: var(--accent-gradient); border-radius: 4px;"></div>
+          <div style="flex: 1; height: 70%; background: var(--accent-gradient); border-radius: 4px;"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.75rem; color: var(--text-dim); font-family: var(--font-mono);">
+          <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">Threshold Alert Settings</h2>
+        
+        <div class="slider-container" style="margin-bottom: 18px;">
+          <div class="slider-header">
+            <span>Latency Alert Threshold</span>
+            <span id="val-latency-threshold">75 ms</span>
+          </div>
+          <input type="range" id="slider-latency" class="form-range" min="10" max="250" value="75" oninput="document.getElementById('val-latency-threshold').textContent = this.value + ' ms'">
+        </div>
+
+        <div class="slider-container" style="margin-bottom: 20px;">
+          <div class="slider-header">
+            <span>Error Spike Notification (%)</span>
+            <span id="val-error-threshold">2.5%</span>
+          </div>
+          <input type="range" id="slider-error" class="form-range" min="0.5" max="10" step="0.5" value="2.5" oninput="document.getElementById('val-error-threshold').textContent = this.value + '%'">
+        </div>
+
+        <div class="toggle-wrapper" style="margin-bottom: 14px;">
+          <span>Dispatch PagerDuty Incident</span>
+          <label class="switch">
+            <input type="checkbox" id="toggle-pagerduty" checked>
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+
+        <button id="btn-save-thresholds" class="btn btn-secondary" style="width: 100%;" onclick="showToast('Threshold alerts saved!')">Save Alert Rules</button>
+      </div>
+    </div>
+  </main>
+
+  <div id="action-toast">✓ Refreshed!</div>
+
+  <script>
+    function updateMetrics(tf) {
+      if (tf === '24h') {
+        document.getElementById('metric-users').textContent = '12,408';
+        document.getElementById('metric-runs').textContent = '380,119';
+      } else if (tf === '7d') {
+        document.getElementById('metric-users').textContent = '48,219';
+        document.getElementById('metric-runs').textContent = '1,289,044';
+      } else {
+        document.getElementById('metric-users').textContent = '194,500';
+        document.getElementById('metric-runs').textContent = '5,892,100';
+      }
+      showToast('Loaded metrics for ' + tf);
+    }
+
+    function refreshData() {
+      showToast('Telemetry data synchronized from edge clusters.');
+    }
+
+    function exportData() {
+      showToast('Exported analytics_report.csv successfully.');
+    }
+
+    function setChartResolution(res) {
+      document.querySelectorAll('#btn-chart-hourly, #btn-chart-daily').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+      showToast('Switched to ' + res + ' resolution view.');
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('action-toast');
+      toast.textContent = '✓ ' + msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+  </script>
+</body>
+</html>
