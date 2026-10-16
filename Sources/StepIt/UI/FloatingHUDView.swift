@@ -2,7 +2,7 @@ import SwiftUI
 import StepItCore
 
 public struct FloatingHUDView: View {
-    @ObservedObject var coordinator = CaptureCoordinator.shared
+    @ObservedObject var controller = WorkflowController.shared
     public var onStop: () -> Void
     
     @State private var isPulsing = false
@@ -16,20 +16,20 @@ public struct FloatingHUDView: View {
             // Recording Indicator Dot
             HStack(spacing: 6) {
                 Circle()
-                    .fill(coordinator.state == .recording ? Color.red : Color.orange)
+                    .fill(controller.state == .recording ? Color.red : Color.orange)
                     .frame(width: 10, height: 10)
-                    .scaleEffect(coordinator.state == .recording && isPulsing ? 1.25 : 1.0)
-                    .opacity(coordinator.state == .recording && isPulsing ? 0.6 : 1.0)
+                    .scaleEffect(controller.state == .recording && isPulsing ? 1.25 : 1.0)
+                    .opacity(controller.state == .recording && isPulsing ? 0.6 : 1.0)
                     .animation(
-                        coordinator.state == .recording
+                        controller.state == .recording
                             ? Animation.easeInOut(duration: 0.8).repeatForever(autoreverses: true)
                             : .default,
                         value: isPulsing
                     )
                 
-                Text(coordinator.state == .recording ? "REC" : "PAUSED")
+                Text(controller.state == .recording ? "REC" : "PAUSED")
                     .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundColor(coordinator.state == .recording ? .red : .orange)
+                    .foregroundColor(controller.state == .recording ? .red : .orange)
             }
             .padding(.leading, 4)
             
@@ -38,7 +38,7 @@ public struct FloatingHUDView: View {
                 .background(Color.white.opacity(0.2))
             
             // Timer Display
-            Text(formattedDuration(coordinator.recordingDuration))
+            Text(formattedDuration(controller.recordingDuration))
                 .font(.system(size: 13, weight: .semibold, design: .monospaced))
                 .foregroundColor(.white)
             
@@ -46,7 +46,7 @@ public struct FloatingHUDView: View {
             HStack(spacing: 4) {
                 Image(systemName: "hand.tap.fill")
                     .font(.system(size: 10))
-                Text("\(coordinator.stepCount) \(coordinator.stepCount == 1 ? "step" : "steps")")
+                Text("\(controller.stepCount) \(controller.stepCount == 1 ? "step" : "steps")")
                     .font(.system(size: 11, weight: .bold, design: .rounded))
             }
             .padding(.horizontal, 8)
@@ -56,7 +56,7 @@ public struct FloatingHUDView: View {
             .foregroundColor(.white)
             
             // Gesture Notice Badge
-            if let gesture = coordinator.lastGestureNotice {
+            if let gesture = controller.lastGestureNotice {
                 HStack(spacing: 5) {
                     Image(systemName: "sparkles")
                         .font(.system(size: 10, weight: .bold))
@@ -81,13 +81,13 @@ public struct FloatingHUDView: View {
             HStack(spacing: 8) {
                 // Pause / Resume
                 Button(action: {
-                    if coordinator.state == .recording {
-                        coordinator.pauseRecording()
-                    } else if coordinator.state == .paused {
-                        coordinator.resumeRecording()
+                    if controller.state == .recording {
+                        Task { await controller.pauseRecording() }
+                    } else if controller.state == .paused {
+                        Task { await controller.resumeRecording() }
                     }
                 }) {
-                    Image(systemName: coordinator.state == .recording ? "pause.fill" : "play.fill")
+                    Image(systemName: controller.state == .recording ? "pause.fill" : "play.fill")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(width: 24, height: 24)
@@ -95,7 +95,7 @@ public struct FloatingHUDView: View {
                         .clipShape(Circle())
                 }
                 .buttonStyle(PlainButtonStyle())
-                .help(coordinator.state == .recording ? "Pause Recording" : "Resume Recording")
+                .help(controller.state == .recording ? "Pause Recording" : "Resume Recording")
                 
                 // Stop Button
                 Button(action: {

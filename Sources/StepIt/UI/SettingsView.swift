@@ -2,6 +2,7 @@ import SwiftUI
 import StepItCore
 
 public struct SettingsView: View {
+    @ObservedObject private var controller = WorkflowController.shared
     @State private var settings: StepItSettings = SessionStore.shared.loadSettings()
     @State private var showSavedAlert = false
     @State private var isShowingApiKey = false
@@ -43,7 +44,9 @@ public struct SettingsView: View {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save Settings") {
                     try? SessionStore.shared.saveSettings(settings)
-                    SmartGestureDetector.shared.settings = settings.gestures
+                    // Single-owner routing (fix F2): settings reach the driver
+                    // through the controller, never by writing the detector.
+                    Task { await WorkflowController.shared.applyGestureSettings(settings.gestures) }
                     showSavedAlert = true
                 }
                 .buttonStyle(BorderedProminentButtonStyle())
@@ -364,11 +367,12 @@ public struct SettingsView: View {
             .padding()
         }
         .onAppear {
-            SmartGestureDetector.shared.settings = settings.gestures
-            SmartGestureDetector.shared.onGestureDetected = { notice in
-                liveTestFeedback = notice.gestureName
-                liveTestFeedbackAction = notice.action
-            }
+            Task { await WorkflowController.shared.applyGestureSettings(settings.gestures) }
+        }
+        .onChange(of: controller.lastGestureEvent) { _, event in
+            guard let event = event else { return }
+            liveTestFeedback = event.name
+            liveTestFeedbackAction = event.action
         }
     }
     

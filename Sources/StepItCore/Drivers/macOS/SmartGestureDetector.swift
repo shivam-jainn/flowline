@@ -16,7 +16,6 @@ public struct GestureEventNotice: Sendable {
 }
 
 public final class SmartGestureDetector: @unchecked Sendable {
-    public static let shared = SmartGestureDetector()
     
     public var settings: GestureSettings = GestureSettings()
     public var onGestureDetected: ((GestureEventNotice) -> Void)?
@@ -74,20 +73,20 @@ public final class SmartGestureDetector: @unchecked Sendable {
         }
     }
     
-    /// Call on mouse down (left, right, or other)
-    public func handleMouseDown(type: NSEvent.EventType, buttonNumber: Int, at point: CGPoint) {
+    /// Call on mouse down (left, right, or middle)
+    public func handleMouseDown(button: MouseButton, at point: CGPoint) {
         queue.async { [weak self] in
             guard let self = self else { return }
             let now = Date()
             
-            // Middle-Click (Button 2)
-            if buttonNumber == 2 && self.settings.middleClickAction != .none {
+            // Middle-Click
+            if button == .middle && self.settings.middleClickAction != .none {
                 self.dispatchGesture(self.settings.middleClickAction, name: "Middle-Click 🖱️", at: point)
                 return
             }
             
             // Right-Click handling for Double Right-Click
-            if type == .rightMouseDown && self.settings.doubleRightClickAction != .none {
+            if button == .right && self.settings.doubleRightClickAction != .none {
                 let interval = now.timeIntervalSince(self.lastRightClickTime)
                 let dist = hypot(point.x - self.lastRightClickPoint.x, point.y - self.lastRightClickPoint.y)
                 if interval < 0.38 && dist < 22.0 {

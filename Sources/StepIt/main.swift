@@ -15,9 +15,11 @@ if arguments.count > 1 && arguments[1] != "app" {
         RunLoop.main.run(mode: .default, before: Date(timeIntervalSinceNow: 0.05))
     }
 } else {
-    // Native macOS Menu Bar & HUD App
-    let app = NSApplication.shared
-    let delegate = AppDelegate()
-    app.delegate = delegate
-    app.run()
+    // Native macOS Menu Bar & HUD App (top-level main runs on the main thread)
+    MainActor.assumeIsolated {
+        let app = NSApplication.shared
+        let delegate = AppDelegate()
+        app.delegate = delegate
+        app.run()
+    }
 }

@@ -188,17 +188,17 @@ final class CLITests: XCTestCase {
     ]
     
     func testLanguageDetectionAndCodeEnvironment() {
-        let aggregator = TextTypingAggregator()
+        let classifier = KeystrokeClassifier()
         
         for vector in codeTypingVectors {
-            let isCodeEnv = aggregator.isCodeEnvironment(
+            let isCodeEnv = classifier.isCodeEnvironment(
                 appName: vector.appName,
                 bundleId: vector.bundleId,
                 windowTitle: vector.windowTitle
             )
             XCTAssertEqual(isCodeEnv, vector.isCodeExpected, "App \(vector.appName) code environment evaluation")
             
-            let detected = aggregator.detectLanguage(
+            let detected = classifier.detectLanguage(
                 appName: vector.appName,
                 windowTitle: vector.windowTitle,
                 text: vector.codeSnippet

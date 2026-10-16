@@ -216,19 +216,19 @@ final class StepItTests: XCTestCase {
     }
     
     func testTextTypingAggregationAndLanguageDetection() {
-        let aggregator = TextTypingAggregator()
+        let classifier = KeystrokeClassifier()
         
         // Test VS Code detection
-        XCTAssertTrue(aggregator.isCodeEnvironment(appName: "Visual Studio Code", bundleId: "com.microsoft.VSCode", windowTitle: "main.py"))
-        XCTAssertTrue(aggregator.isCodeEnvironment(appName: "Terminal", bundleId: "com.apple.Terminal", windowTitle: "zsh"))
-        XCTAssertTrue(aggregator.isCodeEnvironment(appName: "Cursor", bundleId: "com.todesktop.230313mzl4w4u92", windowTitle: "Server.swift"))
-        XCTAssertFalse(aggregator.isCodeEnvironment(appName: "Finder", bundleId: "com.apple.finder", windowTitle: "Documents"))
+        XCTAssertTrue(classifier.isCodeEnvironment(appName: "Visual Studio Code", bundleId: "com.microsoft.VSCode", windowTitle: "main.py"))
+        XCTAssertTrue(classifier.isCodeEnvironment(appName: "Terminal", bundleId: "com.apple.Terminal", windowTitle: "zsh"))
+        XCTAssertTrue(classifier.isCodeEnvironment(appName: "Cursor", bundleId: "com.todesktop.230313mzl4w4u92", windowTitle: "Server.swift"))
+        XCTAssertFalse(classifier.isCodeEnvironment(appName: "Finder", bundleId: "com.apple.finder", windowTitle: "Documents"))
         
         // Test language detection
-        XCTAssertEqual(aggregator.detectLanguage(appName: "Visual Studio Code", windowTitle: "workflow.py", text: "def foo(): pass"), "python")
-        XCTAssertEqual(aggregator.detectLanguage(appName: "Xcode", windowTitle: "App.swift", text: "import SwiftUI"), "swift")
-        XCTAssertEqual(aggregator.detectLanguage(appName: "Terminal", windowTitle: "bash", text: "npm install"), "bash")
-        XCTAssertEqual(aggregator.detectLanguage(appName: "Cursor", windowTitle: "index.ts", text: "const x = 1;"), "typescript")
+        XCTAssertEqual(classifier.detectLanguage(appName: "Visual Studio Code", windowTitle: "workflow.py", text: "def foo(): pass"), "python")
+        XCTAssertEqual(classifier.detectLanguage(appName: "Xcode", windowTitle: "App.swift", text: "import SwiftUI"), "swift")
+        XCTAssertEqual(classifier.detectLanguage(appName: "Terminal", windowTitle: "bash", text: "npm install"), "bash")
+        XCTAssertEqual(classifier.detectLanguage(appName: "Cursor", windowTitle: "index.ts", text: "const x = 1;"), "typescript")
     }
     
     func testFastForwardTypingAndCodeBlobExport() {
@@ -318,8 +318,8 @@ final class StepItTests: XCTestCase {
             expectation.fulfill()
         }
         
-        // Simulate middle-click (buttonNumber 2)
-        detector.handleMouseDown(type: .otherMouseDown, buttonNumber: 2, at: CGPoint(x: 200, y: 300))
+        // Simulate middle-click
+        detector.handleMouseDown(button: .middle, at: CGPoint(x: 200, y: 300))
         
         waitForExpectations(timeout: 1.0)
         
@@ -328,60 +328,70 @@ final class StepItTests: XCTestCase {
         XCTAssertTrue(detectedNotice?.gestureName.contains("Middle-Click") ?? false)
     }
     
-    func testReturnKeyImmediatelyFinalizesCommand() {
-        let aggregator = TextTypingAggregator()
-        var receivedResult: TypingEventResult?
+    func testReturnKeyImmediatelyFinalizesCommand() async {
+        let aggregator = TypingBatchAggregator(
+            configuration: .init(debounceInterval: 1.0),
+            contextProvider: {
+                RawElementContext(
+                    appName: "Terminal",
+                    bundleIdentifier: "com.apple.Terminal",
+                    windowTitle: "zsh"
+                )
+            }
+        )
+        let box = TypingResultBox()
         let exp = expectation(description: "Return key immediately commits command")
         
-        aggregator.onTypingBatchCompleted = { result in
-            receivedResult = result
+        aggregator.onBatchCompleted = { result in
+            box.append(result)
             exp.fulfill()
         }
         
-        aggregator.appendKeystroke("g", at: CGPoint(x: 100, y: 100))
-        aggregator.appendKeystroke("i", at: CGPoint(x: 100, y: 100))
-        aggregator.appendKeystroke("t", at: CGPoint(x: 100, y: 100))
-        aggregator.appendKeystroke(" ", at: CGPoint(x: 100, y: 100))
-        aggregator.appendKeystroke("s", at: CGPoint(x: 100, y: 100))
-        aggregator.appendKeystroke("t", at: CGPoint(x: 100, y: 100))
-        aggregator.appendKeystroke("a", at: CGPoint(x: 100, y: 100))
-        aggregator.appendKeystroke("t", at: CGPoint(x: 100, y: 100))
-        aggregator.appendKeystroke("u", at: CGPoint(x: 100, y: 100))
-        aggregator.appendKeystroke("s", at: CGPoint(x: 100, y: 100))
+        for character in "git status" {
+            aggregator.append(char: String(character), at: Point2D(x: 100, y: 100))
+        }
         
         // Return key pressed
-        aggregator.handleReturnKey(at: CGPoint(x: 100, y: 100))
+        aggregator.handleReturn(at: Point2D(x: 100, y: 100))
         
-        waitForExpectations(timeout: 1.0)
+        await fulfillment(of: [exp], timeout: 1.0)
         
-        XCTAssertNotNil(receivedResult)
-        XCTAssertEqual(receivedResult?.textBlob, "git status")
+        XCTAssertNotNil(box.last)
+        XCTAssertEqual(box.last?.textBlob, "git status")
+        XCTAssertEqual(box.last?.classification, .terminal)
         XCTAssertFalse(aggregator.hasPendingText)
     }
     
-    func testBackspaceAndControlCInTypingAggregator() {
-        let aggregator = TextTypingAggregator()
-        var receivedResult: TypingEventResult?
+    func testBackspaceAndControlCInTypingAggregator() async {
+        let aggregator = TypingBatchAggregator(
+            configuration: .init(debounceInterval: 1.0),
+            contextProvider: {
+                RawElementContext(
+                    appName: "Terminal",
+                    bundleIdentifier: "com.apple.Terminal",
+                    windowTitle: "zsh"
+                )
+            }
+        )
+        let box = TypingResultBox()
         let exp = expectation(description: "Backspace edits buffer and Ctrl+C commits")
         
-        aggregator.onTypingBatchCompleted = { result in
-            receivedResult = result
+        aggregator.onBatchCompleted = { result in
+            box.append(result)
             exp.fulfill()
         }
         
         // Type "npm run devv" then backspace
-        aggregator.appendKeystroke("n", at: CGPoint(x: 50, y: 50))
-        aggregator.appendKeystroke("p", at: CGPoint(x: 50, y: 50))
-        aggregator.appendKeystroke("m", at: CGPoint(x: 50, y: 50))
-        aggregator.appendKeystroke(" ", at: CGPoint(x: 50, y: 50))
-        aggregator.appendKeystroke("x", at: CGPoint(x: 50, y: 50))
-        aggregator.handleBackspace(at: CGPoint(x: 50, y: 50))
-        aggregator.handleControlC(at: CGPoint(x: 50, y: 50))
+        for character in "npm x" {
+            aggregator.append(char: String(character), at: Point2D(x: 50, y: 50))
+        }
+        aggregator.handleBackspace(at: Point2D(x: 50, y: 50))
+        aggregator.handleControlC(at: Point2D(x: 50, y: 50))
         
-        waitForExpectations(timeout: 1.0)
+        await fulfillment(of: [exp], timeout: 1.0)
         
-        XCTAssertNotNil(receivedResult)
-        XCTAssertEqual(receivedResult?.textBlob, "npm  ^C")
+        XCTAssertNotNil(box.last)
+        XCTAssertEqual(box.last?.textBlob, "npm  ^C")
     }
     
     func testNotificationDescriptionSynthesis() {

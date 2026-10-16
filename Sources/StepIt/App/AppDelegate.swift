@@ -3,6 +3,7 @@ import SwiftUI
 import Combine
 import StepItCore
 
+@MainActor
 public final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {
     private var statusItem: NSStatusItem!
     private var settingsWindow: NSWindow?
@@ -20,8 +21,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Send
             }
         }
         
-        // Observe CaptureCoordinator state changes
-        CaptureCoordinator.shared.$state
+        // Observe WorkflowController state changes
+        WorkflowController.shared.$state
             .receive(on: DispatchQueue.main)
             .sink { [weak self] state in
                 self?.updateStatusItemIcon(for: state)
@@ -33,13 +34,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Send
             }
             .store(in: &cancellables)
         
-        // Start listening for Option + Space shortcut
-        EventMonitor.shared.onToggleShortcut = { [weak self] in
-            Task { @MainActor in
-                self?.toggleRecording()
-            }
+        // Boot the recording engine once: driver monitors stay alive for the
+        // whole app session, so the ⌥Space hotkey works in every state (fix F1).
+        Task { @MainActor in
+            await WorkflowController.shared.bootstrap()
         }
-        EventMonitor.shared.start()
         
         // Hide dock icon if desired for menu bar utility, or keep accessory
         NSApp.setActivationPolicy(.accessory)
@@ -78,7 +77,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Send
     
     private func buildMenu() {
         let menu = NSMenu()
-        let isRecording = CaptureCoordinator.shared.state != .idle
+        let isRecording = WorkflowController.shared.state != .idle
         
         if isRecording {
             let stopItem = NSMenuItem(title: "Stop Recording & Synthesize", action: #selector(stopRecording), keyEquivalent: "")
@@ -141,28 +140,32 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Send
     
     @MainActor
     @objc public func toggleRecording() {
-        if CaptureCoordinator.shared.state == .idle {
-            startRecording()
-        } else {
-            stopRecording()
+        Task { @MainActor in
+            await WorkflowController.shared.toggleRecording()
         }
     }
     
     @MainActor
     @objc public func startRecording() {
-        CaptureCoordinator.shared.startRecording()
+        Task { @MainActor in
+            await WorkflowController.shared.startRecording()
+        }
     }
     
     @MainActor
     @objc public func stopRecording() {
-        if let session = CaptureCoordinator.shared.stopRecording() {
-            ReviewWindowController.shared.show(for: session)
+        Task { @MainActor in
+            if let session = await WorkflowController.shared.stopRecording() {
+                ReviewWindowController.shared.show(for: session)
+            }
         }
     }
     
     @MainActor
     @objc public func cancelRecording() {
-        _ = CaptureCoordinator.shared.stopRecording()
+        Task { @MainActor in
+            _ = await WorkflowController.shared.stopRecording()
+        }
     }
     
     @objc private func openRecentSession(_ sender: NSMenuItem) {

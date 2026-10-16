@@ -131,19 +131,24 @@ public struct CLICommands {
         print("👉 Click anywhere on your screen to capture steps.")
         print("🛑 Press Ctrl+C in this terminal when finished to synthesize and export.\n")
         
-        CaptureCoordinator.shared.startRecording(
+        let controller = WorkflowController.shared
+        await controller.bootstrap()
+        await controller.startRecording(
             title: "Terminal CLI Recording",
             theme: .developerDark,
             mediaMode: .hybrid
         )
         
-        // Listen to Coordinator updates
-        var lastStepCount = 0
-        _ = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
-            let count = CaptureCoordinator.shared.stepCount
-            if count > lastStepCount {
-                print("  📸 Captured Step \(count): recorded snapshot & GIF at cursor coordinates.")
-                lastStepCount = count
+        // Listen to controller updates
+        Task { @MainActor in
+            var lastStepCount = 0
+            while true {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                let count = controller.stepCount
+                if count > lastStepCount {
+                    print("  📸 Captured Step \(count): recorded snapshot & GIF at cursor coordinates.")
+                    lastStepCount = count
+                }
             }
         }
         
@@ -151,7 +156,7 @@ public struct CLICommands {
         signal(SIGINT) { _ in
             print("\n⚡️ Stopping recording and publishing documentation...")
             Task { @MainActor in
-                if let session = CaptureCoordinator.shared.stopRecording() {
+                if let session = await WorkflowController.shared.stopRecording() {
                     let settings = SessionStore.shared.loadSettings()
                     if let (web, pdf, md) = try? await PublishingCoordinator.shared.exportAll(session: session, settings: settings) {
                         print("\n🎉 Recording Synthesized & Published!")

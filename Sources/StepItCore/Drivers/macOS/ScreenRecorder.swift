@@ -3,6 +3,13 @@ import AppKit
 import CoreGraphics
 import UniformTypeIdentifiers
 
+/// macOS screen capture + click-highlight rendering.
+///
+/// Phase 1: owned by `MacCaptureDriver` for the recording pipeline. The
+/// `shared` accessor is a **sanctioned exception** (phase1-plan.md D6):
+/// non-pipeline call sites (`DemoSessionGenerator`, `AutomatedWorkflowRecorder`,
+/// `PlaygroundPageRenderer`, tests) use only the pure encoders
+/// (`imageToPNGData`), never the capture path.
 public final class ScreenRecorder: @unchecked Sendable {
     public static let shared = ScreenRecorder()
     

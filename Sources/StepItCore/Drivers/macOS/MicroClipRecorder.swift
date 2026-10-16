@@ -15,6 +15,13 @@ public struct CapturedFrame: @unchecked Sendable {
     }
 }
 
+/// Rolling frame ring-buffer + micro-clip encoders (GIF via ImageIO, MP4 via
+/// AVAssetWriter).
+///
+/// Phase 1: owned by `MacCaptureDriver` for the recording pipeline. The
+/// `shared` accessor is a **sanctioned exception** (phase1-plan.md D6):
+/// non-pipeline call sites (`PlaygroundPageRenderer`, tests) use only the pure
+/// encoders (`createGIF`, `createMP4`), never the buffering path.
 public final class MicroClipRecorder: @unchecked Sendable {
     public static let shared = MicroClipRecorder()
     

@@ -11,6 +11,11 @@ public struct ElementInspectionResult: Sendable {
     public var title: String?
     public var value: String?
     public var roleDescription: String?
+    /// `true` for secure text fields (password inputs).
+    ///
+    /// Phase 1 only carries the flag across the SPI and into the IR;
+    /// suppression logic is Phase 2.
+    public var isSecure: Bool
     public var elementBounds: ElementRect?
     public var windowBounds: ElementRect?
     
@@ -23,6 +28,7 @@ public struct ElementInspectionResult: Sendable {
         title: String? = nil,
         value: String? = nil,
         roleDescription: String? = nil,
+        isSecure: Bool = false,
         elementBounds: ElementRect? = nil,
         windowBounds: ElementRect? = nil
     ) {
@@ -34,13 +40,17 @@ public struct ElementInspectionResult: Sendable {
         self.title = title
         self.value = value
         self.roleDescription = roleDescription
+        self.isSecure = isSecure
         self.elementBounds = elementBounds
         self.windowBounds = windowBounds
     }
 }
 
+/// macOS accessibility-tree inspector.
+///
+/// Phase 1: instantiated and owned by `MacCaptureDriver` (no `.shared`), and
+/// results are bridged to `RawElementContext` via `IRBridging`.
 public final class AccessibilityInspector: @unchecked Sendable {
-    public static let shared = AccessibilityInspector()
     
     public init() {}
     
@@ -54,6 +64,7 @@ public final class AccessibilityInspector: @unchecked Sendable {
         var title: String?
         var value: String?
         var roleDescription: String?
+        var isSecure = false
         var elementBounds: ElementRect?
         var windowBounds: ElementRect?
         
@@ -71,6 +82,7 @@ public final class AccessibilityInspector: @unchecked Sendable {
             }
             value = copyStringAttribute(element: element, attribute: kAXValueAttribute as CFString)
             roleDescription = copyStringAttribute(element: element, attribute: kAXRoleDescriptionAttribute as CFString)
+            isSecure = Self.isSecureField(role: role, subrole: subrole)
             
             // Element Bounds
             elementBounds = copyRect(element: element)
@@ -123,6 +135,7 @@ public final class AccessibilityInspector: @unchecked Sendable {
             title: title,
             value: value,
             roleDescription: roleDescription,
+            isSecure: isSecure,
             elementBounds: elementBounds,
             windowBounds: windowBounds
         )
@@ -141,6 +154,7 @@ public final class AccessibilityInspector: @unchecked Sendable {
         var title: String?
         var value: String?
         var roleDescription: String?
+        var isSecure = false
         var elementBounds: ElementRect?
         var windowBounds: ElementRect?
         
@@ -158,6 +172,7 @@ public final class AccessibilityInspector: @unchecked Sendable {
             }
             value = copyStringAttribute(element: element, attribute: kAXValueAttribute as CFString)
             roleDescription = copyStringAttribute(element: element, attribute: kAXRoleDescriptionAttribute as CFString)
+            isSecure = Self.isSecureField(role: role, subrole: subrole)
             elementBounds = copyRect(element: element)
         }
         
@@ -182,9 +197,17 @@ public final class AccessibilityInspector: @unchecked Sendable {
             title: title,
             value: value,
             roleDescription: roleDescription,
+            isSecure: isSecure,
             elementBounds: elementBounds,
             windowBounds: windowBounds
         )
+    }
+    
+    /// Secure-field detection: `kAXSecureTextFieldRole` / `AXSecureTextField`
+    /// subrole (`"AXSecureTextField"` on macOS).
+    public static func isSecureField(role: String?, subrole: String?) -> Bool {
+        let secureRole = "AXSecureTextField"
+        return role == secureRole || subrole == secureRole
     }
     
     private func copyStringAttribute(element: AXUIElement, attribute: CFString) -> String? {
