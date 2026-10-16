@@ -2,6 +2,7 @@ import Foundation
 import AppKit
 import SwiftUI
 import StepItCore
+import StepItFixtures
 
 public struct CLICommands {
     @MainActor
@@ -52,15 +53,15 @@ public struct CLICommands {
             
         case "cli-task":
             let taskArgs = Array(args.dropFirst())
-            runScript(relativeScript: "Scripts/taskctl.py", arguments: taskArgs)
+            runScript(relativeScript: "Scripts/dev/taskctl.py", arguments: taskArgs)
             
         case "cli-pulse":
             let pulseArgs = Array(args.dropFirst())
-            runScript(relativeScript: "Scripts/devpulse.sh", arguments: pulseArgs)
+            runScript(relativeScript: "Scripts/dev/devpulse.sh", arguments: pulseArgs)
             
         case "cli-fetch":
             let fetchArgs = Array(args.dropFirst())
-            runScript(relativeScript: "Scripts/fetch_cli.sh", arguments: fetchArgs)
+            runScript(relativeScript: "Scripts/dev/fetch_cli.sh", arguments: fetchArgs)
             
         case "cli-tour":
             await runCLITour()
@@ -86,8 +87,8 @@ public struct CLICommands {
           stepit [command]
 
         Available Commands:
-          automate         Run automated multi-page recording tour across the 10-page playground
-          serve [port]     Start local HTTP server serving the 10-page interactive playground
+          automate         Run automated multi-page recording tour across the 10-page fixture web app
+          serve [port]     Start local HTTP server serving the 10-page fixture web app (Fixtures/playground-web)
           record           Start an interactive CLI recording session (captures desktop clicks)
           gateway [prompt] Test AI Gateway streaming response directly in terminal
           demo             Generate an end-to-end sample guide, export Web/PDF/MD, and open in browser
@@ -110,10 +111,12 @@ public struct CLICommands {
     }
     
     private static func servePlayground(port: Int) {
-        let currentDir = FileManager.default.currentDirectoryPath
-        let playgroundDir = URL(fileURLWithPath: currentDir).appendingPathComponent("Playground/web")
+        guard let playgroundDir = FixtureLocator.playgroundWebDirectory() else {
+            print("❌ Fixtures/playground-web was not found. Run from the repository root or set STEPIT_FIXTURES_DIR.")
+            exit(1)
+        }
         
-        print("⚡️ Serving 10-page StepIt UI Playground at http://localhost:\(port)/")
+        print("⚡️ Serving the 10-page StepIt fixture web app at http://localhost:\(port)/")
         print("📁 Root directory: \(playgroundDir.path)")
         print("Press Ctrl+C to stop server.\n")
         
@@ -354,12 +357,12 @@ public struct CLICommands {
     private static func runCLITour() async {
         print("⚡️ [StepIt CLI Tour] Running terminal workflow tour across developer CLI tools...")
         let currentDir = FileManager.default.currentDirectoryPath
-        let taskctlURL = URL(fileURLWithPath: currentDir).appendingPathComponent("Scripts/taskctl.py")
-        let devpulseURL = URL(fileURLWithPath: currentDir).appendingPathComponent("Scripts/devpulse.sh")
+        let taskctlURL = URL(fileURLWithPath: currentDir).appendingPathComponent("Scripts/dev/taskctl.py")
+        let devpulseURL = URL(fileURLWithPath: currentDir).appendingPathComponent("Scripts/dev/devpulse.sh")
         
         guard FileManager.default.fileExists(atPath: taskctlURL.path),
               FileManager.default.fileExists(atPath: devpulseURL.path) else {
-            print("❌ CLI scripts not found in Scripts/ directory.")
+            print("❌ CLI scripts not found in Scripts/dev/ directory.")
             return
         }
         
@@ -372,12 +375,12 @@ public struct CLICommands {
             bundleIdentifier: "com.apple.Terminal",
             windowTitle: "taskctl — zsh",
             elementRole: "AXTextField",
-            elementTitle: "./Scripts/taskctl.py list",
+            elementTitle: "./Scripts/dev/taskctl.py list",
             actionDescription: "Inspect sprint backlog via taskctl CLI",
             userNotes: "Review open and completed sprint backlog tickets directly in terminal.",
             textBlob: """
-            ./Scripts/taskctl.py list
-            ./Scripts/taskctl.py stats
+            ./Scripts/dev/taskctl.py list
+            ./Scripts/dev/taskctl.py stats
             """,
             isCode: true,
             codeLanguage: "bash"
@@ -396,7 +399,7 @@ public struct CLICommands {
             actionDescription: "Add automated playground verification ticket",
             userNotes: "Append high-priority automated testing ticket to the backlog queue.",
             textBlob: """
-            ./Scripts/taskctl.py add "Automate end-to-end 10-page playground tour" --priority high --tag testing
+            ./Scripts/dev/taskctl.py add "Automate end-to-end 10-page playground tour" --priority high --tag testing
             """,
             isCode: true,
             codeLanguage: "bash"
@@ -411,12 +414,12 @@ public struct CLICommands {
             bundleIdentifier: "com.apple.Terminal",
             windowTitle: "devpulse — zsh",
             elementRole: "AXTextField",
-            elementTitle: "./Scripts/devpulse.sh doctor",
+            elementTitle: "./Scripts/dev/devpulse.sh doctor",
             actionDescription: "Run developer environment health diagnostics",
             userNotes: "Verify macOS Darwin kernel, Swift compiler toolchain, and Git working tree.",
             textBlob: """
-            ./Scripts/devpulse.sh doctor
-            ./Scripts/devpulse.sh bench 5
+            ./Scripts/dev/devpulse.sh doctor
+            ./Scripts/dev/devpulse.sh bench 5
             """,
             isCode: true,
             codeLanguage: "bash"

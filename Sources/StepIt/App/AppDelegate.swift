@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import Combine
 import StepItCore
+import StepItFixtures
 
 @MainActor
 public final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Sendable {

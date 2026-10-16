@@ -4,6 +4,7 @@ import CoreGraphics
 import AppKit
 import WebKit
 @testable import StepItCore
+import StepItFixtures
 
 // MARK: - Table Test Data Structures
 
@@ -122,8 +123,10 @@ final class PlaygroundTests: XCTestCase {
     ]
     
     func testPlaygroundPagesIntegrity() throws {
-        let dir = PlaygroundPageRenderer.playgroundDirectory()
-        XCTAssertTrue(FileManager.default.fileExists(atPath: dir.path), "Playground directory should exist at \(dir.path)")
+        let dir = try XCTUnwrap(
+            FixtureLocator.playgroundWebDirectory(),
+            "Fixtures/playground-web should be discoverable from the repository root"
+        )
         
         for vector in pageVectors {
             let pageURL = dir.appendingPathComponent(vector.filename)

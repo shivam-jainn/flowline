@@ -17,14 +17,19 @@ let package = Package(
             dependencies: [],
             path: "Sources/StepItCore"
         ),
+        .target(
+            name: "StepItFixtures",
+            dependencies: ["StepItCore"],
+            path: "Sources/StepItFixtures"
+        ),
         .executableTarget(
             name: "StepIt",
-            dependencies: ["StepItCore"],
+            dependencies: ["StepItCore", "StepItFixtures"],
             path: "Sources/StepIt"
         ),
         .testTarget(
             name: "StepItTests",
-            dependencies: ["StepItCore"],
+            dependencies: ["StepItCore", "StepItFixtures"],
             path: "Tests/StepItTests"
         )
     ]

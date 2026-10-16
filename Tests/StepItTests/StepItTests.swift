@@ -2,6 +2,7 @@ import XCTest
 import CoreGraphics
 import AppKit
 @testable import StepItCore
+import StepItFixtures
 
 final class StepItTests: XCTestCase {
     var tempDirectory: URL!
@@ -186,9 +187,11 @@ final class StepItTests: XCTestCase {
         XCTAssertTrue((gifData?.count ?? 0) > 100)
     }
     
-    func testPlaygroundPagesIntegrity() {
-        let currentDir = FileManager.default.currentDirectoryPath
-        let webDir = URL(fileURLWithPath: currentDir).appendingPathComponent("Playground/web")
+    func testPlaygroundPagesIntegrity() throws {
+        let webDir = try XCTUnwrap(
+            FixtureLocator.playgroundWebDirectory(),
+            "Fixtures/playground-web should be discoverable from the repository root"
+        )
         
         let expectedPages = [
             "index.html",

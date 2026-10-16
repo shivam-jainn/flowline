@@ -2,8 +2,10 @@ import Foundation
 import WebKit
 import AppKit
 import CoreGraphics
+import StepItCore
 
-/// Renders actual Playground Web Pages via WebKit headless renderer and overlays StepIt annotations
+/// Renders the Playground fixture pages (`Fixtures/playground-web`) through an
+/// offscreen WebKit renderer and overlays StepIt annotations.
 public final class PlaygroundPageRenderer: NSObject, WKNavigationDelegate, @unchecked Sendable {
     public static let shared = PlaygroundPageRenderer()
     
@@ -15,32 +17,6 @@ public final class PlaygroundPageRenderer: NSObject, WKNavigationDelegate, @unch
         super.init()
     }
     
-    /// Locates the Playground/web directory within the repository or bundle
-    public static func playgroundDirectory() -> URL {
-        let cwdURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent("Playground/web")
-        if FileManager.default.fileExists(atPath: cwdURL.path) {
-            return cwdURL
-        }
-        
-        var current = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-        for _ in 0..<5 {
-            let candidate = current.appendingPathComponent("Playground/web")
-            if FileManager.default.fileExists(atPath: candidate.path) {
-                return candidate
-            }
-            let parent = current.deletingLastPathComponent()
-            if parent == current { break }
-            current = parent
-        }
-        
-        if let bundleURL = Bundle.main.url(forResource: "Playground/web", withExtension: nil),
-           FileManager.default.fileExists(atPath: bundleURL.path) {
-            return bundleURL
-        }
-        
-        return URL(fileURLWithPath: "/Users/shivamjain/Code/stepit/Playground/web")
-    }
-    
     /// Renders a real Playground HTML page into a Retina CGImage using offscreen WebKit
     @MainActor
     public func renderPage(
@@ -48,7 +24,13 @@ public final class PlaygroundPageRenderer: NSObject, WKNavigationDelegate, @unch
         width: CGFloat = 1200,
         height: CGFloat = 800
     ) async throws -> (cgImage: CGImage, webView: WKWebView) {
-        let dir = Self.playgroundDirectory()
+        guard let dir = FixtureLocator.playgroundWebDirectory() else {
+            throw NSError(
+                domain: "PlaygroundPageRenderer",
+                code: 404,
+                userInfo: [NSLocalizedDescriptionKey: "Fixtures/playground-web was not found. Run from the repository root or set STEPIT_FIXTURES_DIR."]
+            )
+        }
         let fileURL = dir.appendingPathComponent(filename)
         
         guard FileManager.default.fileExists(atPath: fileURL.path) else {

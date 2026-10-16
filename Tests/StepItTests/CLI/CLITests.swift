@@ -39,7 +39,7 @@ final class CLITests: XCTestCase {
     // MARK: - Test 1: taskctl Python CLI Execution & JSON Output
     
     func testTaskctlCLIExecutionAndJSONOutput() async throws {
-        let scriptURL = locateScript(relative: "Scripts/taskctl.py")
+        let scriptURL = locateScript(relative: "Scripts/dev/taskctl.py")
         XCTAssertTrue(FileManager.default.fileExists(atPath: scriptURL.path), "taskctl.py should exist at \(scriptURL.path)")
         
         // 1. Test taskctl list --json via CLIExecutor
@@ -87,7 +87,7 @@ final class CLITests: XCTestCase {
     // MARK: - Test 2: devpulse Bash CLI Diagnostics & Benchmark
     
     func testDevpulseCLIDiagnostics() async throws {
-        let scriptURL = locateScript(relative: "Scripts/devpulse.sh")
+        let scriptURL = locateScript(relative: "Scripts/dev/devpulse.sh")
         XCTAssertTrue(FileManager.default.fileExists(atPath: scriptURL.path), "devpulse.sh should exist at \(scriptURL.path)")
         
         // 1. Test devpulse doctor
@@ -122,7 +122,7 @@ final class CLITests: XCTestCase {
     // MARK: - Test 3: fetch_cli GitHub Ingestion Script
     
     func testFetchCLIScriptExecution() async throws {
-        let scriptURL = locateScript(relative: "Scripts/fetch_cli.sh")
+        let scriptURL = locateScript(relative: "Scripts/dev/fetch_cli.sh")
         XCTAssertTrue(FileManager.default.fileExists(atPath: scriptURL.path), "fetch_cli.sh should exist at \(scriptURL.path)")
         
         let tempTarget = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("stepit_cli_fetch_\(UUID().uuidString)")
@@ -157,7 +157,7 @@ final class CLITests: XCTestCase {
             appName: "Terminal",
             bundleId: "com.apple.Terminal",
             windowTitle: "zsh",
-            codeSnippet: "./Scripts/taskctl.py list && ./Scripts/devpulse.sh doctor",
+            codeSnippet: "./Scripts/dev/taskctl.py list && ./Scripts/dev/devpulse.sh doctor",
             expectedLanguage: "bash",
             isCodeExpected: true
         ),
@@ -218,10 +218,10 @@ final class CLITests: XCTestCase {
             bundleIdentifier: "com.apple.Terminal",
             windowTitle: "taskctl — zsh",
             elementRole: "AXTextField",
-            elementTitle: "./Scripts/taskctl.py list",
+            elementTitle: "./Scripts/dev/taskctl.py list",
             actionDescription: "List sprint tasks via taskctl",
             userNotes: "Outputs formatted backlog table directly in terminal.",
-            textBlob: "./Scripts/taskctl.py list",
+            textBlob: "./Scripts/dev/taskctl.py list",
             isCode: true,
             codeLanguage: "bash"
         )
@@ -237,7 +237,7 @@ final class CLITests: XCTestCase {
             elementTitle: "taskctl.py",
             actionDescription: "Add automated testing ticket",
             userNotes: "Append high-priority ticket with JSON persistence.",
-            textBlob: "./Scripts/taskctl.py add \"Automate playground tour\" --priority high",
+            textBlob: "./Scripts/dev/taskctl.py add \"Automate playground tour\" --priority high",
             isCode: true,
             codeLanguage: "bash"
         )
@@ -262,6 +262,6 @@ final class CLITests: XCTestCase {
         let md = MarkdownExporter.shared.exportMarkdown(session: session)
         XCTAssertTrue(md.contains("Terminal CLI & Developer Toolchain Guide"))
         XCTAssertTrue(md.contains("```bash"))
-        XCTAssertTrue(md.contains("./Scripts/taskctl.py list"))
+        XCTAssertTrue(md.contains("./Scripts/dev/taskctl.py list"))
     }
 }

@@ -3,6 +3,10 @@ import os
 import math
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
+# Resolve paths relative to the repository root so the script works from any CWD.
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+ASSETS_DIR = os.path.join(REPO_ROOT, "Assets", "dmg")
+
 def create_fun_apple_dmg_background():
     # Window dimensions in create_dmg.sh: 660 x 440 pt -> 1320 x 880 px (@2x Retina)
     W, H = 1320, 880
@@ -183,18 +187,16 @@ def create_fun_apple_dmg_background():
     base = Image.alpha_composite(base, gfx)
     
     # 8. Export 2x and 1x Retina PNGs
-    os.makedirs("Assets/dmg", exist_ok=True)
+    os.makedirs(ASSETS_DIR, exist_ok=True)
     
     final_rgb = Image.new("RGB", (W, H), (18, 18, 20))
     final_rgb.paste(base, (0, 0), base)
     
-    final_rgb.save("Assets/dmg/background@2x.png", "PNG", optimize=True)
+    final_rgb.save(os.path.join(ASSETS_DIR, "background@2x.png"), "PNG", optimize=True)
     final_1x = final_rgb.resize((660, 440), Image.LANCZOS)
-    final_1x.save("Assets/dmg/background.png", "PNG", optimize=True)
+    final_1x.save(os.path.join(ASSETS_DIR, "background.png"), "PNG", optimize=True)
     
-    preview_path = "/Users/shivamjain/.gemini/antigravity-ide/brain/b493566b-1150-4424-bd57-06181b53ec38/fun_apple_dmg_background_preview.png"
-    final_rgb.save(preview_path, "PNG")
-    print(f"✅ Generated perfectly centered fun Apple/Airbnb minimal DMG background to Assets/dmg/ and {preview_path}")
+    print(f"✅ Generated DMG background at {ASSETS_DIR} (background.png + background@2x.png)")
 
 if __name__ == "__main__":
     create_fun_apple_dmg_background()

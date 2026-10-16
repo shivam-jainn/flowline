@@ -73,7 +73,13 @@ if [ -f "${ROOT_DIR}/Assets/AppIcon.icns" ]; then
     cp "${ROOT_DIR}/Assets/AppIcon.icns" "${RESOURCES_DIR}/AppIcon.icns"
 fi
 
-# 4. Ad-hoc codesign
+# 5. Copy the fixture tree (Playground web app used by the demo tooling)
+if [ -d "${ROOT_DIR}/Fixtures/playground-web" ]; then
+    mkdir -p "${RESOURCES_DIR}/Fixtures"
+    cp -R "${ROOT_DIR}/Fixtures/playground-web" "${RESOURCES_DIR}/Fixtures/"
+fi
+
+# 6. Ad-hoc codesign
 if command -v codesign >/dev/null 2>&1; then
     echo "Signing application bundle..."
     codesign --force --deep --sign - "${APP_DIR}" 2>/dev/null || true
