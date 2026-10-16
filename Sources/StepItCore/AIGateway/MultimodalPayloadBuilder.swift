@@ -1,0 +1,140 @@
+import Foundation
+import AppKit
+
+public struct MultimodalContentPart: Codable, Sendable {
+    public var type: String
+    public var text: String?
+    public var image_url: ImageURLPayload?
+    
+    public init(text: String) {
+        self.type = "text"
+        self.text = text
+        self.image_url = nil
+    }
+    
+    public init(imageURL: String) {
+        self.type = "image_url"
+        self.text = nil
+        self.image_url = ImageURLPayload(url: imageURL)
+    }
+}
+
+public struct ImageURLPayload: Codable, Sendable {
+    public var url: String
+    
+    public init(url: String) {
+        self.url = url
+    }
+}
+
+public struct ChatMessagePayload: Codable, Sendable {
+    public var role: String
+    public var content: [MultimodalContentPart]
+    
+    public init(role: String, content: [MultimodalContentPart]) {
+        self.role = role
+        self.content = content
+    }
+    
+    public init(role: String, text: String) {
+        self.role = role
+        self.content = [MultimodalContentPart(text: text)]
+    }
+}
+
+public struct ChatCompletionRequest: Codable, Sendable {
+    public var model: String
+    public var messages: [ChatMessagePayload]
+    public var temperature: Double
+    public var stream: Bool
+    
+    public init(model: String, messages: [ChatMessagePayload], temperature: Double = 0.2, stream: Bool = true) {
+        self.model = model
+        self.messages = messages
+        self.temperature = temperature
+        self.stream = stream
+    }
+}
+
+public final class MultimodalPayloadBuilder: @unchecked Sendable {
+    public static let shared = MultimodalPayloadBuilder()
+    
+    public init() {}
+    
+    public func buildRequest(
+        session: StepSession,
+        settings: GatewaySettings,
+        style: DocumentationStyle,
+        customInstructions: String? = nil,
+        maxImageWidth: CGFloat = 1200
+    ) -> ChatCompletionRequest {
+        let systemPrompt = PromptTemplates.systemPrompt(for: style)
+        let textPrompt = PromptTemplates.userPrompt(for: session, style: style, customInstructions: customInstructions)
+        
+        var userContentParts: [MultimodalContentPart] = [
+            MultimodalContentPart(text: textPrompt)
+        ]
+        
+        // If vision is enabled, read and downsample step screenshots into base64 data URLs
+        if settings.visionEnabled {
+            for step in session.steps {
+                guard let relPath = step.assets.screenshot else { continue }
+                let fileURL = SessionStore.shared.resolveMediaPath(sessionID: session.id, relativePath: relPath)
+                if let imageData = try? Data(contentsOf: fileURL),
+                   let base64String = encodeAndDownsampleImage(data: imageData, maxWidth: maxImageWidth) {
+                    let caption = "Screenshot for Step \(step.index) (\(step.actionDescription)):"
+                    userContentParts.append(MultimodalContentPart(text: caption))
+                    userContentParts.append(MultimodalContentPart(imageURL: "data:image/png;base64,\(base64String)"))
+                }
+            }
+        }
+        
+        let messages = [
+            ChatMessagePayload(role: "system", text: systemPrompt),
+            ChatMessagePayload(role: "user", content: userContentParts)
+        ]
+        
+        return ChatCompletionRequest(
+            model: settings.model,
+            messages: messages,
+            temperature: settings.temperature,
+            stream: true
+        )
+    }
+    
+    private func encodeAndDownsampleImage(data: Data, maxWidth: CGFloat) -> String? {
+        guard let image = NSImage(data: data) else { return nil }
+        
+        var targetSize = image.size
+        if targetSize.width > maxWidth {
+            let scale = maxWidth / targetSize.width
+            targetSize = CGSize(width: maxWidth, height: targetSize.height * scale)
+        }
+        
+        guard let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: Int(targetSize.width),
+            pixelsHigh: Int(targetSize.height),
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ) else {
+            return data.base64EncodedString()
+        }
+        
+        NSGraphicsContext.saveGraphicsState()
+        let context = NSGraphicsContext(bitmapImageRep: rep)
+        NSGraphicsContext.current = context
+        image.draw(in: NSRect(origin: .zero, size: targetSize), from: .zero, operation: .copy, fraction: 1.0)
+        NSGraphicsContext.restoreGraphicsState()
+        
+        if let pngData = rep.representation(using: .png, properties: [:]) {
+            return pngData.base64EncodedString()
+        }
+        return data.base64EncodedString()
+    }
+}
