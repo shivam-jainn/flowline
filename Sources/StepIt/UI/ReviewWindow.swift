@@ -20,6 +20,7 @@ public struct ReviewWindow: View {
     @State private var exportStatusMessage: String?
     
     @State private var selectedStepIndex: Int = 1
+    @State private var showingZoomCrop: [Int: Bool] = [:]
     
     public init(session: StepSession) {
         _session = State(initialValue: session)
@@ -30,17 +31,18 @@ public struct ReviewWindow: View {
         HSplitView {
             // Left Column: Steps Timeline & Inspector
             stepsListPane
-                .frame(minWidth: 420, idealWidth: 480)
+                .frame(minWidth: 360, idealWidth: 440)
             
             // Right Column: AI Synthesis & 1-Click Publishing Pane
             rightActionPane
-                .frame(minWidth: 460, idealWidth: 540)
+                .frame(minWidth: 400, idealWidth: 500)
         }
-        .frame(minWidth: 980, minHeight: 680)
+        .frame(minWidth: 920, minHeight: 620)
+        .preferredColorScheme(session.theme == .developerDark ? .dark : (session.theme == .enterpriseSop ? .light : nil))
         .toolbar {
             ToolbarItem(placement: .navigation) {
                 HStack(spacing: 8) {
-                    Image(systemName: "bolt.fill")
+                    Image(systemName: "stairs")
                         .foregroundColor(.accentColor)
                     Text(session.title)
                         .font(.headline)
@@ -51,12 +53,30 @@ public struct ReviewWindow: View {
             }
             
             ToolbarItem(placement: .automatic) {
-                Picker("Theme", selection: $session.theme) {
-                    ForEach(ThemeName.allCases, id: \.self) { t in
-                        Text(t.displayName).tag(t)
+                HStack(spacing: 6) {
+                    Text("Theme:")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Picker("Theme", selection: $session.theme) {
+                        ForEach(ThemeName.allCases, id: \.self) { t in
+                            Text(t.displayName).tag(t)
+                        }
                     }
+                    .pickerStyle(MenuPickerStyle())
                 }
-                .pickerStyle(MenuPickerStyle())
+            }
+            
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: openSettings) {
+                    Label("Settings", systemImage: "gearshape")
+                }
+                .help("Settings")
+            }
+        }
+        .onChange(of: session.theme) { _, newTheme in
+            try? SessionStore.shared.saveSession(session)
+            if session.exports.web != nil {
+                exportWebDoc()
             }
         }
     }
@@ -75,10 +95,18 @@ public struct ReviewWindow: View {
                         .foregroundColor(.secondary)
                 }
                 Spacer()
-                Button(action: addManualStep) {
-                    Label("Add Step", systemImage: "plus")
+                HStack(spacing: 8) {
+                    Button(action: addManualStep) {
+                        Label("Add Step", systemImage: "plus")
+                    }
+                    .controlSize(.small)
+                    
+                    Button(action: openSettings) {
+                        Image(systemName: "gearshape")
+                    }
+                    .controlSize(.small)
+                    .help("Settings")
                 }
-                .controlSize(.small)
             }
             .padding(14)
             .background(Color(NSColor.controlBackgroundColor))
@@ -145,27 +173,72 @@ public struct ReviewWindow: View {
                 .buttonStyle(PlainButtonStyle())
             }
             
-            // Thumbnail / Scrubber
+            // Thumbnail / Scrubber / 2.4x Zoom View
             if let screenshotPath = step.assets.screenshot {
-                let imgURL = SessionStore.shared.resolveMediaPath(sessionID: session.id, relativePath: screenshotPath)
-                if let nsImage = NSImage(contentsOf: imgURL) {
-                    Image(nsImage: nsImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(maxHeight: 180)
-                        .cornerRadius(8)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                        )
+                let showZoom = (showingZoomCrop[step.index] ?? false) && (step.assets.zoomCrop != nil)
+                let activePath = showZoom ? (step.assets.zoomCrop ?? screenshotPath) : screenshotPath
+                let imgURL = SessionStore.shared.resolveMediaPath(sessionID: session.id, relativePath: activePath)
+                
+                VStack(alignment: .leading, spacing: 6) {
+                    if step.assets.zoomCrop != nil {
+                        HStack(spacing: 6) {
+                            Button(action: {
+                                showingZoomCrop[step.index] = false
+                            }) {
+                                Text("Overview")
+                                    .font(.system(size: 10, weight: !showZoom ? .bold : .regular))
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(!showZoom ? Color.accentColor.opacity(0.15) : Color.clear)
+                            .cornerRadius(4)
+                            
+                            Button(action: {
+                                showingZoomCrop[step.index] = true
+                            }) {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "plus.magnifyingglass")
+                                    Text("2.4× Zoom")
+                                }
+                                .font(.system(size: 10, weight: showZoom ? .bold : .regular))
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(showZoom ? Color.accentColor.opacity(0.15) : Color.clear)
+                            .cornerRadius(4)
+                            
+                            Spacer()
+                            
+                            if showZoom {
+                                Text("Live DOM Focus Crop")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    
+                    if let nsImage = NSImage(contentsOf: imgURL) {
+                        Image(nsImage: nsImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxHeight: 180)
+                            .cornerRadius(8)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                            )
+                    }
                 }
             }
             
-            // Captured Text / Code Blob
+            // Captured Text / Code Blob / Terminal Command
             if let text = step.textBlob, !text.isEmpty {
+                let isTerminal = step.appName.lowercased().contains("terminal") || step.codeLanguage == "bash" || step.codeLanguage == "zsh" || step.codeLanguage == "shell"
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
-                        Label(step.isCode ? "Code Snippet (\(step.codeLanguage ?? "code"))" : "Typed Text", systemImage: "chevron.left.forwardslash.chevron.right")
+                        Label(isTerminal ? "Terminal CLI Command" : (step.isCode ? "Code Snippet (\(step.codeLanguage ?? "code"))" : "Typed Text"), systemImage: isTerminal ? "terminal.fill" : "chevron.left.forwardslash.chevron.right")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundColor(.accentColor)
                         Spacer()
@@ -173,17 +246,32 @@ public struct ReviewWindow: View {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString(text, forType: .string)
                         }) {
-                            Label("Copy to Clipboard", systemImage: "doc.on.doc")
+                            Label(isTerminal ? "Copy Command" : "Copy", systemImage: "doc.on.doc")
                         }
                         .controlSize(.mini)
                     }
                     
-                    Text(text)
-                        .font(.system(size: 11, design: .monospaced))
+                    if isTerminal {
+                        HStack(alignment: .top, spacing: 6) {
+                            Text("shivam@macbook ~ %")
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .foregroundColor(.green)
+                            Text(text)
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                         .padding(8)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.black.opacity(0.35))
+                        .background(Color.black.opacity(0.85))
                         .cornerRadius(6)
+                    } else {
+                        Text(text)
+                            .font(.system(size: 11, design: .monospaced))
+                            .padding(8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.black.opacity(0.35))
+                            .cornerRadius(6)
+                    }
                 }
                 .padding(8)
                 .background(Color.secondary.opacity(0.08))
@@ -238,17 +326,32 @@ public struct ReviewWindow: View {
                     .font(.headline)
                     .foregroundColor(.accentColor)
                 Spacer()
-                Text(settings.gateway.provider.displayName)
+                Button(action: openSettings) {
+                    HStack(spacing: 4) {
+                        Text(settings.gateway.provider.displayName)
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 9))
+                    }
                     .font(.caption)
                     .foregroundColor(.secondary)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .help("Configure AI Provider & API Keys in Settings")
             }
             
-            Picker("Template Style", selection: $selectedStyle) {
-                ForEach(DocumentationStyle.allCases, id: \.self) { style in
-                    Text(style.displayName).tag(style)
+            HStack {
+                Text("Documentation Style:")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                Spacer()
+                Picker("", selection: $selectedStyle) {
+                    ForEach(DocumentationStyle.allCases, id: \.self) { style in
+                        Text(style.displayName).tag(style)
+                    }
                 }
+                .pickerStyle(MenuPickerStyle())
+                .frame(maxWidth: 240)
             }
-            .pickerStyle(SegmentedPickerStyle())
             
             TextField("Custom Instructions (e.g. 'Use concise bullet points', 'Target macOS Sequoia')", text: $customInstructions)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -511,5 +614,9 @@ public struct ReviewWindow: View {
         } catch {
             self.exportStatusMessage = "Markdown export failed: \(error.localizedDescription)"
         }
+    }
+    
+    private func openSettings() {
+        SettingsWindowController.shared.show()
     }
 }

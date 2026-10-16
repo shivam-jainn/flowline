@@ -118,12 +118,18 @@ public final class CaptureCoordinator: ObservableObject, @unchecked Sendable {
     public func stopRecording() -> StepSession? {
         guard state != .idle, var session = currentSession else { return nil }
         
+        // Synchronously flush any pending keystrokes before shutting down
+        if TextTypingAggregator.shared.hasPendingText {
+            TextTypingAggregator.shared.forceFinalizeSynchronously()
+        }
+        
         EventMonitor.shared.stop()
         MicroClipRecorder.shared.stopBuffering()
         
         timer?.invalidate()
         timer = nil
         
+        session = currentSession ?? session
         session.endedAt = Date()
         self.currentSession = session
         self.state = .idle
@@ -245,6 +251,11 @@ public final class CaptureCoordinator: ObservableObject, @unchecked Sendable {
     }
     
     private func handleAction(action: ActionType, at point: CGPoint) {
+        // Flush any pending typed text/commands before recording the subsequent mouse action
+        if TextTypingAggregator.shared.hasPendingText {
+            TextTypingAggregator.shared.forceFinalizeSynchronously()
+        }
+        
         queue.async { [weak self] in
             guard let self = self, var session = self.currentSession, self.state == .recording else { return }
             
@@ -372,7 +383,27 @@ public final class CaptureCoordinator: ObservableObject, @unchecked Sendable {
                 }
             }
             
-            let action: ActionType = result.isCode ? .writeCode : .typing
+            let action: ActionType = (result.isCode || result.isTerminal) ? .writeCode : .typing
+            let cleanText = result.textBlob.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            let description: String
+            let role: String
+            let langTag: String?
+            
+            if result.isTerminal {
+                description = "Run \"\(cleanText)\" in \(result.appName)"
+                role = "AXTerminal"
+                langTag = "bash"
+            } else if result.isCode {
+                description = "Write code in \(result.appName)"
+                role = "AXCodeEditor"
+                langTag = result.language
+            } else {
+                let preview = cleanText.prefix(32)
+                description = "Type \"\(preview)\(cleanText.count > 32 ? "..." : "")\" in \(result.appName)"
+                role = "AXTextField"
+                langTag = nil
+            }
             
             let step = Step(
                 index: nextIndex,
@@ -381,11 +412,12 @@ public final class CaptureCoordinator: ObservableObject, @unchecked Sendable {
                 appName: result.appName,
                 bundleIdentifier: result.bundleIdentifier,
                 windowTitle: result.windowTitle,
-                elementRole: result.isCode ? "AXCodeEditor" : "AXTextField",
-                elementTitle: result.language != nil ? "(\(result.language!))" : nil,
+                elementRole: role,
+                elementTitle: langTag != nil ? "(\(langTag!))" : nil,
                 coordinates: ScreenCoordinates(x: Double(result.location.x), y: Double(result.location.y)),
+                actionDescription: description,
                 textBlob: result.textBlob,
-                isCode: result.isCode,
+                isCode: result.isCode || result.isTerminal,
                 codeLanguage: result.language,
                 assets: assets
             )

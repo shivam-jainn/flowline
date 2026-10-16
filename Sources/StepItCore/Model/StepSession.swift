@@ -56,11 +56,13 @@ public struct MediaAssets: Codable, Sendable, Equatable {
     public var screenshot: String?
     public var gif: String?
     public var webm: String?
+    public var zoomCrop: String?
     
-    public init(screenshot: String? = nil, gif: String? = nil, webm: String? = nil) {
+    public init(screenshot: String? = nil, gif: String? = nil, webm: String? = nil, zoomCrop: String? = nil) {
         self.screenshot = screenshot
         self.gif = gif
         self.webm = webm
+        self.zoomCrop = zoomCrop
     }
 }
 
@@ -157,15 +159,33 @@ public struct Step: Identifiable, Codable, Sendable, Equatable {
     ) -> String {
         if action == .typing || action == .writeCode {
             let targetApp = appName.isEmpty ? "editor" : appName
-            if isCode {
-                return "Write code in \(targetApp)"
-            } else if let blob = textBlob, !blob.isEmpty {
+            let isTerminalApp = targetApp.lowercased().contains("terminal") || targetApp.lowercased().contains("iterm") || targetApp.lowercased().contains("warp") || targetApp.lowercased().contains("ghostty") || targetApp.lowercased().contains("kitty") || targetApp.lowercased().contains("alacritty")
+            
+            if let blob = textBlob, !blob.isEmpty {
                 let clean = blob.trimmingCharacters(in: .whitespacesAndNewlines)
-                let preview = clean.prefix(32)
-                return "Type \"\(preview)\(clean.count > 32 ? "..." : "")\" in \(targetApp)"
+                let preview = clean.prefix(40)
+                if isTerminalApp || isCode && (clean.hasPrefix("npm ") || clean.hasPrefix("git ") || clean.hasPrefix("swift ") || clean.hasPrefix("cd ") || clean.hasPrefix("cat ") || clean.hasPrefix("ls") || clean.hasPrefix("curl") || clean.hasPrefix("docker")) {
+                    return "Run \"\(preview)\(clean.count > 40 ? "..." : "")\" in \(targetApp)"
+                } else if isCode {
+                    return "Write code in \(targetApp)"
+                } else {
+                    return "Type \"\(preview)\(clean.count > 40 ? "..." : "")\" in \(targetApp)"
+                }
+            } else if isTerminalApp {
+                return "Execute command in \(targetApp)"
+            } else if isCode {
+                return "Write code in \(targetApp)"
             } else {
                 return "Type text in \(targetApp)"
             }
+        }
+        
+        // Notification Center interactions
+        if appName.contains("UserNotificationCenter") || appName.contains("Notification") {
+            if let title = elementTitle, !title.trimmingCharacters(in: .whitespaces).isEmpty {
+                return "Click notification \"\(title)\""
+            }
+            return "Click system notification"
         }
         
         let actionWord: String

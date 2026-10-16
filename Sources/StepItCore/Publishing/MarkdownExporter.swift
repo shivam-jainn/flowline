@@ -12,18 +12,18 @@ public final class MarkdownExporter: @unchecked Sendable {
         }
         
         // Default clean structured markdown generation
-        var md = "# ⚡️ \(session.title)\n\n"
+        var md = "# \(session.title)\n\n"
         
         if let summary = session.summary, !summary.isEmpty {
             md += "> \(summary)\n\n"
         }
         
-        md += "| Recorded At | Steps | Theme | Mode |\n"
+        md += "| Recorded | Steps | Theme | Mode |\n"
         md += "| :--- | :--- | :--- | :--- |\n"
         md += "| \(session.startedAt.formatted()) | \(session.steps.count) | \(session.theme.displayName) | \(session.mediaMode.displayName) |\n\n"
         md += "---\n\n"
         
-        md += "## 📋 Table of Contents\n\n"
+        md += "## Table of Contents\n\n"
         for step in session.steps {
             let anchor = step.actionDescription
                 .lowercased()
@@ -34,7 +34,7 @@ public final class MarkdownExporter: @unchecked Sendable {
         }
         md += "\n---\n\n"
         
-        md += "## 🚀 Steps to Follow\n\n"
+        md += "## Workflow Steps\n\n"
         for step in session.steps {
             md += "### Step \(step.index): \(step.actionDescription)\n\n"
             
@@ -49,10 +49,10 @@ public final class MarkdownExporter: @unchecked Sendable {
                 md += "- **Target Element**: \(role)\(titleDesc)\n"
             }
             if let coords = step.coordinates {
-                md += "- **Click Coordinates**: (\(Int(coords.x)), \(Int(coords.y)))\n"
+                md += "- **Coordinates**: (\(Int(coords.x)), \(Int(coords.y)))\n"
             }
             if let notes = step.userNotes, !notes.isEmpty {
-                md += "\n> 💡 **Note**: \(notes)\n"
+                md += "\n> **Note**: \(notes)\n"
             }
             
             if let text = step.textBlob, !text.isEmpty {
@@ -70,10 +70,13 @@ public final class MarkdownExporter: @unchecked Sendable {
             } else if let screenshot = step.assets.screenshot {
                 md += "![\(step.actionDescription)](\(prefix)\(screenshot))\n\n"
             }
+            if let zoomCrop = step.assets.zoomCrop {
+                md += "🔍 *[View 2.4× Focused DOM Zoom Crop](\(prefix)\(zoomCrop))*\n\n"
+            }
         }
         
         md += "---\n\n"
-        md += "_Synthesized effortlessly with [StepIt](https://github.com/stepit/stepit) for macOS._\n"
+        md += "_Documented with [step·it](https://github.com/stepit/stepit) for macOS._\n"
         return md
     }
 }

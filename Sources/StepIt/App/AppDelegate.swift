@@ -175,7 +175,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Send
     
     @objc private func triggerDemo() {
         Task {
-            let session = DemoSessionGenerator.generateDemoSession()
+            guard let session = try? await DemoSessionGenerator.generateDemoSession() else { return }
             let settings = SessionStore.shared.loadSettings()
             try? SessionStore.shared.saveSession(session)
             if let (web, _, _) = try? await PublishingCoordinator.shared.exportAll(session: session, settings: settings) {
@@ -187,22 +187,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Send
         }
     }
     
-    @objc private func openSettings() {
-        if settingsWindow == nil {
-            let win = NSWindow(
-                contentRect: NSRect(x: 100, y: 100, width: 600, height: 480),
-                styleMask: [.titled, .closable],
-                backing: .buffered,
-                defer: false
-            )
-            win.center()
-            win.title = "StepIt Settings"
-            win.contentView = NSHostingView(rootView: SettingsView())
-            win.isReleasedWhenClosed = false
-            self.settingsWindow = win
-        }
-        settingsWindow?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+    @MainActor
+    @objc public func openSettings() {
+        SettingsWindowController.shared.show()
     }
     
     @objc private func openPermissions() {

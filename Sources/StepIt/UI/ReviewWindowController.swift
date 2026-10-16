@@ -25,7 +25,7 @@ public final class ReviewWindowController: @unchecked Sendable {
             win.center()
             win.title = "StepIt — Review & Publish"
             win.titleVisibility = .visible
-            win.titlebarAppearsTransparent = false
+            win.minSize = NSSize(width: 960, height: 600)
             win.contentView = hostingView
             win.isReleasedWhenClosed = false
             

@@ -12,14 +12,19 @@
 <body>
   <header class="app-navbar">
     <a href="index.html" class="brand-container">
-      <div class="brand-icon">⚡️</div>
-      <div class="brand-name">StepIt UI Playground</div>
-      <span class="brand-tag">10 Interactive Apps</span>
+      <svg class="brand-logo-svg" style="height: 22px; width: auto;" viewBox="0 0 110 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="14" width="5.5" height="14" rx="2.5" fill="currentColor" opacity="0.35"/>
+        <rect x="8" y="7" width="5.5" height="21" rx="2.5" fill="currentColor" opacity="0.7"/>
+        <rect x="16" y="0" width="5.5" height="28" rx="2.5" fill="currentColor"/>
+        <circle cx="27" cy="5" r="2.5" fill="#0071e3"/>
+        <text x="36" y="20" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif" font-size="19" font-weight="800" letter-spacing="-0.04em" fill="currentColor">step<tspan fill="#0071e3">·</tspan>it</text>
+      </svg>
+      <span class="brand-tag">UI Playground</span>
     </a>
     <div class="nav-links">
       <a href="index.html" class="nav-item active">Directory</a>
       <button id="btn-quick-tour" class="btn btn-secondary" onclick="showToast('Playground Hub loaded with 10 interactive workflow pages')">Quick Tour</button>
-      <button id="btn-trigger-recording" class="btn btn-primary" onclick="showToast('Recording shortcut: Press Option + Space')">Start StepIt (⌥ Space)</button>
+      <button id="btn-trigger-recording" class="btn btn-primary" onclick="showToast('Recording shortcut: Press Option + Space')">Capture (⌥ Space)</button>
     </div>
   </header>
 

@@ -19,47 +19,68 @@ public final class PDFGenerator: NSObject, WKNavigationDelegate, @unchecked Send
     ) async throws -> URL {
         let sessionDir = SessionStore.shared.sessionDirectory(for: session.id)
         let exportsDir = SessionStore.shared.exportsDirectory(for: session.id)
-        let pdfURL = exportsDir.appendingPathComponent("guide.pdf")
+        try? FileManager.default.createDirectory(at: exportsDir, withIntermediateDirectories: true)
         
-        // Generate HTML with local file paths
+        let pdfURL = exportsDir.appendingPathComponent("guide.pdf")
+        let tempHTMLURL = sessionDir.appendingPathComponent("temp_print.html")
+        
+        // Generate HTML with relative media paths ("media/step_01.png")
         let html = WebDocGenerator.shared.generateHTML(
             session: session,
             settings: settings,
-            assetBaseURL: sessionDir.absoluteString
+            assetBaseURL: ""
         )
+        try html.write(to: tempHTMLURL, atomically: true, encoding: .utf8)
         
         let webConfig = WKWebViewConfiguration()
-        let webView = WKWebView(frame: CGRect(x: 0, y: 0, width: 800, height: 1100), configuration: webConfig)
+        webConfig.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
+        
+        let initialWidth: CGFloat = settings.pdfPaperSize.uppercased() == "A4" ? 794 : 816
+        let initialHeight: CGFloat = 1123
+        
+        let webView = WKWebView(frame: CGRect(x: 0, y: 0, width: initialWidth, height: initialHeight), configuration: webConfig)
         self.activeWebView = webView
         webView.navigationDelegate = self
         
         // Attach to offscreen window to ensure WebKit WebContent process renders in headless mode
         let offscreenWindow = NSWindow(
-            contentRect: CGRect(x: 0, y: 0, width: 800, height: 1100),
+            contentRect: CGRect(x: 0, y: 0, width: initialWidth, height: initialHeight),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
         offscreenWindow.contentView = webView
         
-        // Load HTML with baseURL allowing local file access
+        // Load via loadFileURL granting full WebKit WebContent read access to sessionDir (and media/)
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             self.navigationContinuation = continuation
-            webView.loadHTMLString(html, baseURL: sessionDir)
+            webView.loadFileURL(tempHTMLURL, allowingReadAccessTo: sessionDir)
         }
         
-        // Short pause to ensure all local image resources are fully drawn in WebKit render tree
-        try await Task.sleep(nanoseconds: 300_000_000)
+        // Enable PDF export styling (hides interactive web buttons, shows print header & static screenshots)
+        _ = try? await webView.evaluateJavaScript("document.body.classList.add('pdf-export-mode')")
         
-        // PDF configuration
-        let pdfConfig = WKPDFConfiguration()
-        if settings.pdfPaperSize.uppercased() == "A4" {
-            // A4 in points: 595 x 842
-            pdfConfig.rect = CGRect(x: 0, y: 0, width: 595, height: 842)
+        // Allow WebKit render tree and images to fully lay out
+        try await Task.sleep(nanoseconds: 350_000_000)
+        
+        // Compute full document scroll height to prevent cutting off multi-step workflows
+        let measuredHeight: CGFloat
+        if let scrollH = try? await webView.evaluateJavaScript("Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 1100)") as? NSNumber {
+            measuredHeight = CGFloat(scrollH.doubleValue)
         } else {
-            // US Letter in points: 612 x 792
-            pdfConfig.rect = CGRect(x: 0, y: 0, width: 612, height: 792)
+            measuredHeight = initialHeight
         }
+        
+        let fullHeight = max(measuredHeight + 40, initialHeight)
+        webView.frame = CGRect(x: 0, y: 0, width: initialWidth, height: fullHeight)
+        offscreenWindow.setContentSize(CGSize(width: initialWidth, height: fullHeight))
+        
+        // Allow relayout after frame update
+        try await Task.sleep(nanoseconds: 150_000_000)
+        
+        // PDF configuration spanning the full workflow height
+        let pdfConfig = WKPDFConfiguration()
+        pdfConfig.rect = CGRect(x: 0, y: 0, width: initialWidth, height: fullHeight)
         
         let pdfData: Data = try await withCheckedThrowingContinuation { continuation in
             webView.createPDF(configuration: pdfConfig) { result in
@@ -67,6 +88,9 @@ public final class PDFGenerator: NSObject, WKNavigationDelegate, @unchecked Send
             }
         }
         try pdfData.write(to: pdfURL, options: [.atomic])
+        
+        // Clean up temporary print file
+        try? FileManager.default.removeItem(at: tempHTMLURL)
         
         // Update session export paths
         var updatedSession = session

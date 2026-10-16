@@ -30,11 +30,23 @@ public final class EventMonitor: @unchecked Sendable {
             self?.handleMouseEvent(event)
         }
         
-        // Global key monitor for shortcuts (Option + Space)
+        // Global key monitor for shortcuts (Option + Space) & text input
         globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(
             matching: [.keyDown]
         ) { [weak self] event in
             self?.handleKeyEvent(event)
+        }
+
+        // Local monitor so keystrokes / clicks within StepIt / Playground are also captured
+        localMouseMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown, .keyDown]
+        ) { [weak self] event in
+            if event.type == .keyDown {
+                self?.handleKeyEvent(event)
+            } else {
+                self?.handleMouseEvent(event)
+            }
+            return event
         }
     }
     
@@ -98,11 +110,36 @@ public final class EventMonitor: @unchecked Sendable {
             return
         }
         
+        let mouseLocation = NSEvent.mouseLocation
+        
+        // Return / Enter key (keyCode 36 on ANSI, 76 on Keypad): finalize command / line immediately
+        if event.keyCode == 36 || event.keyCode == 76 {
+            TextTypingAggregator.shared.handleReturnKey(at: mouseLocation)
+            return
+        }
+        
+        // Delete / Backspace key (keyCode 51)
+        if event.keyCode == 51 {
+            TextTypingAggregator.shared.handleBackspace(at: mouseLocation)
+            return
+        }
+        
+        // Tab key (keyCode 48)
+        if event.keyCode == 48 {
+            TextTypingAggregator.shared.appendKeystroke("\t", at: mouseLocation)
+            return
+        }
+        
+        // Control + C (Terminal Interrupt SIGINT)
+        if event.modifierFlags.contains(.control) && (event.keyCode == 8 || event.charactersIgnoringModifiers?.lowercased() == "c") {
+            TextTypingAggregator.shared.handleControlC(at: mouseLocation)
+            return
+        }
+        
         // Feed printable typing keystrokes into TextTypingAggregator
         if let chars = event.characters, !chars.isEmpty && !event.modifierFlags.contains(.command) {
-            // Ignore raw function/arrow keys (Unicode private use area)
+            // Check for printable characters
             if let first = chars.unicodeScalars.first, first.value >= 32 && first.value != 127 {
-                let mouseLocation = NSEvent.mouseLocation
                 TextTypingAggregator.shared.appendKeystroke(chars, at: mouseLocation)
             }
         }

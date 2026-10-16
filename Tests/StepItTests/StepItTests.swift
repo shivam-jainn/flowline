@@ -121,7 +121,7 @@ final class StepItTests: XCTestCase {
         )
         
         let md = MarkdownExporter.shared.exportMarkdown(session: session, relativeAssetPrefix: "")
-        XCTAssertTrue(md.contains("# ⚡️ PR Merge Procedure"))
+        XCTAssertTrue(md.contains("# PR Merge Procedure"))
         XCTAssertTrue(md.contains("### Step 1: Merge PR on GitHub"))
         XCTAssertTrue(md.contains("![Merge PR on GitHub](media/step_01.png)"))
     }
@@ -266,7 +266,7 @@ final class StepItTests: XCTestCase {
         XCTAssertTrue(html.contains("code-blob-container"))
         XCTAssertTrue(html.contains("copy-code-btn"))
         XCTAssertTrue(html.contains("copyText"))
-        XCTAssertTrue(html.contains("Copy to Clipboard"))
+        XCTAssertTrue(html.contains("Copy"))
         XCTAssertTrue(html.contains("StepIt Fast-Forward"))
         XCTAssertTrue(html.contains("swift"))
         
@@ -326,6 +326,107 @@ final class StepItTests: XCTestCase {
         XCTAssertNotNil(detectedNotice)
         XCTAssertEqual(detectedNotice?.action, .addCheckpoint)
         XCTAssertTrue(detectedNotice?.gestureName.contains("Middle-Click") ?? false)
+    }
+    
+    func testReturnKeyImmediatelyFinalizesCommand() {
+        let aggregator = TextTypingAggregator()
+        var receivedResult: TypingEventResult?
+        let exp = expectation(description: "Return key immediately commits command")
+        
+        aggregator.onTypingBatchCompleted = { result in
+            receivedResult = result
+            exp.fulfill()
+        }
+        
+        aggregator.appendKeystroke("g", at: CGPoint(x: 100, y: 100))
+        aggregator.appendKeystroke("i", at: CGPoint(x: 100, y: 100))
+        aggregator.appendKeystroke("t", at: CGPoint(x: 100, y: 100))
+        aggregator.appendKeystroke(" ", at: CGPoint(x: 100, y: 100))
+        aggregator.appendKeystroke("s", at: CGPoint(x: 100, y: 100))
+        aggregator.appendKeystroke("t", at: CGPoint(x: 100, y: 100))
+        aggregator.appendKeystroke("a", at: CGPoint(x: 100, y: 100))
+        aggregator.appendKeystroke("t", at: CGPoint(x: 100, y: 100))
+        aggregator.appendKeystroke("u", at: CGPoint(x: 100, y: 100))
+        aggregator.appendKeystroke("s", at: CGPoint(x: 100, y: 100))
+        
+        // Return key pressed
+        aggregator.handleReturnKey(at: CGPoint(x: 100, y: 100))
+        
+        waitForExpectations(timeout: 1.0)
+        
+        XCTAssertNotNil(receivedResult)
+        XCTAssertEqual(receivedResult?.textBlob, "git status")
+        XCTAssertFalse(aggregator.hasPendingText)
+    }
+    
+    func testBackspaceAndControlCInTypingAggregator() {
+        let aggregator = TextTypingAggregator()
+        var receivedResult: TypingEventResult?
+        let exp = expectation(description: "Backspace edits buffer and Ctrl+C commits")
+        
+        aggregator.onTypingBatchCompleted = { result in
+            receivedResult = result
+            exp.fulfill()
+        }
+        
+        // Type "npm run devv" then backspace
+        aggregator.appendKeystroke("n", at: CGPoint(x: 50, y: 50))
+        aggregator.appendKeystroke("p", at: CGPoint(x: 50, y: 50))
+        aggregator.appendKeystroke("m", at: CGPoint(x: 50, y: 50))
+        aggregator.appendKeystroke(" ", at: CGPoint(x: 50, y: 50))
+        aggregator.appendKeystroke("x", at: CGPoint(x: 50, y: 50))
+        aggregator.handleBackspace(at: CGPoint(x: 50, y: 50))
+        aggregator.handleControlC(at: CGPoint(x: 50, y: 50))
+        
+        waitForExpectations(timeout: 1.0)
+        
+        XCTAssertNotNil(receivedResult)
+        XCTAssertEqual(receivedResult?.textBlob, "npm  ^C")
+    }
+    
+    func testNotificationDescriptionSynthesis() {
+        let desc = Step.synthesizeDefaultDescription(
+            action: .click,
+            elementTitle: "Claude Code Prototype",
+            elementRole: "AXNotificationCenter",
+            appName: "UserNotificationCenter",
+            windowTitle: ""
+        )
+        XCTAssertEqual(desc, "Click notification \"Claude Code Prototype\"")
+        
+        let descWithoutTitle = Step.synthesizeDefaultDescription(
+            action: .click,
+            elementTitle: nil,
+            elementRole: "AXDialog",
+            appName: "UserNotificationCenter",
+            windowTitle: ""
+        )
+        XCTAssertEqual(descWithoutTitle, "Click system notification")
+    }
+    
+    func testThreeThemeSelectorAndEnterpriseSOPVariables() {
+        let session = StepSession(
+            title: "Theme Test Guide",
+            theme: .enterpriseSop,
+            mediaMode: .hybrid,
+            steps: [
+                Step(index: 1, action: .click, appName: "Terminal", actionDescription: "Run command")
+            ]
+        )
+        
+        let html = WebDocGenerator.shared.generateHTML(session: session)
+        
+        // Verify 3-theme selector dropdown exists in header
+        XCTAssertTrue(html.contains("id=\"theme-selector-btn\""))
+        XCTAssertTrue(html.contains("id=\"theme-dropdown-menu\""))
+        XCTAssertTrue(html.contains("data-theme-val=\"modern-minimal\""))
+        XCTAssertTrue(html.contains("data-theme-val=\"developer-dark\""))
+        XCTAssertTrue(html.contains("data-theme-val=\"enterprise-sop\""))
+        
+        // Verify Enterprise SOP CSS variables
+        XCTAssertTrue(html.contains("[data-theme=\"enterprise-sop\"]"))
+        XCTAssertTrue(html.contains("--bg: #fafaf8;"))
+        XCTAssertTrue(html.contains("--primary: #8b5a2b;"))
     }
 }
 

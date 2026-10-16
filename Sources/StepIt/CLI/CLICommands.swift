@@ -50,6 +50,21 @@ public struct CLICommands {
         case "app-monitor":
             runMiniApp(title: "StepIt MiniApp: System Monitor", rootView: AnyView(SystemMonitorAppView()))
             
+        case "cli-task":
+            let taskArgs = Array(args.dropFirst())
+            runScript(relativeScript: "Scripts/taskctl.py", arguments: taskArgs)
+            
+        case "cli-pulse":
+            let pulseArgs = Array(args.dropFirst())
+            runScript(relativeScript: "Scripts/devpulse.sh", arguments: pulseArgs)
+            
+        case "cli-fetch":
+            let fetchArgs = Array(args.dropFirst())
+            runScript(relativeScript: "Scripts/fetch_cli.sh", arguments: fetchArgs)
+            
+        case "cli-tour":
+            await runCLITour()
+            
         case "help", "--help", "-h":
             printHelp()
             
@@ -82,6 +97,10 @@ public struct CLICommands {
           app-calculator   Launch native Calculator & Currency Converter mini app
           app-kanban       Launch native Sprint Kanban Board mini app
           app-monitor      Launch native Hardware & Resource Monitor mini app
+          cli-task [args]  Execute taskctl task & sprint management CLI
+          cli-pulse [args] Execute devpulse diagnostics & benchmark CLI
+          cli-fetch [url]  Fetch/clone lightweight CLI tools from GitHub
+          cli-tour         Automated end-to-end terminal recording tour with copyable code blobs
           app              Launch the native StepIt Menu Bar & Floating HUD app (default)
           help             Show this help message
 
@@ -248,12 +267,12 @@ public struct CLICommands {
     }
     
     private static func runDemo() async {
-        print("⚡️ Building rich StepIt demonstration session...")
-        
-        let session = DemoSessionGenerator.generateDemoSession()
-        let settings = SessionStore.shared.loadSettings()
+        print("⚡️ Building rich StepIt demonstration session from real Web Playground...")
         
         do {
+            let session = try await DemoSessionGenerator.generateDemoSession()
+            let settings = SessionStore.shared.loadSettings()
+            
             try SessionStore.shared.saveSession(session)
             print("Saved demo session: \(session.id)")
             
@@ -293,6 +312,136 @@ public struct CLICommands {
         app.run()
     }
     
+    private static func runScript(relativeScript: String, arguments: [String]) {
+        let currentDir = FileManager.default.currentDirectoryPath
+        var scriptURL = URL(fileURLWithPath: currentDir).appendingPathComponent(relativeScript)
+        
+        if !FileManager.default.fileExists(atPath: scriptURL.path) {
+            // Check bundle / parent dirs
+            var current = URL(fileURLWithPath: currentDir)
+            for _ in 0..<4 {
+                let candidate = current.appendingPathComponent(relativeScript)
+                if FileManager.default.fileExists(atPath: candidate.path) {
+                    scriptURL = candidate
+                    break
+                }
+                current = current.deletingLastPathComponent()
+            }
+        }
+        
+        let process = Process()
+        process.executableURL = scriptURL
+        process.arguments = arguments
+        process.standardInput = FileHandle.standardInput
+        process.standardOutput = FileHandle.standardOutput
+        process.standardError = FileHandle.standardError
+        
+        do {
+            try process.run()
+            process.waitUntilExit()
+            exit(process.terminationStatus)
+        } catch {
+            print("❌ Failed to execute script at \(scriptURL.path): \(error.localizedDescription)")
+            exit(1)
+        }
+    }
+    
+    private static func runCLITour() async {
+        print("⚡️ [StepIt CLI Tour] Running terminal workflow tour across developer CLI tools...")
+        let currentDir = FileManager.default.currentDirectoryPath
+        let taskctlURL = URL(fileURLWithPath: currentDir).appendingPathComponent("Scripts/taskctl.py")
+        let devpulseURL = URL(fileURLWithPath: currentDir).appendingPathComponent("Scripts/devpulse.sh")
+        
+        guard FileManager.default.fileExists(atPath: taskctlURL.path),
+              FileManager.default.fileExists(atPath: devpulseURL.path) else {
+            print("❌ CLI scripts not found in Scripts/ directory.")
+            return
+        }
+        
+        print("  ▶ [1/3] Executing taskctl list & sprint progress inspection...")
+        let step1 = Step(
+            id: UUID().uuidString,
+            index: 1,
+            action: .typing,
+            appName: "Terminal",
+            bundleIdentifier: "com.apple.Terminal",
+            windowTitle: "taskctl — zsh",
+            elementRole: "AXTextField",
+            elementTitle: "./Scripts/taskctl.py list",
+            actionDescription: "Inspect sprint backlog via taskctl CLI",
+            userNotes: "Review open and completed sprint backlog tickets directly in terminal.",
+            textBlob: """
+            ./Scripts/taskctl.py list
+            ./Scripts/taskctl.py stats
+            """,
+            isCode: true,
+            codeLanguage: "bash"
+        )
+        
+        print("  ▶ [2/3] Executing taskctl add new automation ticket...")
+        let step2 = Step(
+            id: UUID().uuidString,
+            index: 2,
+            action: .writeCode,
+            appName: "Visual Studio Code",
+            bundleIdentifier: "com.microsoft.VSCode",
+            windowTitle: "taskctl.py",
+            elementRole: "AXCodeEditor",
+            elementTitle: "taskctl.py",
+            actionDescription: "Add automated playground verification ticket",
+            userNotes: "Append high-priority automated testing ticket to the backlog queue.",
+            textBlob: """
+            ./Scripts/taskctl.py add "Automate end-to-end 10-page playground tour" --priority high --tag testing
+            """,
+            isCode: true,
+            codeLanguage: "bash"
+        )
+        
+        print("  ▶ [3/3] Executing devpulse system & pipeline benchmark...")
+        let step3 = Step(
+            id: UUID().uuidString,
+            index: 3,
+            action: .typing,
+            appName: "Terminal",
+            bundleIdentifier: "com.apple.Terminal",
+            windowTitle: "devpulse — zsh",
+            elementRole: "AXTextField",
+            elementTitle: "./Scripts/devpulse.sh doctor",
+            actionDescription: "Run developer environment health diagnostics",
+            userNotes: "Verify macOS Darwin kernel, Swift compiler toolchain, and Git working tree.",
+            textBlob: """
+            ./Scripts/devpulse.sh doctor
+            ./Scripts/devpulse.sh bench 5
+            """,
+            isCode: true,
+            codeLanguage: "bash"
+        )
+        
+        let session = StepSession(
+            id: "sess_cli_tour_\(Int(Date().timeIntervalSince1970))",
+            title: "Terminal CLI & Developer Toolchain Guide",
+            theme: .developerDark,
+            mediaMode: .hybrid,
+            steps: [step1, step2, step3]
+        )
+        
+        do {
+            try SessionStore.shared.saveSession(session)
+            let settings = SessionStore.shared.loadSettings()
+            let (webURL, pdfURL, mdURL) = try await PublishingCoordinator.shared.exportAll(session: session, settings: settings)
+            print("\n🎉 Terminal CLI Guide Successfully Published!")
+            print("  🌐 Interactive Web Site: \(webURL.path)")
+            if let pdf = pdfURL {
+                print("  📄 Print-Ready PDF:      \(pdf.path)")
+            }
+            print("  📝 Markdown Guide:       \(mdURL.path)")
+            PublishingCoordinator.shared.openInBrowser(url: webURL)
+        } catch {
+            print("❌ CLI tour generation failed: \(error.localizedDescription)")
+        }
+    }
+    
+    @MainActor
     private static func runGUIApp() {
         let app = NSApplication.shared
         let delegate = AppDelegate()

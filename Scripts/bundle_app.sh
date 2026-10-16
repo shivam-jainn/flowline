@@ -46,6 +46,10 @@ cat <<EOF > "${CONTENTS_DIR}/Info.plist"
     <string>1.0.0</string>
     <key>CFBundleVersion</key>
     <string>1</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundleIconName</key>
+    <string>AppIcon</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <key>LSUIElement</key>
@@ -63,6 +67,11 @@ cat <<EOF > "${CONTENTS_DIR}/Info.plist"
 </dict>
 </plist>
 EOF
+
+# 4. Copy Icon
+if [ -f "${ROOT_DIR}/Assets/AppIcon.icns" ]; then
+    cp "${ROOT_DIR}/Assets/AppIcon.icns" "${RESOURCES_DIR}/AppIcon.icns"
+fi
 
 # 4. Ad-hoc codesign
 if command -v codesign >/dev/null 2>&1; then

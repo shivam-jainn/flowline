@@ -94,6 +94,83 @@ public final class AccessibilityInspector: @unchecked Sendable {
                     bundleId = targetApp.bundleIdentifier ?? bundleId
                 }
             }
+
+            // Notification / Banner specialized deep inspection
+            if (bundleId == "com.apple.UserNotificationCenter" || appName.contains("Notification")) && (title == nil || title?.isEmpty == true) {
+                var childrenRef: CFTypeRef?
+                if AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &childrenRef) == .success,
+                   let children = childrenRef as? [AXUIElement] {
+                    for child in children {
+                        if let childTitle = copyStringAttribute(element: child, attribute: kAXTitleAttribute as CFString), !childTitle.isEmpty {
+                            title = childTitle
+                            break
+                        }
+                        if let childValue = copyStringAttribute(element: child, attribute: kAXValueAttribute as CFString), !childValue.isEmpty {
+                            title = childValue
+                            break
+                        }
+                    }
+                }
+            }
+        }
+        
+        return ElementInspectionResult(
+            appName: appName,
+            bundleIdentifier: bundleId,
+            windowTitle: windowTitle,
+            role: role,
+            subrole: subrole,
+            title: title,
+            value: value,
+            roleDescription: roleDescription,
+            elementBounds: elementBounds,
+            windowBounds: windowBounds
+        )
+    }
+
+    public func inspectFocusedElement() -> ElementInspectionResult {
+        guard let frontmostApp = NSWorkspace.shared.frontmostApplication else {
+            return inspectElement(at: NSEvent.mouseLocation)
+        }
+        
+        let appName = frontmostApp.localizedName ?? "Unknown App"
+        let bundleId = frontmostApp.bundleIdentifier
+        var windowTitle = ""
+        var role: String?
+        var subrole: String?
+        var title: String?
+        var value: String?
+        var roleDescription: String?
+        var elementBounds: ElementRect?
+        var windowBounds: ElementRect?
+        
+        let appElement = AXUIElementCreateApplication(frontmostApp.processIdentifier)
+        
+        var focusedElementRef: CFTypeRef?
+        if AXUIElementCopyAttributeValue(appElement, kAXFocusedUIElementAttribute as CFString, &focusedElementRef) == .success,
+           let el = focusedElementRef {
+            let element = el as! AXUIElement
+            role = copyStringAttribute(element: element, attribute: kAXRoleAttribute as CFString)
+            subrole = copyStringAttribute(element: element, attribute: kAXSubroleAttribute as CFString)
+            title = copyStringAttribute(element: element, attribute: kAXTitleAttribute as CFString)
+            if title == nil || title?.isEmpty == true {
+                title = copyStringAttribute(element: element, attribute: kAXDescriptionAttribute as CFString)
+            }
+            value = copyStringAttribute(element: element, attribute: kAXValueAttribute as CFString)
+            roleDescription = copyStringAttribute(element: element, attribute: kAXRoleDescriptionAttribute as CFString)
+            elementBounds = copyRect(element: element)
+        }
+        
+        var focusedWindowRef: CFTypeRef?
+        if AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &focusedWindowRef) == .success,
+           let win = focusedWindowRef {
+            let winElement = win as! AXUIElement
+            if let winTitle = copyStringAttribute(element: winElement, attribute: kAXTitleAttribute as CFString), !winTitle.isEmpty {
+                windowTitle = winTitle
+            }
+            windowBounds = copyRect(element: winElement)
+        } else if let elBounds = elementBounds {
+            windowBounds = elBounds
         }
         
         return ElementInspectionResult(

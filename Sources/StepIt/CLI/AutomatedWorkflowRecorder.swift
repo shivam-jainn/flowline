@@ -10,127 +10,134 @@ public final class AutomatedWorkflowRecorder: @unchecked Sendable {
     
     @MainActor
     public func recordPlaygroundWorkflow(openInBrowserAfter: Bool = true) async throws -> StepSession {
-        print("⚡️ [StepIt Automate] Initializing Automated Workflow Recording across Playground...")
+        print("⚡️ [StepIt Automate] Initializing Automated Workflow Recording across all 10 Playground Pages...")
         
         let sessionId = "sess_playground_tour_\(Int(Date().timeIntervalSince1970))"
         let sessionDir = SessionStore.shared.sessionDirectory(for: sessionId)
         let mediaDir = SessionStore.shared.mediaDirectory(for: sessionId)
         try FileManager.default.createDirectory(at: mediaDir, withIntermediateDirectories: true)
         
-        // Define 6 comprehensive steps simulating real user interactions across pages, VS Code, and Terminal:
+        // Comprehensive 10-step enterprise workflow mapping 1:1 to the 10 live HTML pages:
         let scenarioSteps: [(
             title: String,
             page: String,
+            elementId: String,
             appName: String,
             windowTitle: String,
             role: String,
             elementTitle: String,
-            coords: CGPoint,
             notes: String,
-            action: ActionType,
-            textBlob: String?,
-            isCode: Bool,
-            language: String?
+            action: ActionType
         )] = [
             (
                 title: "Register Enterprise Team Lead Account",
                 page: "page1_onboarding.html",
+                elementId: "btn-submit-onboarding",
                 appName: "Safari",
                 windowTitle: "Page 1: Auth & User Onboarding — StepIt Playground",
                 role: "AXButton",
                 elementTitle: "Create Account →",
-                coords: CGPoint(x: 340, y: 520),
                 notes: "Input user credentials and verify password strength bar reflects 'Very Strong'.",
-                action: .click,
-                textBlob: nil,
-                isCode: false,
-                language: nil
-            ),
-            (
-                title: "Adjust Team Seat Allocation Slider",
-                page: "page1_onboarding.html",
-                appName: "Safari",
-                windowTitle: "Page 1: Auth & User Onboarding — StepIt Playground",
-                role: "AXSlider",
-                elementTitle: "Team Size Capacity: 48 members",
-                coords: CGPoint(x: 480, y: 390),
-                notes: "Drag slider thumb rightward to increase workspace seat limit.",
-                action: .click,
-                textBlob: nil,
-                isCode: false,
-                language: nil
+                action: .click
             ),
             (
                 title: "Increase Item Quantity in Shopping Cart",
                 page: "page2_checkout.html",
+                elementId: "btn-qty-plus-1",
                 appName: "Safari",
                 windowTitle: "Page 2: E-Commerce Checkout — StepIt Playground",
                 role: "AXButton",
                 elementTitle: "+ (Add Quantity)",
-                coords: CGPoint(x: 520, y: 280),
                 notes: "Click '+' stepper button to double order quantity for Mechanical Keyboards.",
-                action: .click,
-                textBlob: nil,
-                isCode: false,
-                language: nil
+                action: .click
             ),
             (
-                title: "Write Backend Fast-Forward Ingestion API in VS Code",
-                page: "Visual Studio Code",
-                appName: "Visual Studio Code",
-                windowTitle: "workflow_router.py — stepit-core — Visual Studio Code",
-                role: "AXCodeEditor",
-                elementTitle: "workflow_router.py",
-                coords: CGPoint(x: 550, y: 320),
-                notes: "Fast-forward captured typing in VS Code editor. 1-click copyable to clipboard.",
-                action: .writeCode,
-                textBlob: """
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-
-app = FastAPI(title="StepIt Fast-Forward Capture API")
-
-class WorkflowStep(BaseModel):
-    index: int
-    action: str
-    text_blob: str | None = None
-    coords: dict[str, float]
-
-@app.post("/v1/record/step")
-async def record_workflow_step(step: WorkflowStep):
-    print(f"Captured {step.action} step #{step.index}")
-    return {"status": "persisted", "step_id": f"stp_{step.index}"}
-""",
-                isCode: true,
-                language: "python"
-            ),
-            (
-                title: "Run Database Migration & Automated Test Suite in Terminal",
-                page: "Terminal",
-                appName: "Terminal",
-                windowTitle: "Terminal — zsh — 90×30",
-                role: "AXTextField",
-                elementTitle: "pytest tests/ -v && swift run stepit export",
-                coords: CGPoint(x: 420, y: 240),
-                notes: "Execute automated tests and export publishing bundle.",
-                action: .typing,
-                textBlob: "pytest tests/test_capture.py -v && swift run stepit export sess_playground",
-                isCode: true,
-                language: "bash"
+                title: "Export Core Metrics to Audit CSV",
+                page: "page3_analytics.html",
+                elementId: "btn-export-csv",
+                appName: "Safari",
+                windowTitle: "Page 3: Analytics Dashboard — StepIt Playground",
+                role: "AXButton",
+                elementTitle: "Export CSV",
+                notes: "Generate hourly aggregated usage statistics report.",
+                action: .click
             ),
             (
                 title: "Confirm Cloud Cluster Deployment",
                 page: "page4_cloud.html",
+                elementId: "btn-provision-server",
                 appName: "Safari",
                 windowTitle: "Page 4: Cloud Server Provisioning — StepIt Playground",
                 role: "AXButton",
                 elementTitle: "🚀 Provision Cloud Instance",
-                coords: CGPoint(x: 720, y: 620),
                 notes: "Submit deployment transaction to initialize regional data center VMs.",
-                action: .click,
-                textBlob: nil,
-                isCode: false,
-                language: nil
+                action: .click
+            ),
+            (
+                title: "Render High-Fidelity Audio Master",
+                page: "page5_media.html",
+                elementId: "btn-render-audio",
+                appName: "Safari",
+                windowTitle: "Page 5: Audio & Media Studio — StepIt Playground",
+                role: "AXButton",
+                elementTitle: "🎚️ Render Master Audio",
+                notes: "Apply audio master equalizers and export AAC 320kbps waveform.",
+                action: .click
+            ),
+            (
+                title: "Dispatch API Gateway Request",
+                page: "page6_apigateway.html",
+                elementId: "btn-send-request",
+                appName: "Safari",
+                windowTitle: "Page 6: Developer API Gateway — StepIt Playground",
+                role: "AXButton",
+                elementTitle: "⚡️ Send API Request",
+                notes: "Dispatch test POST transaction to simulate gateway endpoint routing.",
+                action: .click
+            ),
+            (
+                title: "Submit High-Priority Support Ticket",
+                page: "page7_support.html",
+                elementId: "btn-submit-ticket",
+                appName: "Safari",
+                windowTitle: "Page 7: Customer Support Portal — StepIt Playground",
+                role: "AXButton",
+                elementTitle: "Submit Support Ticket →",
+                notes: "Dispatch priority incident to on-call engineering rotations.",
+                action: .click
+            ),
+            (
+                title: "Advance Product Feedback Survey Stage",
+                page: "page8_survey.html",
+                elementId: "btn-next-stage-1",
+                appName: "Safari",
+                windowTitle: "Page 8: Product Experience Survey — StepIt Playground",
+                role: "AXButton",
+                elementTitle: "Next Question →",
+                notes: "Rate customer NPS satisfaction and progress to multi-choice criteria.",
+                action: .click
+            ),
+            (
+                title: "Batch Export Filtered Records in Data Grid",
+                page: "page9_datagrid.html",
+                elementId: "btn-batch-export",
+                appName: "Safari",
+                windowTitle: "Page 9: Enterprise Data Grid — StepIt Playground",
+                role: "AXButton",
+                elementTitle: "Export Selected",
+                notes: "Perform bulk CSV export on checked data grid rows.",
+                action: .click
+            ),
+            (
+                title: "Restart Global EventTap Background Daemon",
+                page: "page10_diagnostics.html",
+                elementId: "btn-restart-eventtap",
+                appName: "Safari",
+                windowTitle: "Page 10: System Diagnostics & Health — StepIt Playground",
+                role: "AXButton",
+                elementTitle: "Restart",
+                notes: "Flush event buffer cache and restart macOS CGEventTap capture listener.",
+                action: .click
             )
         ]
         
@@ -138,28 +145,32 @@ async def record_workflow_step(step: WorkflowStep):
         
         for (index, item) in scenarioSteps.enumerated() {
             let stepNum = index + 1
-            print("  📸 Recording Step \(stepNum)/\(scenarioSteps.count): \(item.title)...")
+            print("  📸 Recording Step \(stepNum)/\(scenarioSteps.count): \(item.title) on [\(item.page)] -> #\(item.elementId)...")
             
-            // 1. Generate realistic Retina snapshot with concentric glowing highlight ring and numbered badge
-            let snapshotImage = generateMockPageCapture(
-                pageName: item.page,
-                title: item.title,
-                targetRole: item.role,
-                targetTitle: item.elementTitle,
-                highlightPoint: item.coords,
+            // Render genuine live WebKit snapshot with coordinates resolved from live DOM
+            let capture = try await PlaygroundPageRenderer.shared.renderStepCapture(
+                filename: item.page,
+                targetElementId: item.elementId,
                 stepIndex: stepNum
             )
             
-            let pngData = ScreenRecorder.shared.imageToPNGData(snapshotImage)!
+            guard let pngData = ScreenRecorder.shared.imageToPNGData(capture.screenshot) else {
+                throw NSError(
+                    domain: "AutomatedWorkflowRecorder",
+                    code: 500,
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to encode PNG for step \(stepNum)"]
+                )
+            }
+            
             let pngName = String(format: "step_%02d.png", stepNum)
             let screenshotRel = try SessionStore.shared.saveMedia(data: pngData, sessionID: sessionId, filename: pngName)
             
-            // 2. Generate animated looping GIF snippet (fast-forward if typing/code)
-            let gifData = item.action == .typing || item.action == .writeCode
-                ? generateMockFastForwardTypingGIF(baseImage: snapshotImage, clickPoint: item.coords)
-                : generateMockAnimatedGIF(baseImage: snapshotImage, clickPoint: item.coords)
+            let zoomPngData = ScreenRecorder.shared.imageToPNGData(capture.zoomCrop)!
+            let zoomPngName = String(format: "step_%02d_zoom.png", stepNum)
+            let zoomRel = try SessionStore.shared.saveMedia(data: zoomPngData, sessionID: sessionId, filename: zoomPngName)
+            
             let gifName = String(format: "step_%02d.gif", stepNum)
-            let gifRel = try SessionStore.shared.saveMedia(data: gifData, sessionID: sessionId, filename: gifName)
+            let gifRel = try SessionStore.shared.saveMedia(data: capture.gifData, sessionID: sessionId, filename: gifName)
             
             let step = Step(
                 id: UUID().uuidString,
@@ -167,108 +178,110 @@ async def record_workflow_step(step: WorkflowStep):
                 timestamp: Date().addingTimeInterval(Double(index * 12)),
                 action: item.action,
                 appName: item.appName,
-                bundleIdentifier: item.appName == "Visual Studio Code" ? "com.microsoft.VSCode" : (item.appName == "Terminal" ? "com.apple.Terminal" : "com.apple.Safari"),
+                bundleIdentifier: "com.apple.Safari",
                 windowTitle: item.windowTitle,
                 elementRole: item.role,
                 elementTitle: item.elementTitle,
-                coordinates: ScreenCoordinates(x: Double(item.coords.x), y: Double(item.coords.y)),
+                coordinates: ScreenCoordinates(x: Double(capture.targetPoint.x), y: Double(capture.targetPoint.y)),
                 actionDescription: item.title,
                 userNotes: item.notes,
-                textBlob: item.textBlob,
-                isCode: item.isCode,
-                codeLanguage: item.language,
-                assets: MediaAssets(screenshot: screenshotRel, gif: gifRel)
+                assets: MediaAssets(screenshot: screenshotRel, gif: gifRel, zoomCrop: zoomRel)
             )
             
             recordedSteps.append(step)
         }
         
         let synthesizedDoc = """
-# ⚡️ Full-Stack Playground Workflow & Verification Guide
+# ⚡️ Full-Stack 10-Page Playground Verification Guide
 
-> Automated multi-stage enterprise walkthrough across Authentication, E-Commerce, and Cloud Provisioning.
+> Automated multi-stage enterprise walkthrough across all 10 playground pages, rendered live via WebKit with dynamic DOM coordinate resolution.
 
 ---
 
 ### Executive Overview
-This guide demonstrates StepIt's automatic UI inspection, coordinate capture, and animated visual synthesis across real-world modern components.
+This guide demonstrates StepIt's automatic UI inspection, coordinate capture, and animated visual synthesis across 10 real-world web components.
 
 ---
 
 ### Step 1: Register Enterprise Team Lead Account
-Fill in your name, email, and password. Confirm password complexity evaluates to *Very Strong*. Select the **Engineering Lead / Architect** role from the dropdown.
+Open the onboarding portal in Safari, fill in user credentials, and submit the registration form.
 
 ![Register Account](\(recordedSteps[0].assets.gif ?? "media/step_01.gif"))
 
 ---
 
-### Step 2: Adjust Team Seat Allocation Slider
-Drag the team capacity range slider rightward to expand the workspace seat limit to 48 active engineers.
+### Step 2: Increase Item Quantity in Shopping Cart
+In the e-commerce checkout page, locate the developer mechanical keyboard item and click the stepper button to adjust quantity.
 
-![Seat Allocation Slider](\(recordedSteps[1].assets.gif ?? "media/step_02.gif"))
-
----
-
-### Step 3: Increase Item Quantity in Shopping Cart
-In the e-commerce cart summary, locate the **Developer Mechanical Keyboard** item and click the `+` stepper button to double the quantity.
-
-![Increase Item Quantity](\(recordedSteps[2].assets.gif ?? "media/step_03.gif"))
+![Increase Item Quantity](\(recordedSteps[1].assets.gif ?? "media/step_02.gif"))
 
 ---
 
-### Step 4: Write Backend Fast-Forward Ingestion API in VS Code
-Open `workflow_router.py` in Visual Studio Code. Implement the FastAPI endpoint with Pydantic request validation. Typing activity is automatically captured, accelerated into a fast-forward micro-clip, and made available as a 1-click copyable code block.
+### Step 3: Export Core Metrics to Audit CSV
+On the analytics dashboard, review active user traffic and click **Export CSV** to download the audit manifest.
 
-```python
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-
-app = FastAPI(title="StepIt Fast-Forward Capture API")
-
-class WorkflowStep(BaseModel):
-    index: int
-    action: str
-    text_blob: str | None = None
-    coords: dict[str, float]
-
-@app.post("/v1/record/step")
-async def record_workflow_step(step: WorkflowStep):
-    print(f"Captured {step.action} step #{step.index}")
-    return {"status": "persisted", "step_id": f"stp_{step.index}"}
-```
-
-![VS Code Fast-Forward Capture](\(recordedSteps[3].assets.gif ?? "media/step_04.gif"))
+![Export Analytics CSV](\(recordedSteps[2].assets.gif ?? "media/step_03.gif"))
 
 ---
 
-### Step 5: Run Database Migration & Automated Test Suite in Terminal
-Switch to Terminal to execute migrations and trigger the automated test suite. Keystrokes are captured and aggregated into a copyable terminal command block.
+### Step 4: Confirm Cloud Cluster Deployment
+Provision regional data center infrastructure by selecting data center specs and clicking **Provision Cloud Instance**.
 
-```bash
-pytest tests/test_capture.py -v && swift run stepit export sess_playground
-```
-
-![Terminal Fast-Forward Typing](\(recordedSteps[4].assets.gif ?? "media/step_05.gif"))
+![Cloud Deployment](\(recordedSteps[3].assets.gif ?? "media/step_04.gif"))
 
 ---
 
-### Step 6: Confirm Cloud Cluster Deployment
-Navigate to the Cloud Provisioning console. Review the monthly cost estimation and click **🚀 Provision Cloud Instance** to dispatch the infrastructure provisioning pipeline.
+### Step 5: Render High-Fidelity Audio Master
+In the media studio, configure equalizer curves, select AAC codec, and dispatch audio master rendering.
 
-![Confirm Deployment](\(recordedSteps[5].assets.gif ?? "media/step_06.gif"))
+![Render Audio Master](\(recordedSteps[4].assets.gif ?? "media/step_05.gif"))
 
 ---
 
-_Generated automatically via [StepIt macOS](https://github.com/stepit/stepit)._
+### Step 6: Dispatch API Gateway Request
+In the developer API Gateway tester, inspect REST parameters and click **Send API Request** to test gateway routing.
+
+![API Gateway Request](\(recordedSteps[5].assets.gif ?? "media/step_06.gif"))
+
+---
+
+### Step 7: Submit High-Priority Support Ticket
+In the support portal, assign ticket impact, select engineering assignee, and dispatch the ticket.
+
+![Submit Support Ticket](\(recordedSteps[6].assets.gif ?? "media/step_07.gif"))
+
+---
+
+### Step 8: Advance Product Feedback Survey Stage
+On the product experience survey, rate NPS score and advance to the qualitative feedback stage.
+
+![Survey Feedback](\(recordedSteps[7].assets.gif ?? "media/step_08.gif"))
+
+---
+
+### Step 9: Batch Export Filtered Records in Data Grid
+Filter tenant accounts in the enterprise data table, check candidate rows, and click **Export Selected** to download the batch audit report.
+
+![Batch Export Data Grid](\(recordedSteps[8].assets.gif ?? "media/step_09.gif"))
+
+---
+
+### Step 10: Restart Global EventTap Background Daemon
+On the system diagnostics page, monitor buffer usage and restart the background CGEventTap daemon.
+
+![Restart Service](\(recordedSteps[9].assets.gif ?? "media/step_10.gif"))
+
+---
+
+_Generated automatically via [StepIt macOS](https://github.com/stepit/stepit) using live WebKit DOM inspection._
 """
-
         
         let session = StepSession(
             id: sessionId,
-            startedAt: Date().addingTimeInterval(-120),
+            startedAt: Date().addingTimeInterval(-180),
             endedAt: Date(),
             title: "Automated 10-Page Playground Verification Guide",
-            summary: "Comprehensive multi-page recording capturing forms, range sliders, steppers, radio groups, and button dispatches.",
+            summary: "Comprehensive 10-page recording capturing live DOM controls, steppers, range sliders, analytics charts, and diagnostic services.",
             theme: .developerDark,
             mediaMode: .hybrid,
             steps: recordedSteps,
@@ -288,7 +301,7 @@ _Generated automatically via [StepIt macOS](https://github.com/stepit/stepit)._
         print("  📝 Exporting GitHub-flavored Markdown README...")
         let mdURL = try PublishingCoordinator.shared.exportMarkdown(session: session)
         
-        print("\n🎉 [StepIt Automate] Workflow Recording & Multi-Format Publishing Complete!")
+        print("\n🎉 [StepIt Automate] 10-Page Workflow Tour & Multi-Format Publishing Complete!")
         print("  🌐 Interactive Web Site: \(webURL.path)")
         if let pdf = pdfURL {
             print("  📄 Print-Ready PDF:      \(pdf.path)")
@@ -302,231 +315,4 @@ _Generated automatically via [StepIt macOS](https://github.com/stepit/stepit)._
         
         return session
     }
-    
-    // MARK: - Mock Visual Generators
-    
-    private func generateMockPageCapture(
-        pageName: String,
-        title: String,
-        targetRole: String,
-        targetTitle: String,
-        highlightPoint: CGPoint,
-        stepIndex: Int
-    ) -> CGImage {
-        let width = 1100
-        let height = 700
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
-        
-        let ctx = CGContext(
-            data: nil,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: 0,
-            space: colorSpace,
-            bitmapInfo: bitmapInfo
-        )!
-        
-        // Background
-        ctx.setFillColor(NSColor(srgbRed: 0.04, green: 0.05, blue: 0.08, alpha: 1.0).cgColor)
-        ctx.fill(CGRect(x: 0, y: 0, width: width, height: height))
-        
-        // Browser Window Header
-        ctx.setFillColor(NSColor(srgbRed: 0.08, green: 0.11, blue: 0.18, alpha: 1.0).cgColor)
-        ctx.fill(CGRect(x: 0, y: height - 48, width: width, height: 48))
-        
-        // Traffic lights
-        let redLight = CGRect(x: 20, y: height - 30, width: 12, height: 12)
-        let yellowLight = CGRect(x: 40, y: height - 30, width: 12, height: 12)
-        let greenLight = CGRect(x: 60, y: height - 30, width: 12, height: 12)
-        ctx.setFillColor(NSColor(srgbRed: 0.94, green: 0.36, blue: 0.35, alpha: 1.0).cgColor)
-        ctx.fillEllipse(in: redLight)
-        ctx.setFillColor(NSColor(srgbRed: 0.98, green: 0.74, blue: 0.23, alpha: 1.0).cgColor)
-        ctx.fillEllipse(in: yellowLight)
-        ctx.setFillColor(NSColor(srgbRed: 0.16, green: 0.78, blue: 0.36, alpha: 1.0).cgColor)
-        ctx.fillEllipse(in: greenLight)
-        
-        // URL Bar
-        ctx.setFillColor(NSColor(srgbRed: 0.12, green: 0.16, blue: 0.26, alpha: 1.0).cgColor)
-        ctx.fill(CGRect(x: 95, y: height - 36, width: width - 150, height: 24))
-        
-        // Page Content Containers
-        ctx.setFillColor(NSColor(srgbRed: 0.07, green: 0.10, blue: 0.16, alpha: 1.0).cgColor)
-        ctx.fill(CGRect(x: 40, y: 40, width: width - 80, height: height - 110))
-        
-        // Mock Header & Title inside Page
-        ctx.setFillColor(NSColor(srgbRed: 0.20, green: 0.26, blue: 0.40, alpha: 0.8).cgColor)
-        ctx.fill(CGRect(x: 70, y: height - 120, width: 380, height: 28))
-        
-        // Mock UI Component Panels or IDE Canvas
-        if targetRole == "AXCodeEditor" {
-            // Dark IDE Editor Canvas (VS Code Style)
-            ctx.setFillColor(NSColor(srgbRed: 0.11, green: 0.12, blue: 0.18, alpha: 1.0).cgColor)
-            ctx.fill(CGRect(x: 70, y: 70, width: width - 140, height: height - 210))
-            
-            // Tab bar
-            ctx.setFillColor(NSColor(srgbRed: 0.15, green: 0.17, blue: 0.24, alpha: 1.0).cgColor)
-            ctx.fill(CGRect(x: 70, y: height - 170, width: 220, height: 30))
-            
-            // Simulated syntax-highlighted code lines
-            let syntaxColors = [
-                NSColor(srgbRed: 0.77, green: 0.44, blue: 0.88, alpha: 0.9), // purple keyword
-                NSColor(srgbRed: 0.38, green: 0.65, blue: 0.98, alpha: 0.9), // blue identifier
-                NSColor(srgbRed: 0.95, green: 0.77, blue: 0.44, alpha: 0.9), // yellow string
-                NSColor(srgbRed: 0.40, green: 0.80, blue: 0.55, alpha: 0.9)  // green comment
-            ]
-            for i in 0..<8 {
-                let color = syntaxColors[i % syntaxColors.count]
-                ctx.setFillColor(color.cgColor)
-                let yOffset = CGFloat(height - 210 - (i * 24))
-                let lineWidth = CGFloat(160 + (i * 35) % 240)
-                ctx.fill(CGRect(x: 100.0, y: yOffset, width: lineWidth, height: 10.0))
-            }
-        } else if targetRole == "AXTextField" {
-            // Dark Terminal Console
-            ctx.setFillColor(NSColor(srgbRed: 0.05, green: 0.07, blue: 0.10, alpha: 1.0).cgColor)
-            ctx.fill(CGRect(x: 70, y: 70, width: width - 140, height: height - 210))
-            
-            // Terminal prompt & green command bar
-            ctx.setFillColor(NSColor(srgbRed: 0.22, green: 0.85, blue: 0.55, alpha: 0.9).cgColor)
-            ctx.fill(CGRect(x: 95, y: height - 190, width: 340, height: 12))
-        } else {
-            ctx.setFillColor(NSColor(srgbRed: 0.10, green: 0.14, blue: 0.22, alpha: 1.0).cgColor)
-            ctx.fill(CGRect(x: 70, y: 80, width: (width - 170) / 2, height: height - 230))
-            ctx.fill(CGRect(x: 70 + (width - 170) / 2 + 30, y: 80, width: (width - 170) / 2, height: height - 230))
-        }
-        
-        // Target Element Block (Button, Slider, or Radio)
-        let elemWidth: CGFloat = targetRole == "AXSlider" ? 220 : 160
-        let elemHeight: CGFloat = targetRole == "AXSlider" ? 24 : 38
-        let elemRect = CGRect(x: highlightPoint.x - elemWidth / 2, y: highlightPoint.y - elemHeight / 2, width: elemWidth, height: elemHeight)
-        
-        if targetRole == "AXSlider" {
-            // Draw Slider Track
-            ctx.setFillColor(NSColor(srgbRed: 0.2, green: 0.25, blue: 0.35, alpha: 1.0).cgColor)
-            ctx.fill(CGRect(x: elemRect.origin.x, y: elemRect.origin.y + 8, width: elemWidth, height: 8))
-            // Slider Thumb
-            ctx.setFillColor(NSColor(srgbRed: 0.38, green: 0.40, blue: 0.95, alpha: 1.0).cgColor)
-            ctx.fillEllipse(in: CGRect(x: elemRect.origin.x + elemWidth * 0.6, y: elemRect.origin.y + 2, width: 20, height: 20))
-        } else if targetRole != "AXCodeEditor" && targetRole != "AXTextField" {
-            // Draw Button
-            ctx.setFillColor(NSColor(srgbRed: 0.38, green: 0.40, blue: 0.95, alpha: 1.0).cgColor)
-            ctx.fill(elemRect)
-        }
-        
-        // Draw StepIt Highlight Marker (Glow + Concentric Ring + Center Dot + Step Badge)
-        let radius: CGFloat = 34.0
-        // Soft Glow
-        ctx.setFillColor(NSColor(srgbRed: 0.94, green: 0.27, blue: 0.27, alpha: 0.38).cgColor)
-        ctx.fillEllipse(in: CGRect(x: highlightPoint.x - radius * 1.5, y: highlightPoint.y - radius * 1.5, width: radius * 3.0, height: radius * 3.0))
-        // Ring
-        ctx.setStrokeColor(NSColor(srgbRed: 0.94, green: 0.27, blue: 0.27, alpha: 1.0).cgColor)
-        ctx.setLineWidth(3.5)
-        ctx.strokeEllipse(in: CGRect(x: highlightPoint.x - radius, y: highlightPoint.y - radius, width: radius * 2.0, height: radius * 2.0))
-        // Dot
-        ctx.setFillColor(NSColor.white.cgColor)
-        ctx.fillEllipse(in: CGRect(x: highlightPoint.x - 4, y: highlightPoint.y - 4, width: 8, height: 8))
-        // Badge
-        let badgeCenter = CGPoint(x: highlightPoint.x + radius * 0.75, y: highlightPoint.y + radius * 0.75)
-        ctx.setFillColor(NSColor(srgbRed: 0.94, green: 0.27, blue: 0.27, alpha: 1.0).cgColor)
-        ctx.fillEllipse(in: CGRect(x: badgeCenter.x - 14, y: badgeCenter.y - 14, width: 28, height: 28))
-        ctx.setStrokeColor(NSColor.white.cgColor)
-        ctx.setLineWidth(2.0)
-        ctx.strokeEllipse(in: CGRect(x: badgeCenter.x - 14, y: badgeCenter.y - 14, width: 28, height: 28))
-        
-        return ctx.makeImage()!
-    }
-    
-    private func generateMockAnimatedGIF(baseImage: CGImage, clickPoint: CGPoint) -> Data {
-        var frames: [CGImage] = []
-        let width = baseImage.width
-        let height = baseImage.height
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
-        
-        // 8 frames simulating cursor approach and click ripple
-        for i in 0..<8 {
-            let ctx = CGContext(
-                data: nil,
-                width: width,
-                height: height,
-                bitsPerComponent: 8,
-                bytesPerRow: 0,
-                space: colorSpace,
-                bitmapInfo: bitmapInfo
-            )!
-            
-            ctx.draw(baseImage, in: CGRect(x: 0, y: 0, width: width, height: height))
-            
-            let rippleRadius = 20.0 + CGFloat(i * 9)
-            let alpha = max(0.0, 0.85 - Double(i) * 0.12)
-            
-            ctx.setStrokeColor(NSColor(srgbRed: 0.94, green: 0.27, blue: 0.27, alpha: CGFloat(alpha)).cgColor)
-            ctx.setLineWidth(3.0)
-            ctx.strokeEllipse(in: CGRect(x: clickPoint.x - rippleRadius, y: clickPoint.y - rippleRadius, width: rippleRadius * 2.0, height: rippleRadius * 2.0))
-            
-            if let frame = ctx.makeImage() {
-                frames.append(frame)
-            }
-        }
-        
-        return MicroClipRecorder.shared.createGIF(from: frames, fps: 10) ?? Data()
-    }
-    
-    private func generateMockFastForwardTypingGIF(baseImage: CGImage, clickPoint: CGPoint) -> Data {
-        var frames: [CGImage] = []
-        let width = baseImage.width
-        let height = baseImage.height
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
-        
-        // 10 frames simulating fast-forwarded typing keystrokes and cursor advance
-        for i in 0..<10 {
-            guard let ctx = CGContext(
-                data: nil,
-                width: width,
-                height: height,
-                bitsPerComponent: 8,
-                bytesPerRow: 0,
-                space: colorSpace,
-                bitmapInfo: bitmapInfo
-            ) else { continue }
-            
-            ctx.draw(baseImage, in: CGRect(x: 0, y: 0, width: width, height: height))
-            
-            // Render typing indicator container
-            let boxRect = CGRect(x: clickPoint.x - 10, y: clickPoint.y - 16, width: 340, height: 32)
-            ctx.setFillColor(NSColor(srgbRed: 0.08, green: 0.10, blue: 0.16, alpha: 0.92).cgColor)
-            ctx.fill(boxRect)
-            ctx.setStrokeColor(NSColor(srgbRed: 0.38, green: 0.40, blue: 0.95, alpha: 0.8).cgColor)
-            ctx.setLineWidth(1.5)
-            ctx.stroke(boxRect)
-            
-            // Progressively advancing code/text token bar
-            let progressWidth = CGFloat(i + 1) * 26.0
-            ctx.setFillColor(NSColor(srgbRed: 0.22, green: 0.85, blue: 0.55, alpha: 0.95).cgColor)
-            ctx.fill(CGRect(x: clickPoint.x, y: clickPoint.y - 5, width: progressWidth, height: 10))
-            
-            // Blinking caret
-            if i % 2 == 0 {
-                ctx.setFillColor(NSColor.white.cgColor)
-                ctx.fill(CGRect(x: clickPoint.x + progressWidth + 4, y: clickPoint.y - 9, width: 3, height: 18))
-            }
-            
-            // "3.5x Fast-Forward" indicator pill
-            let pillRect = CGRect(x: boxRect.maxX - 90, y: boxRect.origin.y + 6, width: 80, height: 20)
-            ctx.setFillColor(NSColor(srgbRed: 0.95, green: 0.55, blue: 0.15, alpha: 0.95).cgColor)
-            ctx.fill(pillRect)
-            
-            if let frame = ctx.makeImage() {
-                frames.append(frame)
-            }
-        }
-        
-        return MicroClipRecorder.shared.createFastForwardTypingGIF(from: frames, speedFactor: 3.5)
-            ?? MicroClipRecorder.shared.createGIF(from: frames, fps: 16)
-            ?? Data()
-    }
 }
-
