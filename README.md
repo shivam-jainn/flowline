@@ -31,28 +31,61 @@
 - macOS 14.0 (Sonoma) or macOS Sequoia
 - Xcode 15+ / Command Line Tools (Swift 5.9+)
 
-### 2. Run Headless Demo (Instant 1-Click Verification)
-Generate a rich sample session, build all exports, and open the interactive documentation in your browser:
+### 2. 10-Page Interactive Playground
+A full-stack, 10-page component testbed with buttons, forms, range sliders, audio equalizers, and cloud toggles:
 ```bash
-swift run stepit demo
+# Serve the 10-page playground locally on http://localhost:8080/
+swift run stepit serve
+
+# Or open directly in your browser
+open Playground/web/index.html
 ```
 
-### 3. CLI Commands
+The 10 pages included:
+1. `page1_onboarding.html`: Auth, password strength indicator, role dropdown, team capacity range slider, 2FA toggle.
+2. `page2_checkout.html`: E-commerce shopping cart, quantity steppers, promo discount code, shipping radios.
+3. `page3_analytics.html`: KPI metric cards, timeframe filter dropdown, hourly/daily resolution buttons, alert sliders.
+4. `page4_cloud.html`: Data center selector, compute vCPU & RAM sliders, NVMe storage slider, snapshots toggle.
+5. `page5_media.html`: 5-band vertical parametric equalizer sliders, stereo panning fader, codec selector, master gain.
+6. `page6_apigateway.html`: HTTP method selector, API key generator, JSON request payload editor, timeout slider.
+7. `page7_support.html`: Severity level selector, category dropdown, rich reproduction textarea, impact slider.
+8. `page8_survey.html`: Multi-step wizard, interactive 5-star rating, Likert scale NPS slider, progress bar.
+9. `page9_datagrid.html`: Real-time text search filter, status filter, multi-select checkboxes, pagination buttons.
+10. `page10_diagnostics.html`: Live hardware health gauges, background daemon restart buttons, real-time log streamer.
+
+### 3. Automated End-to-End Workflow Recording
+Run the automated recorder across the 10-page playground. It captures real snapshots, animated GIFs, inspects element roles, records coordinates, and generates full Web Docs, PDFs, and Markdown:
 ```bash
-# Show status & macOS permissions (Screen Recording, Accessibility)
-swift run stepit status
-
-# List all recorded sessions
-swift run stepit list
-
-# Re-export any session by ID
-swift run stepit export <session_id>
-
-# Run GUI Menu Bar application
-swift run stepit app
+swift run stepit automate
 ```
 
-### 4. Build Standalone macOS App Bundle
+### 4. Interactive Desktop Recorder CLI
+Start a live workflow recording session directly from your terminal:
+```bash
+swift run stepit record
+# Clicks on your screen are automatically captured. Press Ctrl+C to finish & export!
+```
+
+### 5. Native Mini Applications
+Test StepIt against dedicated native macOS desktop applications:
+```bash
+# Launch native Calculator & Currency Converter mini app
+swift run stepit app-calculator
+
+# Launch native Sprint Kanban Task Board mini app
+swift run stepit app-kanban
+
+# Launch native Hardware & Resource Monitor mini app
+swift run stepit app-monitor
+```
+
+### 6. AI Gateway CLI Tester
+Test OpenAI-compatible streaming gateways directly in your terminal:
+```bash
+swift run stepit gateway "Summarize the architecture of StepIt"
+```
+
+### 7. Build Standalone macOS App Bundle
 To create a signed `.app` bundle ready to drop into `/Applications`:
 ```bash
 ./Scripts/bundle_app.sh
