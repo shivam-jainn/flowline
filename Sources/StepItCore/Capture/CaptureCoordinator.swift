@@ -2,12 +2,6 @@ import Foundation
 import AppKit
 import Combine
 
-public enum RecordingState: Equatable, Sendable {
-    case idle
-    case recording
-    case paused
-}
-
 public final class CaptureCoordinator: ObservableObject, @unchecked Sendable {
     public static let shared = CaptureCoordinator()
     
