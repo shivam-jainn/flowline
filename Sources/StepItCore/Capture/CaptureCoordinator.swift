@@ -15,9 +15,11 @@ public final class CaptureCoordinator: ObservableObject, @unchecked Sendable {
     @Published public private(set) var currentSession: StepSession?
     @Published public private(set) var stepCount: Int = 0
     @Published public private(set) var recordingDuration: TimeInterval = 0
+    @Published public private(set) var lastGestureNotice: String?
     
     private var timer: Timer?
     private var lastEventTime: Date = .distantPast
+    private var gestureNoticeDismissTask: Task<Void, Never>?
     private let queue = DispatchQueue(label: "com.stepit.capturecoordinator", qos: .userInitiated)
     
     public init() {
@@ -37,6 +39,12 @@ public final class CaptureCoordinator: ObservableObject, @unchecked Sendable {
         
         TextTypingAggregator.shared.onTypingBatchCompleted = { [weak self] typingResult in
             self?.handleTyping(typingResult)
+        }
+        
+        SmartGestureDetector.shared.onGestureDetected = { [weak self] notice in
+            Task { @MainActor in
+                self?.handleGesture(notice)
+            }
         }
     }
     
@@ -83,6 +91,10 @@ public final class CaptureCoordinator: ObservableObject, @unchecked Sendable {
             MicroClipRecorder.shared.startBuffering()
         }
         
+        // Sync gesture detector settings
+        let loadedSettings = SessionStore.shared.loadSettings()
+        SmartGestureDetector.shared.settings = loadedSettings.gestures
+        
         // Start global event tap
         EventMonitor.shared.start()
         
@@ -119,6 +131,93 @@ public final class CaptureCoordinator: ObservableObject, @unchecked Sendable {
         try? SessionStore.shared.saveSession(session)
         return session
     }
+    
+    // MARK: - Smart Gestures Actions
+    
+    @MainActor
+    public func handleGesture(_ notice: GestureEventNotice) {
+        guard state != .idle else { return }
+        
+        switch notice.action {
+        case .none:
+            break
+            
+        case .pauseResume:
+            if state == .recording {
+                pauseRecording()
+                showGestureNotification("⏸️ \(notice.gestureName) → Paused")
+            } else if state == .paused {
+                resumeRecording()
+                showGestureNotification("▶️ \(notice.gestureName) → Resumed")
+            }
+            
+        case .stopAndReview:
+            showGestureNotification("🛑 \(notice.gestureName) → Stopping & Reviewing")
+            let session = stopRecording()
+            if let sess = session {
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("StepItShowReviewWindow"),
+                    object: sess
+                )
+            }
+            
+        case .discardLastStep:
+            discardLastStep()
+            showGestureNotification("🗑️ \(notice.gestureName) → Undone Last Step")
+            
+        case .addCheckpoint:
+            markLastStepAsCheckpoint()
+            showGestureNotification("⭐ \(notice.gestureName) → Marked Checkpoint")
+            
+        case .captureSnapshot:
+            captureInstantSnapshot(at: notice.location)
+            showGestureNotification("📸 \(notice.gestureName) → Captured Snapshot")
+        }
+    }
+    
+    @MainActor
+    public func showGestureNotification(_ message: String) {
+        lastGestureNotice = message
+        gestureNoticeDismissTask?.cancel()
+        gestureNoticeDismissTask = Task {
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            if !Task.isCancelled {
+                self.lastGestureNotice = nil
+            }
+        }
+    }
+    
+    public func discardLastStep() {
+        queue.async { [weak self] in
+            guard let self = self, var session = self.currentSession, !session.steps.isEmpty else { return }
+            _ = session.steps.removeLast()
+            self.currentSession = session
+            try? SessionStore.shared.saveSession(session)
+            DispatchQueue.main.async {
+                self.stepCount = session.steps.count
+            }
+        }
+    }
+    
+    public func markLastStepAsCheckpoint() {
+        queue.async { [weak self] in
+            guard let self = self, var session = self.currentSession, !session.steps.isEmpty else { return }
+            let lastIdx = session.steps.count - 1
+            var notes = session.steps[lastIdx].userNotes ?? ""
+            if !notes.contains("⭐") {
+                notes = notes.isEmpty ? "⭐ Key Milestone / Checkpoint" : "⭐ [Checkpoint] \(notes)"
+            }
+            session.steps[lastIdx].userNotes = notes
+            self.currentSession = session
+            try? SessionStore.shared.saveSession(session)
+        }
+    }
+    
+    public func captureInstantSnapshot(at point: CGPoint? = nil) {
+        let loc = point ?? NSEvent.mouseLocation
+        handleAction(action: .manual, at: loc)
+    }
+
     
     public func addManualStep(title: String, notes: String? = nil) {
         queue.async { [weak self] in

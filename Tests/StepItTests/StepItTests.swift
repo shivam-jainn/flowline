@@ -276,5 +276,57 @@ final class StepItTests: XCTestCase {
         XCTAssertTrue(md.contains("struct StepView: View"))
         XCTAssertTrue(md.contains("```"))
     }
+    
+    func testGestureSettingsEncodingAndDefaults() throws {
+        var settings = StepItSettings()
+        XCTAssertTrue(settings.gestures.shakeToPauseEnabled)
+        XCTAssertEqual(settings.gestures.shakeSensitivity, .medium)
+        XCTAssertEqual(settings.gestures.shakeAction, .pauseResume)
+        XCTAssertTrue(settings.gestures.hotCorners.enabled)
+        XCTAssertEqual(settings.gestures.hotCorners.topRight, .pauseResume)
+        XCTAssertEqual(settings.gestures.hotCorners.bottomRight, .stopAndReview)
+        XCTAssertEqual(settings.gestures.middleClickAction, .addCheckpoint)
+        XCTAssertEqual(settings.gestures.doubleRightClickAction, .discardLastStep)
+        
+        // Mutate and test encoding
+        settings.gestures.shakeSensitivity = .high
+        settings.gestures.hotCorners.topLeft = .captureSnapshot
+        settings.gestures.longPressDurationSec = 1.2
+        
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(settings)
+        let decoder = JSONDecoder()
+        let decoded = try decoder.decode(StepItSettings.self, from: data)
+        
+        XCTAssertEqual(decoded.gestures.shakeSensitivity, .high)
+        XCTAssertEqual(decoded.gestures.hotCorners.topLeft, .captureSnapshot)
+        XCTAssertEqual(decoded.gestures.longPressDurationSec, 1.2)
+    }
+    
+    func testSmartGestureDetectorDispatch() {
+        var gestureSettings = GestureSettings()
+        gestureSettings.middleClickAction = .addCheckpoint
+        gestureSettings.doubleRightClickAction = .discardLastStep
+        
+        let detector = SmartGestureDetector(settings: gestureSettings)
+        
+        var detectedNotice: GestureEventNotice?
+        let expectation = self.expectation(description: "Middle-click gesture detected")
+        
+        detector.onGestureDetected = { notice in
+            detectedNotice = notice
+            expectation.fulfill()
+        }
+        
+        // Simulate middle-click (buttonNumber 2)
+        detector.handleMouseDown(type: .otherMouseDown, buttonNumber: 2, at: CGPoint(x: 200, y: 300))
+        
+        waitForExpectations(timeout: 1.0)
+        
+        XCTAssertNotNil(detectedNotice)
+        XCTAssertEqual(detectedNotice?.action, .addCheckpoint)
+        XCTAssertTrue(detectedNotice?.gestureName.contains("Middle-Click") ?? false)
+    }
 }
+
 

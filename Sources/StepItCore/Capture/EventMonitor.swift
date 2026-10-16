@@ -19,9 +19,13 @@ public final class EventMonitor: @unchecked Sendable {
         guard !isMonitoring else { return }
         isMonitoring = true
         
-        // Global mouse monitor for clicks outside StepIt windows
+        // Global mouse monitor for clicks & gestures outside StepIt windows
         globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(
-            matching: [.leftMouseDown, .rightMouseDown]
+            matching: [
+                .leftMouseDown, .rightMouseDown, .otherMouseDown,
+                .leftMouseUp, .rightMouseUp,
+                .mouseMoved, .leftMouseDragged, .rightMouseDragged
+            ]
         ) { [weak self] event in
             self?.handleMouseEvent(event)
         }
@@ -57,16 +61,33 @@ public final class EventMonitor: @unchecked Sendable {
         // NSEvent.mouseLocation gives global screen coordinate in Cocoa points
         let mouseLocation = NSEvent.mouseLocation
         
-        let action: ActionType
-        if event.type == .rightMouseDown {
-            action = .rightClick
-        } else if event.clickCount >= 2 {
-            action = .doubleClick
-        } else {
-            action = .click
+        switch event.type {
+        case .mouseMoved, .leftMouseDragged, .rightMouseDragged:
+            SmartGestureDetector.shared.handleMouseMoved(to: mouseLocation)
+            
+        case .leftMouseUp, .rightMouseUp, .otherMouseUp:
+            SmartGestureDetector.shared.handleMouseUp()
+            
+        case .otherMouseDown:
+            SmartGestureDetector.shared.handleMouseDown(type: event.type, buttonNumber: event.buttonNumber, at: mouseLocation)
+            
+        case .leftMouseDown, .rightMouseDown:
+            SmartGestureDetector.shared.handleMouseDown(type: event.type, buttonNumber: event.buttonNumber, at: mouseLocation)
+            
+            let action: ActionType
+            if event.type == .rightMouseDown {
+                action = .rightClick
+            } else if event.clickCount >= 2 {
+                action = .doubleClick
+            } else {
+                action = .click
+            }
+            
+            onMouseClick?(action, mouseLocation)
+            
+        default:
+            break
         }
-        
-        onMouseClick?(action, mouseLocation)
     }
     
     private func handleKeyEvent(_ event: NSEvent) {

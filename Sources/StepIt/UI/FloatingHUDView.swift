@@ -55,6 +55,28 @@ public struct FloatingHUDView: View {
             .cornerRadius(12)
             .foregroundColor(.white)
             
+            // Gesture Notice Badge
+            if let gesture = coordinator.lastGestureNotice {
+                HStack(spacing: 5) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.yellow)
+                    Text(gesture)
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 3)
+                .background(Color.indigo.opacity(0.6))
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.indigo.opacity(0.9), lineWidth: 1)
+                )
+                .transition(.scale.combined(with: .opacity))
+            }
+            
             // Controls
             HStack(spacing: 8) {
                 // Pause / Resume

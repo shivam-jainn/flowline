@@ -124,23 +124,147 @@ public struct HotkeySettings: Codable, Sendable, Equatable {
     }
 }
 
+// MARK: - Smart Gestures Configuration
+
+public enum GestureAction: String, Codable, CaseIterable, Sendable {
+    case none = "none"
+    case pauseResume = "pause_resume"
+    case stopAndReview = "stop_and_review"
+    case discardLastStep = "discard_last_step"
+    case addCheckpoint = "add_checkpoint"
+    case captureSnapshot = "capture_snapshot"
+    
+    public var title: String {
+        switch self {
+        case .none: return "Disabled"
+        case .pauseResume: return "Pause / Resume Recording"
+        case .stopAndReview: return "Stop & Open Review Window"
+        case .discardLastStep: return "Discard / Undo Last Step"
+        case .addCheckpoint: return "Mark Step as Key Milestone ⭐"
+        case .captureSnapshot: return "Capture Instant Snapshot 📸"
+        }
+    }
+    
+    public var icon: String {
+        switch self {
+        case .none: return "slash.circle"
+        case .pauseResume: return "pause.circle.fill"
+        case .stopAndReview: return "stop.circle.fill"
+        case .discardLastStep: return "arrow.uturn.backward.circle.fill"
+        case .addCheckpoint: return "star.circle.fill"
+        case .captureSnapshot: return "camera.circle.fill"
+        }
+    }
+}
+
+public enum GestureSensitivity: String, Codable, CaseIterable, Sendable {
+    case low = "low"
+    case medium = "medium"
+    case high = "high"
+    
+    public var title: String {
+        switch self {
+        case .low: return "Low (Vigorous Motion)"
+        case .medium: return "Medium (Balanced)"
+        case .high: return "High (Quick Response)"
+        }
+    }
+    
+    public var thresholdVelocity: Double {
+        switch self {
+        case .low: return 850.0
+        case .medium: return 550.0
+        case .high: return 380.0
+        }
+    }
+}
+
+public struct HotCornerSettings: Codable, Sendable, Equatable {
+    public var enabled: Bool
+    public var topLeft: GestureAction
+    public var topRight: GestureAction
+    public var bottomLeft: GestureAction
+    public var bottomRight: GestureAction
+    
+    public init(
+        enabled: Bool = true,
+        topLeft: GestureAction = .discardLastStep,
+        topRight: GestureAction = .pauseResume,
+        bottomLeft: GestureAction = .none,
+        bottomRight: GestureAction = .stopAndReview
+    ) {
+        self.enabled = enabled
+        self.topLeft = topLeft
+        self.topRight = topRight
+        self.bottomLeft = bottomLeft
+        self.bottomRight = bottomRight
+    }
+}
+
+public struct GestureSettings: Codable, Sendable, Equatable {
+    public var shakeToPauseEnabled: Bool
+    public var shakeSensitivity: GestureSensitivity
+    public var shakeAction: GestureAction
+    
+    public var hotCorners: HotCornerSettings
+    
+    public var middleClickAction: GestureAction
+    public var doubleRightClickAction: GestureAction
+    public var longPressAction: GestureAction
+    public var longPressDurationSec: Double
+    
+    public init(
+        shakeToPauseEnabled: Bool = true,
+        shakeSensitivity: GestureSensitivity = .medium,
+        shakeAction: GestureAction = .pauseResume,
+        hotCorners: HotCornerSettings = HotCornerSettings(),
+        middleClickAction: GestureAction = .addCheckpoint,
+        doubleRightClickAction: GestureAction = .discardLastStep,
+        longPressAction: GestureAction = .captureSnapshot,
+        longPressDurationSec: Double = 0.8
+    ) {
+        self.shakeToPauseEnabled = shakeToPauseEnabled
+        self.shakeSensitivity = shakeSensitivity
+        self.shakeAction = shakeAction
+        self.hotCorners = hotCorners
+        self.middleClickAction = middleClickAction
+        self.doubleRightClickAction = doubleRightClickAction
+        self.longPressAction = longPressAction
+        self.longPressDurationSec = longPressDurationSec
+    }
+}
+
 public struct StepItSettings: Codable, Sendable, Equatable {
     public var capture: CaptureSettings
     public var publishing: PublishingSettings
     public var gateway: GatewaySettings
     public var hotkeys: HotkeySettings
+    public var gestures: GestureSettings
     
     public init(
         capture: CaptureSettings = CaptureSettings(),
         publishing: PublishingSettings = PublishingSettings(),
         gateway: GatewaySettings = GatewaySettings(),
-        hotkeys: HotkeySettings = HotkeySettings()
+        hotkeys: HotkeySettings = HotkeySettings(),
+        gestures: GestureSettings = GestureSettings()
     ) {
         self.capture = capture
         self.publishing = publishing
         self.gateway = gateway
         self.hotkeys = hotkeys
+        self.gestures = gestures
     }
+    
+    // Custom decoder for backwards compatibility when decoding saved JSON without gestures
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.capture = try container.decodeIfPresent(CaptureSettings.self, forKey: .capture) ?? CaptureSettings()
+        self.publishing = try container.decodeIfPresent(PublishingSettings.self, forKey: .publishing) ?? PublishingSettings()
+        self.gateway = try container.decodeIfPresent(GatewaySettings.self, forKey: .gateway) ?? GatewaySettings()
+        self.hotkeys = try container.decodeIfPresent(HotkeySettings.self, forKey: .hotkeys) ?? HotkeySettings()
+        self.gestures = try container.decodeIfPresent(GestureSettings.self, forKey: .gestures) ?? GestureSettings()
+    }
+
     
     public static var defaultSettings: StepItSettings {
         var s = StepItSettings()
