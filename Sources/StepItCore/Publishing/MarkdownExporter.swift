@@ -55,6 +55,11 @@ public final class MarkdownExporter: @unchecked Sendable {
                 md += "\n> 💡 **Note**: \(notes)\n"
             }
             
+            if let text = step.textBlob, !text.isEmpty {
+                let lang = step.codeLanguage ?? (step.isCode ? "bash" : "")
+                md += "\n```\(lang)\n\(text)\n```\n"
+            }
+            
             md += "\n"
             
             let prefix = relativeAssetPrefix.isEmpty ? "" : (relativeAssetPrefix.hasSuffix("/") ? relativeAssetPrefix : "\(relativeAssetPrefix)/")

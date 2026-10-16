@@ -265,6 +265,26 @@ public final class MicroClipRecorder: @unchecked Sendable {
         return data as Data
     }
     
+    // MARK: - Fast-Forward Typing Timelapse GIF
+    
+    /// Compiles typing frames into an accelerated (fast-forward) animated GIF
+    public func createFastForwardTypingGIF(from images: [CGImage], speedFactor: Double = 3.0) -> Data? {
+        guard !images.isEmpty else { return nil }
+        
+        // Sample frames to compress idle pauses
+        var sampled: [CGImage] = []
+        let strideStep = max(1, Int(speedFactor / 1.5))
+        for i in stride(from: 0, to: images.count, by: strideStep) {
+            sampled.append(images[i])
+        }
+        if let last = images.last, !sampled.isEmpty {
+            sampled.append(last)
+        }
+        
+        let targetFps = min(24, max(12, Int(10.0 * speedFactor)))
+        return createGIF(from: sampled, fps: targetFps)
+    }
+    
     // MARK: - Native Video Encoder (AVAssetWriter)
     
     public func createMP4(from images: [CGImage], fps: Int) -> Data? {

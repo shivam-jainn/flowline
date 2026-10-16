@@ -77,6 +77,9 @@ Step \(step.index):
 - Coordinates: \(step.coordinates != nil ? "(\(Int(step.coordinates!.x)), \(Int(step.coordinates!.y)))" : "N/A")
 - Auto Description: \(step.actionDescription)
 """
+            if let blob = step.textBlob, !blob.isEmpty {
+                buffer += "\n- Captured Code / Text Blob (\(step.codeLanguage ?? "text")):\n```\(step.codeLanguage ?? "")\n\(blob)\n```"
+            }
             if let notes = step.userNotes, !notes.isEmpty {
                 buffer += "\n- User Notes: \(notes)"
             }

@@ -285,6 +285,23 @@ public final class WebDocGenerator: @unchecked Sendable {
                         <div class=\"callout-text\">\(escapeHTML(step.userNotes!))</div>
                     </div>
                     """ : "")
+
+                    \(step.textBlob != nil && !step.textBlob!.isEmpty ? """
+                    <div class=\"code-blob-container\">
+                        <div class=\"code-blob-header\">
+                            <div class=\"code-blob-meta\">
+                                <span class=\"code-icon\">\(step.isCode ? "💻" : "⌨️")</span>
+                                <span class=\"code-label\">\(step.isCode ? "Captured Code / Command" : "Typed Text Block")</span>
+                                \(step.codeLanguage != nil ? "<span class=\"code-lang-pill\">\(escapeHTML(step.codeLanguage!))</span>" : "")
+                            </div>
+                            <button class=\"copy-code-btn\" onclick=\"copyText('\(escapeJS(step.textBlob!))', this)\">
+                                <svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"9\" y=\"9\" width=\"13\" height=\"13\" rx=\"2\" ry=\"2\"></rect><path d=\"M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1\"></path></svg>
+                                <span>Copy to Clipboard</span>
+                            </button>
+                        </div>
+                        <pre class=\"code-blob-body\"><code>\(escapeHTML(step.textBlob!))</code></pre>
+                    </div>
+                    """ : "")
                 </div>
 
                 <!-- Media Section with Toggle Bar -->
@@ -738,6 +755,72 @@ public final class WebDocGenerator: @unchecked Sendable {
         .note-callout {
             background: rgba(59, 130, 246, 0.08);
             border-left: 4px solid var(--primary);
+        }
+
+        /* Code & Text Blob Card */
+        .code-blob-container {
+            margin-top: 14px;
+            background: #090d16;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+        .code-blob-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 14px;
+            background: rgba(255, 255, 255, 0.04);
+            border-bottom: 1px solid var(--border);
+            font-size: 0.8rem;
+        }
+        .code-blob-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+        .code-lang-pill {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            padding: 2px 8px;
+            background: rgba(99, 102, 241, 0.2);
+            color: #a5b4fc;
+            border-radius: 999px;
+            text-transform: uppercase;
+        }
+        .copy-code-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border);
+            color: white;
+            font-size: 0.78rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .copy-code-btn:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+        .copy-code-btn.copied {
+            background: var(--success);
+            border-color: var(--success);
+        }
+        .code-blob-body {
+            padding: 14px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.86rem;
+            line-height: 1.5;
+            color: #e2e8f0;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
         }
 
         /* Step Media */

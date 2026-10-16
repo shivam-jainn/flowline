@@ -74,6 +74,16 @@ public final class EventMonitor: @unchecked Sendable {
         // keyCode 49 is Space in US ANSI keyboard
         if event.keyCode == 49 && event.modifierFlags.contains(.option) {
             onToggleShortcut?()
+            return
+        }
+        
+        // Feed printable typing keystrokes into TextTypingAggregator
+        if let chars = event.characters, !chars.isEmpty && !event.modifierFlags.contains(.command) {
+            // Ignore raw function/arrow keys (Unicode private use area)
+            if let first = chars.unicodeScalars.first, first.value >= 32 && first.value != 127 {
+                let mouseLocation = NSEvent.mouseLocation
+                TextTypingAggregator.shared.appendKeystroke(chars, at: mouseLocation)
+            }
         }
     }
 }

@@ -69,6 +69,8 @@ public enum ActionType: String, Codable, Sendable {
     case rightClick = "right_click"
     case doubleClick = "double_click"
     case keyPress = "key_press"
+    case typing = "typing"
+    case writeCode = "write_code"
     case appSwitch = "app_switch"
     case manual = "manual"
 }
@@ -89,6 +91,9 @@ public struct Step: Identifiable, Codable, Sendable, Equatable {
     public var elementBounds: ElementRect?
     public var actionDescription: String
     public var userNotes: String?
+    public var textBlob: String?
+    public var isCode: Bool
+    public var codeLanguage: String?
     public var assets: MediaAssets
     
     public init(
@@ -107,6 +112,9 @@ public struct Step: Identifiable, Codable, Sendable, Equatable {
         elementBounds: ElementRect? = nil,
         actionDescription: String = "",
         userNotes: String? = nil,
+        textBlob: String? = nil,
+        isCode: Bool = false,
+        codeLanguage: String? = nil,
         assets: MediaAssets = MediaAssets()
     ) {
         self.id = id
@@ -122,15 +130,20 @@ public struct Step: Identifiable, Codable, Sendable, Equatable {
         self.coordinates = coordinates
         self.windowBounds = windowBounds
         self.elementBounds = elementBounds
+        self.userNotes = userNotes
+        self.textBlob = textBlob
+        self.isCode = isCode
+        self.codeLanguage = codeLanguage
+        self.assets = assets
         self.actionDescription = actionDescription.isEmpty ? Self.synthesizeDefaultDescription(
             action: action,
             elementTitle: elementTitle,
             elementRole: elementRole,
             appName: appName,
-            windowTitle: windowTitle
+            windowTitle: windowTitle,
+            textBlob: textBlob,
+            isCode: isCode
         ) : actionDescription
-        self.userNotes = userNotes
-        self.assets = assets
     }
     
     public static func synthesizeDefaultDescription(
@@ -138,14 +151,31 @@ public struct Step: Identifiable, Codable, Sendable, Equatable {
         elementTitle: String?,
         elementRole: String?,
         appName: String,
-        windowTitle: String
+        windowTitle: String,
+        textBlob: String? = nil,
+        isCode: Bool = false
     ) -> String {
+        if action == .typing || action == .writeCode {
+            let targetApp = appName.isEmpty ? "editor" : appName
+            if isCode {
+                return "Write code in \(targetApp)"
+            } else if let blob = textBlob, !blob.isEmpty {
+                let clean = blob.trimmingCharacters(in: .whitespacesAndNewlines)
+                let preview = clean.prefix(32)
+                return "Type \"\(preview)\(clean.count > 32 ? "..." : "")\" in \(targetApp)"
+            } else {
+                return "Type text in \(targetApp)"
+            }
+        }
+        
         let actionWord: String
         switch action {
         case .click: actionWord = "Click"
         case .rightClick: actionWord = "Right-click"
         case .doubleClick: actionWord = "Double-click"
         case .keyPress: actionWord = "Press"
+        case .typing: actionWord = "Type in"
+        case .writeCode: actionWord = "Write code in"
         case .appSwitch: actionWord = "Switch to"
         case .manual: actionWord = "Perform step in"
         }

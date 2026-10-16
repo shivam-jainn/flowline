@@ -214,4 +214,67 @@ final class StepItTests: XCTestCase {
             }
         }
     }
+    
+    func testTextTypingAggregationAndLanguageDetection() {
+        let aggregator = TextTypingAggregator()
+        
+        // Test VS Code detection
+        XCTAssertTrue(aggregator.isCodeEnvironment(appName: "Visual Studio Code", bundleId: "com.microsoft.VSCode", windowTitle: "main.py"))
+        XCTAssertTrue(aggregator.isCodeEnvironment(appName: "Terminal", bundleId: "com.apple.Terminal", windowTitle: "zsh"))
+        XCTAssertTrue(aggregator.isCodeEnvironment(appName: "Cursor", bundleId: "com.todesktop.230313mzl4w4u92", windowTitle: "Server.swift"))
+        XCTAssertFalse(aggregator.isCodeEnvironment(appName: "Finder", bundleId: "com.apple.finder", windowTitle: "Documents"))
+        
+        // Test language detection
+        XCTAssertEqual(aggregator.detectLanguage(appName: "Visual Studio Code", windowTitle: "workflow.py", text: "def foo(): pass"), "python")
+        XCTAssertEqual(aggregator.detectLanguage(appName: "Xcode", windowTitle: "App.swift", text: "import SwiftUI"), "swift")
+        XCTAssertEqual(aggregator.detectLanguage(appName: "Terminal", windowTitle: "bash", text: "npm install"), "bash")
+        XCTAssertEqual(aggregator.detectLanguage(appName: "Cursor", windowTitle: "index.ts", text: "const x = 1;"), "typescript")
+    }
+    
+    func testFastForwardTypingAndCodeBlobExport() {
+        let codeSnippet = """
+        import SwiftUI
+
+        struct StepView: View {
+            var body: some View {
+                Text("StepIt Fast-Forward")
+            }
+        }
+        """
+        
+        let step = Step(
+            index: 1,
+            action: .writeCode,
+            appName: "Visual Studio Code",
+            windowTitle: "StepView.swift",
+            elementRole: "AXCodeEditor",
+            actionDescription: "Write Swift UI component in VS Code",
+            textBlob: codeSnippet,
+            isCode: true,
+            codeLanguage: "swift",
+            assets: MediaAssets(screenshot: "media/step_01.png", gif: "media/step_01.gif")
+        )
+        
+        let session = StepSession(
+            id: "sess_fastforward_test",
+            title: "Code Capture Session",
+            steps: [step]
+        )
+        
+        // Verify Web HTML output includes code blob container and copy button
+        let html = WebDocGenerator.shared.generateHTML(session: session)
+        XCTAssertTrue(html.contains("code-blob-container"))
+        XCTAssertTrue(html.contains("copy-code-btn"))
+        XCTAssertTrue(html.contains("copyText"))
+        XCTAssertTrue(html.contains("Copy to Clipboard"))
+        XCTAssertTrue(html.contains("StepIt Fast-Forward"))
+        XCTAssertTrue(html.contains("swift"))
+        
+        // Verify Markdown exporter includes fenced code block
+        let md = MarkdownExporter.shared.exportMarkdown(session: session)
+        XCTAssertTrue(md.contains("```swift"))
+        XCTAssertTrue(md.contains("struct StepView: View"))
+        XCTAssertTrue(md.contains("```"))
+    }
 }
+

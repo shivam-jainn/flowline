@@ -34,6 +34,10 @@ public final class CaptureCoordinator: ObservableObject, @unchecked Sendable {
                 self?.toggleRecording()
             }
         }
+        
+        TextTypingAggregator.shared.onTypingBatchCompleted = { [weak self] typingResult in
+            self?.handleTyping(typingResult)
+        }
     }
     
     @MainActor
@@ -235,6 +239,83 @@ public final class CaptureCoordinator: ObservableObject, @unchecked Sendable {
                             updatedSession.steps[idx].assets = updatedAssets
                             self.currentSession = updatedSession
                             try? SessionStore.shared.saveSession(updatedSession)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    private func handleTyping(_ result: TypingEventResult) {
+        queue.async { [weak self] in
+            guard let self = self, var session = self.currentSession, self.state == .recording else { return }
+            
+            let nextIndex = session.steps.count + 1
+            let now = Date()
+            
+            // 1. Snapshot capture of editor
+            let snapshotResult = ScreenRecorder.shared.captureScreen(
+                highlightAt: result.location,
+                stepIndex: nextIndex
+            )
+            
+            var assets = MediaAssets()
+            let filenameBase = String(format: "step_%02d", nextIndex)
+            
+            if let snapshot = snapshotResult {
+                let pngName = "\(filenameBase).png"
+                if let relPath = try? SessionStore.shared.saveMedia(
+                    data: snapshot.pngData,
+                    sessionID: session.id,
+                    filename: pngName
+                ) {
+                    assets.screenshot = relPath
+                }
+            }
+            
+            let action: ActionType = result.isCode ? .writeCode : .typing
+            
+            let step = Step(
+                index: nextIndex,
+                timestamp: now,
+                action: action,
+                appName: result.appName,
+                bundleIdentifier: result.bundleIdentifier,
+                windowTitle: result.windowTitle,
+                elementRole: result.isCode ? "AXCodeEditor" : "AXTextField",
+                elementTitle: result.language != nil ? "(\(result.language!))" : nil,
+                coordinates: ScreenCoordinates(x: Double(result.location.x), y: Double(result.location.y)),
+                textBlob: result.textBlob,
+                isCode: result.isCode,
+                codeLanguage: result.language,
+                assets: assets
+            )
+            
+            session.steps.append(step)
+            self.currentSession = session
+            try? SessionStore.shared.saveSession(session)
+            
+            DispatchQueue.main.async {
+                self.stepCount = session.steps.count
+            }
+            
+            // 2. Generate fast-forward GIF from rolling buffer
+            if session.mediaMode != .staticOnly {
+                MicroClipRecorder.shared.recordClip(around: result.location, postDuration: 0.6) { gifData, _ in
+                    guard let gif = gifData else { return }
+                    let gifName = "\(filenameBase).gif"
+                    if let relPath = try? SessionStore.shared.saveMedia(
+                        data: gif,
+                        sessionID: session.id,
+                        filename: gifName
+                    ) {
+                        self.queue.async {
+                            guard var updatedSession = self.currentSession else { return }
+                            if let idx = updatedSession.steps.firstIndex(where: { $0.id == step.id }) {
+                                updatedSession.steps[idx].assets.gif = relPath
+                                self.currentSession = updatedSession
+                                try? SessionStore.shared.saveSession(updatedSession)
+                            }
                         }
                     }
                 }

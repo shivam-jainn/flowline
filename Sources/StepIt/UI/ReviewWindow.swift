@@ -161,6 +161,35 @@ public struct ReviewWindow: View {
                 }
             }
             
+            // Captured Text / Code Blob
+            if let text = step.textBlob, !text.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Label(step.isCode ? "Code Snippet (\(step.codeLanguage ?? "code"))" : "Typed Text", systemImage: "chevron.left.forwardslash.chevron.right")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.accentColor)
+                        Spacer()
+                        Button(action: {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(text, forType: .string)
+                        }) {
+                            Label("Copy to Clipboard", systemImage: "doc.on.doc")
+                        }
+                        .controlSize(.mini)
+                    }
+                    
+                    Text(text)
+                        .font(.system(size: 11, design: .monospaced))
+                        .padding(8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.black.opacity(0.35))
+                        .cornerRadius(6)
+                }
+                .padding(8)
+                .background(Color.secondary.opacity(0.08))
+                .cornerRadius(8)
+            }
+            
             // User notes input
             TextField("Optional guidance or note for this step...", text: Binding(
                 get: { session.steps[index].userNotes ?? "" },
