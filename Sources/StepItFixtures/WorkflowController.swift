@@ -1,14 +1,8 @@
+import Combine
 import Foundation
-import StepItStorage
-import StepItMacCapture
 import StepItCaptureAPI
-import StepItPublishing
-import StepItAIGateway
-import StepItPipeline
 import StepItEngine
 import StepItIR
-import Combine
-import StepItCore
 
 /// The only object the UI talks to.
 ///
@@ -17,14 +11,14 @@ import StepItCore
 ///   actor — the same shape SwiftUI/Combine consumers used pre-Phase-1.
 /// - Forwards user intents (`start`, `pause`, `stop`, gestures, settings) to
 ///   the engine; never touches drivers directly.
+///
+/// R/M1-07: lives in `StepItFixtures` (importable by tests; kept out of
+/// `StepItEngine` so the portable core stays Combine-free for the Rust port) and takes all
+/// dependencies by injection — the driver arrives inside the engine, and the
+/// review presentation arrives as a callback from the composition root.
+/// There is no `shared` singleton: the composition root owns the one instance.
 @MainActor
 public final class WorkflowController: ObservableObject {
-
-    /// App default: macOS driver + shared store. Tests construct their own
-    /// controller over a mock engine.
-    public static let shared = WorkflowController(
-        engine: RecorderWorkflowEngine(driver: MacCaptureDriver(), store: SessionStore.shared)
-    )
 
     // MARK: - Published state (1:1 with the old coordinator surface)
 
@@ -44,13 +38,19 @@ public final class WorkflowController: ObservableObject {
     private var durationTimer: Timer?
     private var isBootstrapped = false
 
-    public init(engine: RecorderWorkflowEngine) {
+    /// - Parameter engine: fully-wired recording engine (driver + store).
+    /// - Parameter onReview: presentation of a finished session, provided by
+    ///   the composition root (replaces the hardwired review-window lookup).
+    public init(
+        engine: RecorderWorkflowEngine,
+        onReview: (@MainActor (StepSession) -> Void)? = nil
+    ) {
         self.engine = engine
 
         // Fix F3: gesture "Stop & Review" now opens the review window through a
         // real callback instead of a dead notification.
-        engine.onSessionReadyForReview = { session in
-            ReviewWindowController.shared.show(for: session)
+        if let onReview {
+            engine.onSessionReadyForReview = onReview
         }
 
         bindEngine()
@@ -128,8 +128,9 @@ public final class WorkflowController: ObservableObject {
 
     /// Phase 2 (T9): full settings snapshot — privacy, hotkey capture and
     /// gesture policy — applied live so changes affect the next event.
+    /// Projects to the narrow engine shape (R/M1-07).
     public func applySettings(_ settings: StepItSettings) async {
-        await engine.applySettings(settings)
+        await engine.applySettings(settings.engineSettings)
     }
 
     // MARK: - Engine binding
