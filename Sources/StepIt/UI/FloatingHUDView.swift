@@ -1,4 +1,5 @@
 import SwiftUI
+import StepItFixtures
 import StepItStorage
 import StepItMacCapture
 import StepItCaptureAPI
@@ -10,12 +11,13 @@ import StepItIR
 import StepItCore
 
 public struct FloatingHUDView: View {
-    @ObservedObject var controller = WorkflowController.shared
+    @ObservedObject var controller: WorkflowController
     public var onStop: () -> Void
-    
+
     @State private var isPulsing = false
-    
-    public init(onStop: @escaping () -> Void = {}) {
+
+    public init(controller: WorkflowController, onStop: @escaping () -> Void = {}) {
+        self.controller = controller
         self.onStop = onStop
     }
     

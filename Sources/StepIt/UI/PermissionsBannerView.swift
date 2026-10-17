@@ -11,10 +11,15 @@ import StepItIR
 import StepItCore
 
 public struct PermissionsBannerView: View {
-    @State private var hasScreenRecording = PermissionsManager.shared.hasScreenRecordingPermission
-    @State private var hasAccessibility = PermissionsManager.shared.hasAccessibilityPermission
-    
-    public init() {}
+    private let manager: PermissionsManager
+    @State private var hasScreenRecording: Bool
+    @State private var hasAccessibility: Bool
+
+    public init(manager: PermissionsManager = PermissionsManager()) {
+        self.manager = manager
+        self._hasScreenRecording = State(initialValue: manager.hasScreenRecordingPermission)
+        self._hasAccessibility = State(initialValue: manager.hasAccessibilityPermission)
+    }
     
     public var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -50,7 +55,7 @@ public struct PermissionsBannerView: View {
                     Spacer()
                     if !hasScreenRecording {
                         Button("Open Settings") {
-                            PermissionsManager.shared.openScreenRecordingSettings()
+                            manager.openScreenRecordingSettings()
                         }
                         .buttonStyle(BorderedProminentButtonStyle())
                         .controlSize(.small)
@@ -74,7 +79,7 @@ public struct PermissionsBannerView: View {
                     Spacer()
                     if !hasAccessibility {
                         Button("Open Settings") {
-                            PermissionsManager.shared.openAccessibilitySettings()
+                            manager.openAccessibilitySettings()
                         }
                         .buttonStyle(BorderedProminentButtonStyle())
                         .controlSize(.small)
@@ -98,7 +103,7 @@ public struct PermissionsBannerView: View {
     }
     
     private func checkPermissions() {
-        hasScreenRecording = PermissionsManager.shared.hasScreenRecordingPermission
-        hasAccessibility = PermissionsManager.shared.hasAccessibilityPermission
+        hasScreenRecording = manager.hasScreenRecordingPermission
+        hasAccessibility = manager.hasAccessibilityPermission
     }
 }

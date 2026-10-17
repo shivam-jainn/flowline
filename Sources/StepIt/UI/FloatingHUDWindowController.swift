@@ -1,4 +1,5 @@
 import AppKit
+import StepItFixtures
 import StepItStorage
 import StepItMacCapture
 import StepItCaptureAPI
@@ -11,12 +12,14 @@ import SwiftUI
 import StepItCore
 
 public final class FloatingHUDWindowController: @unchecked Sendable {
-    public static let shared = FloatingHUDWindowController()
-    
+    private let controller: WorkflowController
+
     private var window: NSPanel?
     public var onStopRequested: (() -> Void)?
-    
-    public init() {}
+
+    public init(controller: WorkflowController) {
+        self.controller = controller
+    }
     
     @MainActor
     public func show() {
@@ -35,7 +38,7 @@ public final class FloatingHUDWindowController: @unchecked Sendable {
     
     @MainActor
     private func createWindow() {
-        let hudView = FloatingHUDView { [weak self] in
+        let hudView = FloatingHUDView(controller: controller) { [weak self] in
             self?.onStopRequested?()
         }
         
