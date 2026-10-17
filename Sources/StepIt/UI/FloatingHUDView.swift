@@ -8,7 +8,6 @@ import StepItAIGateway
 import StepItPipeline
 import StepItEngine
 import StepItIR
-import StepItCore
 
 public struct FloatingHUDView: View {
     @ObservedObject var controller: WorkflowController

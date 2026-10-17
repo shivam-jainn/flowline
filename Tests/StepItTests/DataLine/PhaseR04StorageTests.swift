@@ -8,7 +8,6 @@ import StepItAIGateway
 import StepItPermissions
 import Foundation
 import StepItIR
-import StepItCore
 import StepItStorage
 
 /// R/M1-04: storage protocol + gateway proof. The fake gateway round-trips

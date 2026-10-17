@@ -8,7 +8,6 @@ import StepItAIGateway
 import StepItPipeline
 import StepItEngine
 import StepItIR
-import StepItCore
 
 public struct PermissionsBannerView: View {
     private let manager: PermissionsManager

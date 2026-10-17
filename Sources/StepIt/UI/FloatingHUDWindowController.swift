@@ -9,7 +9,6 @@ import StepItPipeline
 import StepItEngine
 import StepItIR
 import SwiftUI
-import StepItCore
 
 public final class FloatingHUDWindowController: @unchecked Sendable {
     private let controller: WorkflowController

@@ -20,7 +20,6 @@ let package = Package(
     ],
     products: [
         .executable(name: "stepit", targets: ["StepIt"]),
-        .library(name: "StepItCore", targets: ["StepItCore"])
     ],
     dependencies: [],
     targets: [
@@ -70,23 +69,18 @@ let package = Package(
             path: "Sources/StepItPermissions"
         ),
         .target(
-            name: "StepItCore",
-            dependencies: ["StepItIR", "StepItPipeline"],
-            path: "Sources/StepItCore"
-        ),
-        .target(
             name: "StepItFixtures",
-            dependencies: ["StepItCore"] + coreModules,
+            dependencies: coreModules,
             path: "Sources/StepItFixtures"
         ),
         .executableTarget(
             name: "StepIt",
-            dependencies: ["StepItCore", "StepItFixtures"] + coreModules,
+            dependencies: ["StepItFixtures"] + coreModules,
             path: "Sources/StepIt"
         ),
         .testTarget(
             name: "StepItTests",
-            dependencies: ["StepItCore", "StepItFixtures"] + coreModules,
+            dependencies: ["StepItFixtures"] + coreModules,
             path: "Tests/StepItTests"
         )
     ]

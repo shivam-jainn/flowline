@@ -7,7 +7,6 @@ import StepItAIGateway
 import StepItPermissions
 import Foundation
 import StepItIR
-import StepItCore
 import StepItPipeline
 import StepItEngine
 

@@ -9,7 +9,6 @@ import Foundation
 import StepItIR
 import StepItPipeline
 import StepItCaptureAPI
-import StepItCore
 
 /// R/M1-05: native quarantine. The capture SPI + mocks live in
 /// `StepItCaptureAPI` and macOS drivers in `StepItMacCapture`; these tests

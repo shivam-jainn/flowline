@@ -8,7 +8,6 @@ import StepItAIGateway
 import StepItPermissions
 import Foundation
 import StepItIR
-import StepItCore
 import StepItPublishing
 
 /// R/M1-06: Publishing extraction proof. Markdown/WebDoc output is byte-stable

@@ -1,12 +1,4 @@
 import SwiftUI
-import StepItStorage
-import StepItMacCapture
-import StepItCaptureAPI
-import StepItPublishing
-import StepItAIGateway
-import StepItPipeline
-import StepItEngine
-import StepItIR
 import AppKit
 
 public struct KanbanTask: Identifiable {
