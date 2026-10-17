@@ -60,6 +60,18 @@ final class StartupPermissionChecksTests: XCTestCase {
         )
     }
 
+    /// `stepit status` from a terminal inherits the terminal's TCC context, so
+    /// it must say so — otherwise a green CLI masks a red app (exactly the
+    /// confusion that burned a debugging session).
+    func testStatusWarnsAboutTerminalContext() {
+        let sync = readSource("platform/macos/Sources/StepIt/CLI/CLISyncCommands.swift")
+        XCTAssertFalse(sync.isEmpty, "could not locate CLISyncCommands.swift")
+        XCTAssertTrue(
+            sync.contains("terminal context") || sync.contains("terminal-context"),
+            "status must warn its verdict may reflect the terminal, not StepIt.app"
+        )
+    }
+
     /// Green ticks must lead somewhere: when both permissions are granted the
     /// window has to offer an onward action (close + start recording),
     /// otherwise the user is stuck on a fully-checked list.

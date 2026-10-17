@@ -111,3 +111,4 @@ doctor:
 	@echo "signing: $$(codesign -dv $(SWIFT_PKG)/.build/StepIt.app 2>&1 | grep -E 'flags|TeamIdentifier' | tr '\n' ' ')"
 	@security find-identity -v -p codesigning 2>/dev/null | grep -qE "Apple Development|Mac Developer" && echo "team cert: YES (rebuilds keep grants)" || echo "team cert: NONE (every rebuild kills grants — run: make sign-setup)"
 	@echo "rule: grant in Settings must happen for THIS binary hash, then relaunch WITHOUT rebuilding (make run)."
+	@echo "note: 'stepit status' from a terminal reflects the TERMINAL context — the in-app window is the real verdict."

@@ -48,6 +48,9 @@ public struct CLISyncCommands {
 
         print("  • Screen Recording:  \(screen ? "✅ Granted" : "❌ Denied / Not Determined")")
         print("  • Accessibility:     \(ax ? "✅ Granted" : "❌ Denied / Not Determined")")
+        print("\n  NOTE: run outside the .app bundle (e.g. `swift run`), these reflect")
+        print("  the terminal context, not StepIt.app itself — the in-app window")
+        print("  (menu bar → macOS Permissions…) is the verdict that matters.")
 
         let settings = composition.settingsStore.load()
         print("\n⚙️ Gateway Configuration:")
