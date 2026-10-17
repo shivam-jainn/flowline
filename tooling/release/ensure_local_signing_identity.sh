@@ -55,6 +55,13 @@ EOF
   4. Then:    make test-dev     (fresh build, signed with your team)
   5. Grant Screen Recording + Accessibility ONCE, `make run` to relaunch.
 
+If Xcode insists you "already have" a certificate but none works
+(orphan without a private key): restart your Mac first (clears Xcode's
+portal cache and reloads the keychain), then Manage Certificates → –
+the dead entry → + → Apple Development. Also check for a pending
+Developer Agreement banner at account.apple.com — Xcode silently
+refuses cert operations until it is accepted.
+
 After that, rebuilds keep working and you never open Settings again.
 EOF
     exit 1
