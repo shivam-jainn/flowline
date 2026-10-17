@@ -10,20 +10,13 @@
 //! Module split mirrors the M1-03 reducer split 1:1:
 //! - [`state`]: `RecordingState`, `EngineConfig`, `RecorderSnapshot`.
 //! - [`reducer`]: `Engine::process_event` dispatch (`EventReducer.swift`).
-//! - [`step_gate`]: gated step production + `ProducedStep` (`StepFactory`).
-//! - [`enrichment`]: terminal/pwd + app-context fill + privacy hooks.
+//! - [`step_gate`]: gated step production + `ProducedStep` (engine-shaped
+//!   `make_*` builders; pure `StepFactory` logic delegates to
+//!   `stepit_pipeline::step_factory`).
+//! - [`enrichment`]: terminal/pwd + app-context fill + privacy hooks
+//!   (classification, hotkey policy, and batch-context normalization delegate
+//!   to `stepit_pipeline`).
 //! - [`clips`]: clip orchestration + media persistence naming.
-//!
-//! # Local IR shim
-//!
-//! [`ir`] mirrors the needed `StepItIR`/`StepItPipeline` types verbatim (same
-//! JSON keys/casing). `stepit_ir` cannot be a path dependency yet — the
-//! sibling crate does not compile on this branch (`session`/`manifest`
-//! modules missing, R/M2-01 still in flight) — and `stepit_pipeline` is still
-//! the R/M2-00 skeleton. Swapping the shim for the siblings is mechanical:
-//! add the path deps, delete `ir.rs`, and re-point the `use` lines (the
-//! shapes/keys here were copied from the Swift sources and the sibling
-//! shims, so no golden churn is expected).
 
 pub mod clips;
 pub mod enrichment;

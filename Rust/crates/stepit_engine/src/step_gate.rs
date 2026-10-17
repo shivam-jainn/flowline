@@ -3,8 +3,16 @@
 //! Swift serializes producers through the step gate because privacy passes and
 //! the debounce path can interleave them on the actor. The sync port applies
 //! every producer directly and sequentially, so gate order holds by
-//! construction; this module owns the `StepFactory.swift` builders and the
-//! deterministic `step-0001`-style ids.
+//! construction.
+//!
+//! Pure `StepFactory` logic (`actionType` mapping, default-description
+//! synthesis, terminal-command rendering) delegates to
+//! `stepit_pipeline::step_factory` (single implementation). The `make_*`
+//! builders below stay engine-owned: they shape engine-domain inputs
+//! (`String` ids, `i64` indexes, `StepMedia`, engine `InputClassification`)
+//! at reducer call sites, while the pipeline builders shape aggregator-domain
+//! inputs (`&TypingBatchResult`, `i32` indexes). Unifying the input types is
+//! tracked follow-up work; no description/table logic is duplicated.
 
 use crate::clips::StepMedia;
 use crate::enrichment::{InputClassification, enriched, terminal_command_description};
@@ -23,18 +31,14 @@ pub struct ProducedStep {
 
 /// Click mapping (`StepFactory.actionType(for:clickCount:)`, verbatim):
 /// right → `.rightClick`, count ≥ 2 → `.doubleClick`, else `.click`.
+/// Delegates to `stepit_pipeline::step_factory` (single implementation).
 pub fn action_type_for(button: MouseButton, click_count: i64) -> ActionType {
-    if button == MouseButton::Right {
-        return ActionType::RightClick;
-    }
-    if click_count >= 2 {
-        return ActionType::DoubleClick;
-    }
-    ActionType::Click
+    stepit_pipeline::step_factory::action_type_for(button, click_count as i32)
 }
 
 /// `Step.synthesizeDefaultDescription` (click + typing/writeCode branches,
 /// verbatim — including the 40-char preview and command-prefix table).
+/// Delegates to `stepit_pipeline::step_factory` (single implementation).
 pub fn synthesize_default_description(
     action: ActionType,
     element_title: Option<&str>,
@@ -44,83 +48,15 @@ pub fn synthesize_default_description(
     text_blob: Option<&str>,
     is_code: bool,
 ) -> String {
-    if action == ActionType::Typing || action == ActionType::WriteCode {
-        let target = if app_name.is_empty() { "editor" } else { app_name };
-        let lower = target.to_lowercase();
-        let is_terminal = ["terminal", "iterm", "warp", "ghostty", "kitty", "alacritty"]
-            .iter()
-            .any(|t| lower.contains(t));
-
-        if let Some(blob) = text_blob {
-            if !blob.is_empty() {
-                let clean = blob.trim();
-                let preview: String = clean.chars().take(40).collect();
-                let ellipsis = if clean.chars().count() > 40 { "..." } else { "" };
-                let prefixes = ["npm ", "git ", "swift ", "cd ", "cat ", "ls", "curl", "docker"];
-                let has_prefix = prefixes.iter().any(|p| clean.starts_with(p));
-                if is_terminal || (is_code && has_prefix) {
-                    return format!("Run \"{preview}{ellipsis}\" in {target}");
-                } else if is_code {
-                    return format!("Write code in {target}");
-                } else {
-                    return format!("Type \"{preview}{ellipsis}\" in {target}");
-                }
-            }
-        }
-        if is_terminal {
-            return format!("Execute command in {target}");
-        } else if is_code {
-            return format!("Write code in {target}");
-        }
-        return format!("Type text in {target}");
-    }
-
-    if app_name.contains("UserNotificationCenter") || app_name.contains("Notification") {
-        if let Some(title) = element_title {
-            if !title.trim().is_empty() {
-                return format!("Click notification \"{title}\"");
-            }
-        }
-        return "Click system notification".to_string();
-    }
-
-    let action_word = match action {
-        ActionType::Click => "Click",
-        ActionType::RightClick => "Right-click",
-        ActionType::DoubleClick => "Double-click",
-        ActionType::KeyPress => "Press",
-        ActionType::Typing => "Type in",
-        ActionType::WriteCode => "Write code in",
-        ActionType::AppSwitch => "Switch to",
-        ActionType::MouseDrag => "Drag in",
-        ActionType::Manual => "Perform step in",
-    };
-
-    let mut target_desc = String::new();
-    if let Some(title) = element_title {
-        if !title.trim().is_empty() {
-            target_desc = format!("\"{title}\"");
-        }
-    }
-    if target_desc.is_empty() {
-        if let Some(role) = element_role {
-            target_desc = role.replace("AX", "").to_lowercase();
-        }
-    }
-
-    let context = if !window_title.is_empty() {
-        format!(" in {window_title}")
-    } else if !app_name.is_empty() {
-        format!(" in {app_name}")
-    } else {
-        String::new()
-    };
-
-    if target_desc.is_empty() {
-        format!("{action_word}{context}")
-    } else {
-        format!("{action_word} {target_desc}{context}")
-    }
+    stepit_pipeline::step_factory::synthesize_default_description(
+        action,
+        element_title,
+        element_role,
+        app_name,
+        window_title,
+        text_blob,
+        is_code,
+    )
 }
 
 fn redacted(is_redacted: bool) -> Option<bool> {

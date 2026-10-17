@@ -3,6 +3,15 @@
 //! `TerminalEnrichment.swift`, `PrivacyEnrichment.swift` (`enriched`),
 //! `KeystrokeClassifier.swift` and the secure/blackout halves of
 //! `ClipOrchestrator.captureStepMedia` (image ops stay driver-side).
+//!
+//! Classification, hotkey policy, and batch-context normalization delegate to
+//! `stepit_pipeline` (single implementation; R/M2 hardcoded-dedup close-out).
+//! Engine-owned: `enriched` (app-switch fill), `terminal_command_description`
+//! (`StepFactory` rendering), `PrivacyRedactor`, and the millis-domain
+//! `EventDebouncer`/`TypingBuffer` in [`crate::state`] (integer-millis
+//! precision; the pipeline debouncer/aggregator run on float seconds /
+//! timer-driven batching — wrapping them would trade integer exactness for
+//! float rounding at the accept boundary).
 
 use stepit_ir::{HotkeyChord, KeyModifiers, RawElementContext};
 
@@ -14,7 +23,20 @@ pub enum InputClassification {
     Terminal,
 }
 
+impl From<stepit_pipeline::classify::InputClassification> for InputClassification {
+    fn from(other: stepit_pipeline::classify::InputClassification) -> Self {
+        match other {
+            stepit_pipeline::classify::InputClassification::Text => Self::Text,
+            stepit_pipeline::classify::InputClassification::Terminal => Self::Terminal,
+            stepit_pipeline::classify::InputClassification::Code(lang) => Self::Code {
+                language: Some(lang),
+            },
+        }
+    }
+}
+
 /// Pure port of `KeystrokeClassifier` (verbatim app lists / predicates).
+/// Delegates to `stepit_pipeline::classify` — the lists live in one place.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct KeystrokeClassifier;
 
@@ -25,35 +47,7 @@ impl KeystrokeClassifier {
         bundle_id: Option<&str>,
         window_title: &str,
     ) -> bool {
-        let name = app_name.to_lowercase();
-        let bid = bundle_id.unwrap_or("").to_lowercase();
-        let title = window_title.to_lowercase();
-
-        if name.contains("terminal")
-            || name.contains("iterm")
-            || name.contains("alacritty")
-            || name.contains("kitty")
-            || name.contains("warp")
-            || name.contains("ghostty")
-            || name.contains("hyper")
-            || bid.contains("terminal")
-            || bid.contains("iterm")
-            || bid.contains("warp")
-            || bid.contains("alacritty")
-            || bid.contains("kitty")
-        {
-            return true;
-        }
-
-        if title.contains("— zsh")
-            || title.contains("— bash")
-            || title.contains("terminal")
-            || title.contains("console")
-        {
-            return true;
-        }
-
-        false
+        stepit_pipeline::classify::is_terminal(app_name, bundle_id, window_title)
     }
 
     pub fn is_code_environment(
@@ -62,128 +56,16 @@ impl KeystrokeClassifier {
         bundle_id: Option<&str>,
         window_title: &str,
     ) -> bool {
-        if self.is_terminal_environment(app_name, bundle_id, window_title) {
-            return true;
-        }
-        let name = app_name.to_lowercase();
-        let bid = bundle_id.unwrap_or("").to_lowercase();
-        let title = window_title.to_lowercase();
-
-        if name.contains("code")
-            || name.contains("xcode")
-            || name.contains("sublime")
-            || name.contains("cursor")
-            || name.contains("intellij")
-            || name.contains("pycharm")
-            || name.contains("webstorm")
-            || name.contains("antigravity")
-            || bid.contains("vscode")
-            || bid.contains("antigravity")
-        {
-            return true;
-        }
-
-        const EXTS: [&str; 19] = [
-            ".swift", ".ts", ".tsx", ".js", ".jsx", ".py", ".rs", ".go", ".cpp", ".c", ".h",
-            ".json", ".yaml", ".yml", ".sh", ".bash", ".sql", ".html", ".css",
-        ];
-        EXTS.iter().any(|ext| title.contains(ext))
+        stepit_pipeline::classify::is_code(app_name, bundle_id, window_title)
     }
 
     /// Port of `detectLanguage`, including the legacy `"text"` fallback.
     pub fn detect_language(&self, app_name: &str, window_title: &str, text: &str) -> String {
-        let name = app_name.to_lowercase();
-        let title = window_title.to_lowercase();
-
-        if self.is_terminal_environment(app_name, None, window_title) {
-            return "bash".to_string();
-        }
-
-        if title.contains(".swift") {
-            return "swift".to_string();
-        }
-        if title.contains(".ts") || title.contains(".tsx") {
-            return "typescript".to_string();
-        }
-        if title.contains(".json") {
-            return "json".to_string();
-        }
-        if title.contains(".jsx") || title.contains(".js") {
-            return "javascript".to_string();
-        }
-        if title.contains(".py") {
-            return "python".to_string();
-        }
-        if title.contains(".rs") {
-            return "rust".to_string();
-        }
-        if title.contains(".go") {
-            return "go".to_string();
-        }
-        if title.contains(".yaml") || title.contains(".yml") {
-            return "yaml".to_string();
-        }
-        if title.contains(".sql") {
-            return "sql".to_string();
-        }
-        if title.contains(".sh")
-            || title.contains(".bash")
-            || name.contains("terminal")
-            || name.contains("iterm")
-        {
-            return "bash".to_string();
-        }
-        if title.contains(".html") {
-            return "html".to_string();
-        }
-        if title.contains(".css") {
-            return "css".to_string();
-        }
-
-        let trimmed = text.trim();
-        if trimmed.starts_with('{') || trimmed.starts_with('[') {
-            return "json".to_string();
-        }
-        if trimmed.starts_with("import ")
-            || trimmed.starts_with("func ")
-            || trimmed.starts_with("struct ")
-        {
-            return "swift".to_string();
-        }
-        if trimmed.starts_with("def ") || trimmed.starts_with("class ") {
-            return "python".to_string();
-        }
-        if trimmed.starts_with("npm ")
-            || trimmed.starts_with("git ")
-            || trimmed.starts_with("cd ")
-            || trimmed.starts_with("curl ")
-            || trimmed.starts_with("swift ")
-            || trimmed.starts_with("docker ")
-        {
-            return "bash".to_string();
-        }
-
-        "text".to_string()
+        stepit_pipeline::classify::detect_language(app_name, window_title, text)
     }
 
     pub fn classify(&self, text: &str, context: &RawElementContext) -> InputClassification {
-        if self.is_terminal_environment(
-            &context.app_name,
-            context.bundle_identifier.as_deref(),
-            &context.window_title,
-        ) {
-            return InputClassification::Terminal;
-        }
-        if self.is_code_environment(
-            &context.app_name,
-            context.bundle_identifier.as_deref(),
-            &context.window_title,
-        ) {
-            return InputClassification::Code {
-                language: Some(self.detect_language(&context.app_name, &context.window_title, text)),
-            };
-        }
-        InputClassification::Text
+        stepit_pipeline::classify::classify(text, Some(context)).into()
     }
 }
 
@@ -209,36 +91,31 @@ pub fn enriched(
 
 /// Apply the typing-batch context fallbacks (`TypingBatchAggregator.makeResult`):
 /// unknown/empty app becomes `"Terminal"`, empty window title becomes the app
-/// name, and secure values never ride along.
-pub fn normalize_batch_context(mut context: RawElementContext) -> RawElementContext {
-    if context.app_name.is_empty() || context.app_name == RawElementContext::unknown().app_name {
-        context.app_name = "Terminal".to_string();
-    }
-    if context.window_title.is_empty() {
-        context.window_title = context.app_name.clone();
-    }
-    if context.is_secure {
-        context.value = None;
-    }
-    context
+/// name, and secure values never ride along. Delegates to
+/// `stepit_pipeline::aggregate` (single implementation).
+pub fn normalize_batch_context(context: RawElementContext) -> RawElementContext {
+    stepit_pipeline::aggregate::normalize_batch_context(context)
 }
 
 /// Render `Run "git status" in ~/Code/stepit (Ghostty)`; legacy
 /// `Run "git status" in Ghostty` when the `pwd` is unknown
-/// (`StepFactory.terminalCommandDescription`, verbatim).
+/// (`StepFactory.terminalCommandDescription`, verbatim). Delegates to
+/// `stepit_pipeline::step_factory`, preserving this function's trim contract.
 pub fn terminal_command_description(
     command: &str,
     working_directory: Option<&str>,
     app_name: &str,
 ) -> String {
-    let clean = command.trim();
-    match working_directory {
-        Some(dir) if !dir.is_empty() => format!("Run \"{clean}\" in {dir} ({app_name})"),
-        _ => format!("Run \"{clean}\" in {app_name}"),
-    }
+    stepit_pipeline::step_factory::terminal_command_description(
+        command.trim(),
+        working_directory,
+        app_name,
+    )
 }
 
 /// Decision produced for one keyboard event (`HotkeyRecognizer.HotkeyDecision`).
+/// Same shape as `stepit_pipeline::hotkey::HotkeyDecision`; kept as a distinct
+/// type so the reducer never depends on pipeline item paths directly.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HotkeyDecision {
     ToggleRecording { combo: String },
@@ -249,7 +126,34 @@ pub enum HotkeyDecision {
     Ignored,
 }
 
+impl From<stepit_pipeline::hotkey::HotkeyDecision> for HotkeyDecision {
+    fn from(other: stepit_pipeline::hotkey::HotkeyDecision) -> Self {
+        match other {
+            stepit_pipeline::hotkey::HotkeyDecision::ToggleRecording { combo } => {
+                Self::ToggleRecording { combo }
+            }
+            stepit_pipeline::hotkey::HotkeyDecision::SystemConsumed { combo } => {
+                Self::SystemConsumed { combo }
+            }
+            stepit_pipeline::hotkey::HotkeyDecision::WorkflowShortcut(chord) => {
+                Self::WorkflowShortcut(chord)
+            }
+            stepit_pipeline::hotkey::HotkeyDecision::NavigationKey(chord) => {
+                Self::NavigationKey(chord)
+            }
+            stepit_pipeline::hotkey::HotkeyDecision::TextInput { key, modifiers } => {
+                Self::TextInput { key, modifiers }
+            }
+            stepit_pipeline::hotkey::HotkeyDecision::Ignored => Self::Ignored,
+        }
+    }
+}
+
 /// Centralized hotkey resolution (`HotkeyRecognizer`, IR entry point verbatim).
+/// Delegates to `stepit_pipeline::hotkey` — the toggle/system/shortcut/
+/// navigation policy lives in one place. (Note: this also drops a deviation
+/// the engine copy had: it normalized `ignored_combos` before comparing,
+/// while Swift compares exactly. Delegation restores verbatim Swift parity.)
 #[derive(Debug, Clone)]
 pub struct HotkeyRecognizer {
     pub toggle_combo: String,
@@ -288,14 +192,26 @@ impl HotkeyRecognizer {
     }
 
     /// Whitespace-insensitive combo comparison (`"⌥ Space"` == `"⌥Space"`).
+    /// Toggle matching keeps Swift's normalization (pipeline parity).
     pub fn normalize_combo(combo: &str) -> String {
-        combo.replace(' ', "").to_lowercase()
+        stepit_pipeline::hotkey::HotkeyRecognizer::normalize_combo(combo)
     }
 
     /// macOS sets `.function` on arrow / F-key events without a real `fn`
     /// press; it is not a modifier for combo rendering.
     pub fn chord_modifiers(modifiers: KeyModifiers) -> KeyModifiers {
-        modifiers.subtracting(KeyModifiers::FUNCTION)
+        stepit_pipeline::hotkey::HotkeyRecognizer::chord_modifiers(modifiers)
+    }
+
+    fn pipeline_recognizer(&self) -> stepit_pipeline::hotkey::HotkeyRecognizer {
+        stepit_pipeline::hotkey::HotkeyRecognizer::new(
+            stepit_pipeline::hotkey::HotkeyCaptureSettings {
+                capture_modifier_shortcuts: self.capture_modifier_shortcuts,
+                capture_navigation_keys: self.capture_navigation_keys,
+                ignored_combos: self.ignored_combos.iter().cloned().collect(),
+            },
+            &self.toggle_combo,
+        )
     }
 
     /// Classifies an IR-level keystroke (`key` = W3C `KeyboardEvent.key`).
@@ -305,40 +221,9 @@ impl HotkeyRecognizer {
         code: Option<i64>,
         modifiers: KeyModifiers,
     ) -> HotkeyDecision {
-        let modifiers = Self::chord_modifiers(modifiers);
-        let chord = HotkeyChord::new(key.to_string(), None, code, modifiers);
-        let combo = chord.combo();
-
-        if Self::normalize_combo(&combo) == Self::normalize_combo(&self.toggle_combo) {
-            return HotkeyDecision::ToggleRecording { combo };
-        }
-
-        if Self::built_in_system_combos().contains(&combo.as_str())
-            || self
-                .ignored_combos
-                .iter()
-                .any(|c| Self::normalize_combo(c) == Self::normalize_combo(&combo))
-        {
-            return HotkeyDecision::SystemConsumed { combo };
-        }
-
-        let is_control_interrupt =
-            modifiers.contains(KeyModifiers::CONTROL) && !modifiers.contains(KeyModifiers::COMMAND) && key.to_lowercase() == "c";
-        if modifiers.contains(KeyModifiers::COMMAND) || modifiers.contains(KeyModifiers::CONTROL) {
-            if !self.capture_modifier_shortcuts && !is_control_interrupt {
-                return HotkeyDecision::Ignored;
-            }
-            return HotkeyDecision::WorkflowShortcut(chord);
-        }
-
-        if Self::navigation_keys().contains(&key) {
-            if !self.capture_navigation_keys {
-                return HotkeyDecision::Ignored;
-            }
-            return HotkeyDecision::NavigationKey(chord);
-        }
-
-        HotkeyDecision::TextInput { key: key.to_string(), modifiers }
+        self.pipeline_recognizer()
+            .evaluate(key, code.map(|c| c as i32), modifiers)
+            .into()
     }
 }
 

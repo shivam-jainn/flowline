@@ -8,6 +8,7 @@ workspace = true
 
 [dependencies]
 stepit_ir = { path = "../stepit_ir" }
+stepit_pipeline = { path = "../stepit_pipeline" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

@@ -18,6 +18,23 @@
 use crate::classify::{InputClassification, classify};
 use stepit_ir::{Point2D, RawElementContext};
 
+/// Apply the typing-batch context fallbacks (`TypingBatchAggregator.makeResult`):
+/// unknown/empty app becomes `"Terminal"`, empty window title becomes the app
+/// name, and secure values never ride along. Shared with `stepit_engine`
+/// (which delegates here instead of duplicating the block).
+pub fn normalize_batch_context(mut context: RawElementContext) -> RawElementContext {
+    if context.app_name.is_empty() || context.app_name == RawElementContext::unknown().app_name {
+        context.app_name = "Terminal".to_string();
+    }
+    if context.window_title.is_empty() {
+        context.window_title.clone_from(&context.app_name);
+    }
+    if context.is_secure {
+        context.value = None;
+    }
+    context
+}
+
 #[derive(Debug, Clone)]
 pub struct TypingBatchResult {
     pub text_blob: String,
@@ -173,16 +190,7 @@ impl Default for TypingBatchAggregator {
 }
 
 fn make_result(text: &str, location: Point2D, raw: &RawElementContext) -> TypingBatchResult {
-    let mut context = raw.clone();
-    if context.app_name.is_empty() || context.app_name == RawElementContext::unknown().app_name {
-        context.app_name = "Terminal".to_string();
-    }
-    if context.window_title.is_empty() {
-        context.window_title.clone_from(&context.app_name);
-    }
-    if context.is_secure {
-        context.value = None;
-    }
+    let context = normalize_batch_context(raw.clone());
 
     let classification = classify(text, Some(&context));
 
