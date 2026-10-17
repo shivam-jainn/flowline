@@ -2,11 +2,15 @@
 //!
 //! One API surface (`API_VERSION`) re-exporting every core crate behind
 //! JSON-string boundaries: hosts pass JSON in, get JSON (or strings) out.
-//! This keeps the boundary expressible as data + capability calls (§4) and
-//! makes `uniffi-rs` codegen mechanical when the toolchain is available
-//! (see `docs/roadmap/phase-r/m2-07-bindings-wasm.md` for the deferred
-//! UniFFI + `wasm-pack` steps — neither `uniffi-bindgen` nor the
-//! `wasm32-unknown-unknown` target exists on this machine).
+//! This keeps the boundary expressible as data + capability calls (§4).
+//!
+//! Bindings: `uniffi::export` on the six boundary functions +
+//! `setup_scaffolding!`; Swift bindings are generated with
+//! `Scripts/build-rust-ffi.sh` into `Generated/StepItFFI/` and linked via the
+//! `StepItFFI` target in `Package.swift` (proven by
+//! `Tests/StepItTests/DataLine/PhaseR09FFITests.swift`). Web: `web.rs`
+//! (`#[wasm_bindgen]`) packaged with `wasm-pack build` (proven by
+//! `wasm-pack test --node`).
 //!
 //! The C ABI exposes a single smoke symbol (`stepit_api_version`); richer
 //! UniFFI scaffolding binds to the `api::*` functions below.
