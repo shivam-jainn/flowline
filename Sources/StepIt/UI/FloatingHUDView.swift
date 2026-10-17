@@ -1,4 +1,6 @@
 import SwiftUI
+import StepItPipeline
+import StepItEngine
 import StepItIR
 import StepItCore
 

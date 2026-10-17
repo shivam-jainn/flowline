@@ -1,6 +1,7 @@
 import Foundation
 import StepItIR
 import StepItPipeline
+import StepItEngine
 @testable import StepItCore
 
 /// Compile-only stub that locks the `CaptureDriver` protocol shape: it

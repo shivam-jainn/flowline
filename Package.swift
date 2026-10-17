@@ -41,7 +41,7 @@ let package = Package(
         ),
         .target(
             name: "StepItEngine",
-            dependencies: ["StepItIR", "StepItPipeline", "StepItCaptureAPI", "StepItStorage"],
+            dependencies: ["StepItIR", "StepItPipeline", "StepItCaptureAPI", "StepItStorage", "StepItCore"],
             path: "Sources/StepItEngine"
         ),
         .target(

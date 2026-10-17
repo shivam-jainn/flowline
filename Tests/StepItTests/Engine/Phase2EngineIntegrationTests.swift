@@ -1,6 +1,7 @@
 import XCTest
 import StepItIR
 import StepItPipeline
+import StepItEngine
 @testable import StepItCore
 
 /// Phase 2 end-to-end matrix (T10): hotkeys, terminal `pwd`, pre-capture

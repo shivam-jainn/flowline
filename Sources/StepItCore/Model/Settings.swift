@@ -5,6 +5,7 @@ import StepItPipeline
 public typealias RedactionBlurStyle = StepItPipeline.RedactionBlurStyle
 public typealias PrivacySettings = StepItPipeline.PrivacySettings
 public typealias GestureAction = StepItIR.GestureAction
+public typealias HotkeyCaptureSettings = StepItPipeline.HotkeyCaptureSettings
 
 public struct CaptureSettings: Codable, Sendable, Equatable {
     public var mediaMode: MediaMode
@@ -150,19 +151,6 @@ public struct HotkeySettings: Codable, Sendable, Equatable {
 }
 
 // MARK: - Phase 2: Privacy & Shortcut Capture Configuration
-
-/// Which keyboard chords become discrete documentation steps.
-public struct HotkeyCaptureSettings: Codable, Sendable, Equatable {
-    /// Record `⌘`/`⌃` chords (`⌘S`, `⌘⇧P`, `⌃A`, …) as `.keyPress` steps.
-    public var captureModifierShortcuts: Bool = true
-    /// Record navigation keys (Esc, Tab, arrows, F-keys) as `.keyPress` steps.
-    public var captureNavigationKeys: Bool = true
-    /// Extra chords the recorder must consume and never record (app-registered
-    /// shortcuts). System combos like `⌘Tab` / `⌘Space` are always consumed.
-    public var ignoredCombos: Set<String> = []
-
-    public init() {}
-}
 
 // MARK: - Smart Gestures Configuration
 

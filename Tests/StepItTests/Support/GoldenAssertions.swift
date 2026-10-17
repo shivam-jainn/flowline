@@ -1,6 +1,7 @@
 import Foundation
 import StepItIR
 import StepItPipeline
+import StepItEngine
 import XCTest
 
 /// Phase 0 — golden / determinism / leak assertions shared by all data-line tests.

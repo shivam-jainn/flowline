@@ -1,6 +1,7 @@
 import XCTest
 import StepItIR
 import StepItPipeline
+import StepItEngine
 @testable import StepItCore
 
 final class TypingBatchAggregatorTests: XCTestCase {

@@ -3,6 +3,7 @@ import Foundation
 import StepItIR
 import StepItCore
 import StepItPipeline
+import StepItEngine
 
 /// R/M1-02: IR + Pipeline extraction proof. Moved suites run unmodified
 /// (full `swift test` covers that); these assert the new homes and the

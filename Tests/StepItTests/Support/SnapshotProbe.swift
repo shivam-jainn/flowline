@@ -1,6 +1,7 @@
 import Foundation
 import StepItIR
 import StepItPipeline
+import StepItEngine
 @testable import StepItCore
 
 /// Collects `RecorderSnapshot`s from the engine's stream and lets tests await

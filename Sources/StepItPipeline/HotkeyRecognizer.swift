@@ -1,4 +1,5 @@
 import Foundation
+import StepItIR
 
 /// Decision produced by `HotkeyRecognizer` for one keyboard event.
 ///

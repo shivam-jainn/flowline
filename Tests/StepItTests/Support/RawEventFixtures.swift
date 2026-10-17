@@ -1,6 +1,7 @@
 import Foundation
 import StepItIR
 import StepItPipeline
+import StepItEngine
 @testable import StepItCore
 
 /// One-liners for readable engine tests.

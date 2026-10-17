@@ -1,6 +1,7 @@
 import Foundation
 import StepItIR
 import StepItPipeline
+import StepItEngine
 @testable import StepItCore
 
 /// Thread-safe collector for async callback results (typing batches).

@@ -1,4 +1,7 @@
 import Foundation
+import StepItIR
+import StepItPipeline
+import StepItCore
 
 /// Single seam for timestamps and timing (debounce / gesture-notice dismissal)
 /// so engine tests can drive time deterministically.

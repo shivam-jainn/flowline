@@ -1,4 +1,5 @@
 import Foundation
+import StepItIR
 
 /// macOS virtual key code → W3C `KeyboardEvent.key` vocabulary.
 ///

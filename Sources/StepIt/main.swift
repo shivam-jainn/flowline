@@ -1,4 +1,6 @@
 import Foundation
+import StepItPipeline
+import StepItEngine
 import StepItIR
 import AppKit
 

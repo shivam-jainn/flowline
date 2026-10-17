@@ -2,6 +2,7 @@ import XCTest
 import Foundation
 import StepItIR
 import StepItPipeline
+import StepItEngine
 import CoreGraphics
 import AppKit
 @testable import StepItCore

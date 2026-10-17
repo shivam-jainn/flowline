@@ -1,4 +1,6 @@
 import Foundation
+import StepItPipeline
+import StepItEngine
 import StepItIR
 
 /// Locates the repository fixture tree (`Fixtures/`) used by the fixture-driven
