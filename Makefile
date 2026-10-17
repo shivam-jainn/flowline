@@ -6,7 +6,7 @@
 #   tooling/       Builds + gates (ci, toolchain, dev, release)
 #
 # Run `make` for the default target (build).
-.PHONY: all build test ffi check-arch check-rust check-wasm check-phase-r serve demo automate bundle dmg clean test-dev dev run sign-setup doctor
+.PHONY: all build test ffi check-arch check-rust check-wasm check-phase-r serve demo automate bundle dmg clean test-dev dev run sign-setup doctor reset-tcc
 
 SWIFT_PKG := platform/macos
 RUST_MANIFEST := core/Cargo.toml
@@ -98,6 +98,13 @@ run:
 	open $(SWIFT_PKG)/.build/StepIt.app
 	sleep 1
 	ps -o pid,lstart,command -p $$(pgrep -x StepIt | head -1) || true
+
+# Nuclear option for scrambled TCC state (stale/duplicate entries): wipes both
+# grants for OUR bundle id only, then relaunch and grant once on the current
+# binary. Note this INCREASES Settings trips — it never reduces them.
+reset-tcc:
+	tccutil reset ScreenCapture com.stepit.macos
+	tccutil reset Accessibility com.stepit.macos
 
 # One-shot diagnosis for "permissions show granted but the app says denied":
 # binary hash vs running process, signing identity, team cert. The classic
