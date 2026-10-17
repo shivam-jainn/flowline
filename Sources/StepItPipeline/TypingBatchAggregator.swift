@@ -1,4 +1,5 @@
 import Foundation
+import StepItIR
 
 /// Successor of `TypingEventResult`: same information, IR-typed, with the
 /// classification precomputed at finalization time.

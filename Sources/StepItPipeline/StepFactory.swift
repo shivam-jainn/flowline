@@ -1,4 +1,5 @@
 import Foundation
+import StepItIR
 
 /// Single place where IR → `Step` mapping happens.
 ///

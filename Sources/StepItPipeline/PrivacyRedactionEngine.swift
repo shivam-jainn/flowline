@@ -1,4 +1,5 @@
 import Foundation
+import StepItIR
 
 /// Post-capture redaction planner (Phase 2, T7).
 ///

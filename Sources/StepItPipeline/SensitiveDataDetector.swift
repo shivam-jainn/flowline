@@ -1,4 +1,5 @@
 import Foundation
+import StepItIR
 
 /// A sensitive token found in scanned text (Phase 2, T7).
 public struct SensitiveDataMatch: Sendable, Equatable {

@@ -1,4 +1,5 @@
 import Foundation
+import StepItIR
 
 /// Extracts the inline 200 ms click guard into a testable value type driven by
 /// event timestamps.

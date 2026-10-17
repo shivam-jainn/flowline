@@ -1,4 +1,5 @@
 import Foundation
+import StepItIR
 
 /// Result of classifying what & where the user was typing.
 public enum InputClassification: Sendable, Equatable {
