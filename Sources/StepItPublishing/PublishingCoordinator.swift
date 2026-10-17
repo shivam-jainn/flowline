@@ -1,11 +1,20 @@
 import Foundation
-import AppKit
+import StepItIR
+import StepItCore
+import StepItStorage
 
 public final class PublishingCoordinator: @unchecked Sendable {
     public static let shared = PublishingCoordinator()
     private let fileManager = FileManager.default
+    private let urlOpener: any URLOpener
     
-    public init() {}
+    public init() {
+        self.urlOpener = DefaultURLOpener()
+    }
+    
+    public init(urlOpener: any URLOpener = DefaultURLOpener()) {
+        self.urlOpener = urlOpener
+    }
     
     @discardableResult
     public func exportWeb(session: StepSession, settings: StepItSettings) throws -> URL {
@@ -75,10 +84,10 @@ public final class PublishingCoordinator: @unchecked Sendable {
     }
     
     public func openInBrowser(url: URL) {
-        NSWorkspace.shared.open(url)
+        urlOpener.open(url)
     }
     
     public func revealInFinder(url: URL) {
-        NSWorkspace.shared.activateFileViewerSelecting([url])
+        urlOpener.revealInFinder(url)
     }
 }
