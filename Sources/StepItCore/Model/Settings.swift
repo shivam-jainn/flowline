@@ -1,4 +1,10 @@
 import Foundation
+import StepItIR
+import StepItPipeline
+
+public typealias RedactionBlurStyle = StepItPipeline.RedactionBlurStyle
+public typealias PrivacySettings = StepItPipeline.PrivacySettings
+public typealias GestureAction = StepItIR.GestureAction
 
 public struct CaptureSettings: Codable, Sendable, Equatable {
     public var mediaMode: MediaMode
@@ -145,42 +151,6 @@ public struct HotkeySettings: Codable, Sendable, Equatable {
 
 // MARK: - Phase 2: Privacy & Shortcut Capture Configuration
 
-/// Visual treatment applied over detected sensitive regions.
-public enum RedactionBlurStyle: String, Codable, CaseIterable, Sendable {
-    case frostedGlass = "frosted_glass"
-    case blackout = "blackout"
-
-    public var displayName: String {
-        switch self {
-        case .frostedGlass: return "Frosted Glass (Gaussian Blur)"
-        case .blackout: return "Solid Blackout"
-        }
-    }
-}
-
-/// Pre-capture (secure field masking) and post-capture (offline OCR redaction)
-/// privacy rules. Everything runs 100% on-device — no network, no cloud.
-public struct PrivacySettings: Codable, Sendable, Equatable {
-    /// Mask keystrokes typed into `isSecure` fields as `••••` instead of
-    /// dropping the batch entirely. Raw characters are never buffered either way.
-    public var maskSecureInputFields: Bool = true
-    /// Run the offline Apple Vision OCR pipeline over captured screenshots and
-    /// blur detected sensitive tokens before they are written to disk.
-    public var enableOfflineOCRRedaction: Bool = true
-    /// OpenAI `sk-…`, AWS `AKIA…`, GitHub `ghp_…`, JWTs and bearer tokens.
-    public var autoRedactAPIKeys: Bool = true
-    public var autoRedactCreditCards: Bool = true
-    public var autoRedactEmails: Bool = false
-    /// Blur radius (in screen points) for `.frostedGlass` redaction.
-    public var blurRadius: Double = 12.0
-    /// Frosted glass blur vs. solid blackout.
-    public var blurStyle: RedactionBlurStyle = .frostedGlass
-    /// Extra user-supplied regex patterns, matched case-insensitively.
-    public var customRegexPatterns: [String] = []
-
-    public init() {}
-}
-
 /// Which keyboard chords become discrete documentation steps.
 public struct HotkeyCaptureSettings: Codable, Sendable, Equatable {
     /// Record `⌘`/`⌃` chords (`⌘S`, `⌘⇧P`, `⌃A`, …) as `.keyPress` steps.
@@ -195,37 +165,6 @@ public struct HotkeyCaptureSettings: Codable, Sendable, Equatable {
 }
 
 // MARK: - Smart Gestures Configuration
-
-public enum GestureAction: String, Codable, CaseIterable, Sendable {
-    case none = "none"
-    case pauseResume = "pause_resume"
-    case stopAndReview = "stop_and_review"
-    case discardLastStep = "discard_last_step"
-    case addCheckpoint = "add_checkpoint"
-    case captureSnapshot = "capture_snapshot"
-    
-    public var title: String {
-        switch self {
-        case .none: return "Disabled"
-        case .pauseResume: return "Pause / Resume Recording"
-        case .stopAndReview: return "Stop & Open Review Window"
-        case .discardLastStep: return "Discard / Undo Last Step"
-        case .addCheckpoint: return "Mark Step as Key Milestone ⭐"
-        case .captureSnapshot: return "Capture Instant Snapshot 📸"
-        }
-    }
-    
-    public var icon: String {
-        switch self {
-        case .none: return "slash.circle"
-        case .pauseResume: return "pause.circle.fill"
-        case .stopAndReview: return "stop.circle.fill"
-        case .discardLastStep: return "arrow.uturn.backward.circle.fill"
-        case .addCheckpoint: return "star.circle.fill"
-        case .captureSnapshot: return "camera.circle.fill"
-        }
-    }
-}
 
 public enum GestureSensitivity: String, Codable, CaseIterable, Sendable {
     case low = "low"

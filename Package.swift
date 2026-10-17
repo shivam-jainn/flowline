@@ -71,7 +71,7 @@ let package = Package(
         ),
         .target(
             name: "StepItCore",
-            dependencies: coreModules,
+            dependencies: ["StepItIR", "StepItPipeline"],
             path: "Sources/StepItCore"
         ),
         .target(
