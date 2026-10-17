@@ -34,8 +34,51 @@ public final class MicroClipRecorder: @unchecked Sendable {
     
     public var fps: Int = 12
     public var maxBufferSeconds: Double = 1.5
-    
+
+    /// Clip encode budget: stride-sample to at most this many frames and
+    /// downscale to at most this width before GIF/MP4 encoding.
+    public static let maxClipFrames = 16
+    public static let maxClipWidth: CGFloat = 900
+
     public init() {}
+
+    /// Samples + downscales raw frames into encode-ready clip frames.
+    public static func prepareClipFrames(
+        _ images: [CGImage],
+        maxFrames: Int = maxClipFrames,
+        maxWidth: CGFloat = maxClipWidth
+    ) -> [CGImage] {
+        guard !images.isEmpty else { return [] }
+        let stride = max(1, (images.count + max(1, maxFrames) - 1) / max(1, maxFrames))
+        var sampled: [CGImage] = []
+        sampled.reserveCapacity(min(images.count, maxFrames))
+        var i = 0
+        while i < images.count {
+            sampled.append(images[i])
+            i += stride
+        }
+        return sampled.map { downscale($0, maxWidth: maxWidth) }
+    }
+
+    /// Aspect-preserving downscale; no-op when already narrow enough.
+    public static func downscale(_ image: CGImage, maxWidth: CGFloat) -> CGImage {
+        guard CGFloat(image.width) > maxWidth, image.width > 0, image.height > 0 else { return image }
+        let scale = maxWidth / CGFloat(image.width)
+        let width = max(1, Int((CGFloat(image.width) * scale).rounded()))
+        let height = max(1, Int((CGFloat(image.height) * scale).rounded()))
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return image }
+        context.interpolationQuality = .medium
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return context.makeImage() ?? image
+    }
     
     // MARK: - Rolling Buffer Control
     
@@ -135,11 +178,19 @@ public final class MicroClipRecorder: @unchecked Sendable {
                 clickTime: clickTimestamp
             )
             
+            // Encode small, fast clips: full-screen full-rate frames are tens of
+            // MB and take seconds on the engine path (GIFs never arrive).
+            let clipFrames = Self.prepareClipFrames(
+                processedFrames,
+                maxFrames: Self.maxClipFrames,
+                maxWidth: Self.maxClipWidth
+            )
+
             // Encode GIF
-            let gifData = self.createGIF(from: processedFrames, fps: self.fps)
-            
+            let gifData = self.createGIF(from: clipFrames, fps: min(self.fps, 10))
+
             // Encode MP4/Video
-            let videoData = self.createMP4(from: processedFrames, fps: self.fps)
+            let videoData = self.createMP4(from: clipFrames, fps: self.fps)
             
             completion(gifData, videoData)
         }

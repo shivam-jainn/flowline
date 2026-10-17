@@ -15,7 +15,10 @@ public struct ReviewStepsPane: View {
     private func mediaChoiceBinding(for listIndex: Int) -> Binding<String> {
         Binding(
             get: {
+                // Default agrees with WebDocSections: GIF when an animation
+                // was captured, Static otherwise.
                 if let saved = session.steps[listIndex].preferredMedia { return saved }
+                if session.steps[listIndex].assets.gif != nil { return "GIF" }
                 return "Static"
             },
             set: {
@@ -23,6 +26,13 @@ public struct ReviewStepsPane: View {
                 try? store.saveSession(session)
             }
         )
+    }
+
+    /// Effective per-step choice: explicit `preferredMedia`, else GIF when a
+    /// gif asset exists (matching the binding default + web export default).
+    private func effectiveMediaChoice(for step: Step) -> String {
+        if let saved = step.preferredMedia { return saved }
+        return step.assets.gif != nil ? "GIF" : "Static"
     }
 
     public init(
@@ -141,7 +151,8 @@ public struct ReviewStepsPane: View {
 
             // MediaChoice: per-step GIF vs Static image toggle (post-recording).
             // Persisted to step.preferredMedia and actually switches the preview.
-            if step.assets.gif != nil, step.assets.screenshot != nil {
+            // Shown whenever an animation was captured (screenshot optional).
+            if step.assets.gif != nil {
                 Picker("MediaChoice", selection: mediaChoiceBinding(for: index)) {
                     Text("Static").tag("Static")
                     Text("GIF").tag("GIF")
@@ -151,24 +162,22 @@ public struct ReviewStepsPane: View {
             }
 
             // Thumbnail / Scrubber / 2.4x Zoom View — honors the GIF/static choice.
-            let wantsGIF = (session.steps[index].preferredMedia == "GIF") && step.assets.gif != nil
+            // NB: SwiftUI Image(nsImage:) renders only the first GIF frame, so
+            // the GIF branch uses AnimatedGIFView (NSImageView, animates=true).
+            let wantsGIF = effectiveMediaChoice(for: step) == "GIF" && step.assets.gif != nil
             if wantsGIF, let gifPath = step.assets.gif {
                 let gifURL = store.resolveMediaPath(sessionID: session.id, relativePath: gifPath)
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Animated GIF preview")
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
-                    if let nsImage = NSImage(contentsOf: gifURL) {
-                        Image(nsImage: nsImage)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(maxHeight: 180)
-                            .cornerRadius(8)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                            )
-                    }
+                    AnimatedGIFView(url: gifURL)
+                        .frame(maxHeight: 180)
+                        .cornerRadius(8)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                        )
                 }
             } else if let screenshotPath = step.assets.screenshot {
                 let showZoom = (showingZoomCrop[step.index] ?? false) && (step.assets.zoomCrop != nil)
@@ -375,5 +384,39 @@ public struct ReviewStepsPane: View {
             session.steps[i].index = i + 1
         }
         try? store.saveSession(session)
+    }
+}
+
+// MARK: - Animated GIF preview
+
+/// Plays an animated GIF from disk. SwiftUI `Image(nsImage:)` renders only
+/// the first frame, so this wraps `NSImageView` (which animates GIFs when
+/// `animates = true`) via `NSViewRepresentable`.
+struct AnimatedGIFView: NSViewRepresentable {
+    let url: URL
+
+    func makeNSView(context: Context) -> NSImageView {
+        let view = NSImageView()
+        view.imageScaling = .scaleProportionallyUpOrDown
+        view.animates = true
+        view.canDrawSubviewsIntoLayer = true
+        view.image = NSImage(contentsOf: url)
+        context.coordinator.loadedURL = url
+        return view
+    }
+
+    func updateNSView(_ nsView: NSImageView, context: Context) {
+        // Reload if the file changed under us (e.g. clip patched in late).
+        if context.coordinator.loadedURL != url {
+            nsView.image = NSImage(contentsOf: url)
+            nsView.animates = true
+            context.coordinator.loadedURL = url
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    final class Coordinator {
+        var loadedURL: URL?
     }
 }
