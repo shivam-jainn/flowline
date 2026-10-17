@@ -1,4 +1,6 @@
 import Foundation
+import StepItIR
+import StepItPipeline
 
 // MARK: - Terminal Context SPI (Phase 2, T4)
 //

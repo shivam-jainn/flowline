@@ -1,4 +1,7 @@
 import Foundation
+import StepItIR
+import StepItPipeline
+import StepItCore
 
 /// In-memory `CaptureDriver` for headless tests: no `CGEvent`, no AX
 /// permission, no display. Behaving like a non-macOS driver also proves the SPI
