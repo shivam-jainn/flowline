@@ -42,7 +42,7 @@ public final class ReviewWindowController: @unchecked Sendable {
         if window == nil {
             let win = NSWindow(
                 contentRect: NSRect(x: 100, y: 100, width: 1050, height: 720),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+                styleMask: [.titled, .closable, .miniaturizable, .resizable],
                 backing: .buffered,
                 defer: false
             )

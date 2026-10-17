@@ -104,12 +104,17 @@ public struct ReviewStepsPane: View {
                     TextField("Step Description", text: $session.steps[index].actionDescription)
                         .font(.system(size: 13, weight: .semibold))
                         .textFieldStyle(PlainTextFieldStyle())
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
                     HStack(spacing: 8) {
                         if !step.appName.isEmpty {
                             Label(step.appName, systemImage: "app.fill")
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
                         }
                         if let role = step.elementRole {
                             Text(role)
@@ -118,6 +123,8 @@ public struct ReviewStepsPane: View {
                                 .padding(.vertical, 2)
                                 .background(Color.secondary.opacity(0.12))
                                 .cornerRadius(4)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
                         }
                         if let combo = step.hotkeyCombo {
                             Label(combo, systemImage: "command")
@@ -126,15 +133,23 @@ public struct ReviewStepsPane: View {
                                 .padding(.vertical, 2)
                                 .background(Color.accentColor.opacity(0.12))
                                 .cornerRadius(4)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
                         }
                         if let directory = step.workingDirectory {
                             Label(directory, systemImage: "folder")
                                 .font(.system(size: 11, design: .monospaced))
                                 .foregroundColor(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
                         }
                         redactionBadge(index: index)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .clipped()
                 }
+                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+                .clipped()
 
                 Spacer()
 
@@ -172,7 +187,8 @@ public struct ReviewStepsPane: View {
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
                     AnimatedGIFView(url: gifURL)
-                        .frame(maxHeight: 180)
+                        .frame(maxWidth: .infinity, maxHeight: 180)
+                        .clipped()
                         .cornerRadius(8)
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
@@ -228,7 +244,8 @@ public struct ReviewStepsPane: View {
                         Image(nsImage: nsImage)
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .frame(maxHeight: 180)
+                            .frame(maxWidth: .infinity, maxHeight: 180)
+                            .clipped()
                             .cornerRadius(8)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
@@ -291,6 +308,7 @@ public struct ReviewStepsPane: View {
             .textFieldStyle(RoundedBorderTextFieldStyle())
             .font(.system(size: 11))
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(isSelected ? Color.accentColor.opacity(0.06) : Color(NSColor.windowBackgroundColor))
         .cornerRadius(10)
