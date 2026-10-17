@@ -1,12 +1,45 @@
-.build/
+# ── StepIt monolith ignores ──────────────────────────────────────────
+# Layout: apps/desktop (SwiftPM) + core (Cargo) + shared (data) + tooling.
+# Generated FFI/WASM outputs are rebuilt via `make ffi`
+# (tooling/toolchain/build-rust-ffi.sh) and never committed.
+# docs/ and shared/ are source — never ignore them.
+
+# ── SwiftPM / Xcode (apps/desktop) ─────────────────────────────────
+apps/desktop/.build/
 .swiftpm/
 *.xcodeproj/
 *.xcworkspace/
-.DS_Store
 DerivedData/
+*.o
+*.d
+
+# ── macOS ──────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ── Rust (core) ────────────────────────────────────────────────────
+core/target/
+core/crates/stepit_ffi/pkg-web/
+target/
+
+# ── Generated UniFFI/XCFramework outputs (rebuilt by `make ffi`) ───
+apps/desktop/Generated/stepit_ffiFFI.xcframework/
+apps/desktop/Generated/FFIHeaders/
+apps/desktop/Generated/StepItFFI/stepit_ffi.swift
+!apps/desktop/Generated/StepItFFI/.gitkeep
+
+# ── Release artifacts ──────────────────────────────────────────────
 dist/
-docs/
-Rust/target/
-Generated/stepit_ffiFFI.xcframework/
-Generated/FFIHeaders/
-Rust/crates/stepit_ffi/pkg-web/
+
+# ── Node / WASM ────────────────────────────────────────────────────
+node_modules/
+pkg/
+*.wasm
+
+# ── Secrets / local env ────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
