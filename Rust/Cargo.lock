@@ -106,6 +106,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "stepit_ffi"
+version = "0.1.0"
+dependencies = [
+ "parity_harness",
+ "serde",
+ "serde_json",
+ "stepit_ai_gateway",
+ "stepit_engine",
+ "stepit_ir",
+ "stepit_pipeline",
+ "stepit_projections",
+ "stepit_storage",
+ "thiserror",
+]
+
+[[package]]
 name = "stepit_ir"
 version = "0.1.0"
 dependencies = [

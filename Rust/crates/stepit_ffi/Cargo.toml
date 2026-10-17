@@ -1,0 +1,22 @@
+[package]
+name = "stepit_ffi"
+version = "0.1.0"
+edition = "2021"
+
+[lints]
+workspace = true
+
+[dependencies]
+stepit_ir = { path = "../stepit_ir" }
+stepit_pipeline = { path = "../stepit_pipeline" }
+stepit_engine = { path = "../stepit_engine" }
+stepit_storage = { path = "../stepit_storage" }
+stepit_projections = { path = "../stepit_projections" }
+stepit_ai_gateway = { path = "../stepit_ai_gateway" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+parity_harness = { path = "../parity_harness" }
+serde_json = { workspace = true }
