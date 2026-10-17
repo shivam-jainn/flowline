@@ -165,6 +165,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "stepit_win_capture"
+version = "0.1.0"
+dependencies = [
+ "parity_harness",
+ "serde",
+ "serde_json",
+ "stepit_engine",
+ "stepit_ir",
+ "thiserror",
+]
+
+[[package]]
 name = "syn"
 version = "3.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
