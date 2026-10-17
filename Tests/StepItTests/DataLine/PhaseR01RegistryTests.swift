@@ -1,5 +1,6 @@
 import XCTest
 import StepItIR
+import StepItPipeline
 import StepItCaptureAPI
 import StepItPublishing
 import StepItAIGateway

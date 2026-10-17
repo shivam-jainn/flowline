@@ -1,4 +1,5 @@
 import AppKit
+import StepItIR
 import SwiftUI
 import Combine
 import StepItCore

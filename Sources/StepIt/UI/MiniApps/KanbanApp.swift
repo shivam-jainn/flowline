@@ -1,4 +1,5 @@
 import SwiftUI
+import StepItIR
 import AppKit
 
 public struct KanbanTask: Identifiable {

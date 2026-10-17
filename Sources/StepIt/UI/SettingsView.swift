@@ -1,4 +1,5 @@
 import SwiftUI
+import StepItIR
 import StepItCore
 
 public struct SettingsView: View {

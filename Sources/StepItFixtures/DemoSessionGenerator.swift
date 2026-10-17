@@ -1,4 +1,5 @@
 import Foundation
+import StepItIR
 import AppKit
 import CoreGraphics
 import StepItCore

@@ -1,4 +1,6 @@
 import XCTest
+import StepItIR
+import StepItPipeline
 @testable import StepItCore
 
 /// Phase 0 gate: the fixture TDD framework itself is tested before any

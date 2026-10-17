@@ -1,4 +1,6 @@
 import XCTest
+import StepItIR
+import StepItPipeline
 import AppKit
 @testable import StepItCore
 

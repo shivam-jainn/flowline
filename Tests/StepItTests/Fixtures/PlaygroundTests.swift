@@ -1,5 +1,7 @@
 import XCTest
 import Foundation
+import StepItIR
+import StepItPipeline
 import CoreGraphics
 import AppKit
 import WebKit

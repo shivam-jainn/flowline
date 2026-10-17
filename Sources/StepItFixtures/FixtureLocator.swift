@@ -1,4 +1,5 @@
 import Foundation
+import StepItIR
 
 /// Locates the repository fixture tree (`Fixtures/`) used by the fixture-driven
 /// demo tooling in this module: the Playground web app rendered by

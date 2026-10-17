@@ -1,4 +1,6 @@
 import XCTest
+import StepItIR
+import StepItPipeline
 @testable import StepItCore
 
 final class HotkeyRecognizerTests: XCTestCase {

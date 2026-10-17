@@ -1,4 +1,6 @@
 import Foundation
+import StepItIR
+import StepItPipeline
 @testable import StepItCore
 
 /// Phase 0 — deterministic builders for every data-line phase (7–22).

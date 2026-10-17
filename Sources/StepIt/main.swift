@@ -1,4 +1,5 @@
 import Foundation
+import StepItIR
 import AppKit
 
 let arguments = CommandLine.arguments
