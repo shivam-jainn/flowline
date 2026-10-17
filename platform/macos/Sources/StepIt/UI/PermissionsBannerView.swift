@@ -12,11 +12,13 @@ import StepItIR
 
 public struct PermissionsBannerView: View {
     private let manager: PermissionsManager
+    private let onContinue: (() -> Void)?
     @State private var hasScreenRecording: Bool
     @State private var hasAccessibility: Bool
 
-    public init(manager: PermissionsManager = PermissionsManager()) {
+    public init(manager: PermissionsManager = PermissionsManager(), onContinue: (() -> Void)? = nil) {
         self.manager = manager
+        self.onContinue = onContinue
         self._hasScreenRecording = State(initialValue: manager.hasScreenRecordingPermission)
         self._hasAccessibility = State(initialValue: manager.hasAccessibilityPermission)
     }
@@ -108,6 +110,28 @@ public struct PermissionsBannerView: View {
                 }
                 .padding(10)
                 .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(8)
+            }
+
+            // All granted: this used to be a dead end (two ticks, no action).
+            // Offer the onward step explicitly.
+            if hasScreenRecording && hasAccessibility {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                    Text("You're all set — StepIt can capture and observe.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Button("Start Recording") {
+                        onContinue?()
+                    }
+                    .buttonStyle(BorderedProminentButtonStyle())
+                    .controlSize(.small)
+                    .disabled(onContinue == nil)
+                }
+                .padding(10)
+                .background(Color.green.opacity(0.08))
                 .cornerRadius(8)
             }
         }

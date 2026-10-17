@@ -269,7 +269,13 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Send
             win.center()
             win.title = "StepIt System Permissions"
             win.contentView = NSHostingView(
-                rootView: PermissionsBannerView(manager: composition.permissions).padding()
+                rootView: PermissionsBannerView(
+                    manager: composition.permissions,
+                    onContinue: { [weak self] in
+                        self?.permissionsWindow?.close()
+                        self?.startRecording()
+                    }
+                ).padding()
             )
             win.isReleasedWhenClosed = false
             self.permissionsWindow = win
