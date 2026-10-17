@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import StepItPermissions
 import StepItStorage
 import StepItMacCapture
@@ -63,6 +64,27 @@ public struct PermissionsBannerView: View {
                 .padding(10)
                 .background(Color(NSColor.controlBackgroundColor))
                 .cornerRadius(8)
+
+                // macOS applies Screen Recording only to a fresh launch:
+                // granting in Settings then hitting Refresh can never turn
+                // green until the app is quit and reopened.
+                if !hasScreenRecording {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.counterclockwise")
+                            .foregroundColor(.orange)
+                        Text("After granting, quit and reopen StepIt — Refresh alone can't pick it up.")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Button("Quit & Reopen") {
+                            relaunchApp()
+                        }
+                        .controlSize(.small)
+                    }
+                    .padding(10)
+                    .background(Color.orange.opacity(0.1))
+                    .cornerRadius(8)
+                }
                 
                 // Accessibility Row
                 HStack {
@@ -104,5 +126,22 @@ public struct PermissionsBannerView: View {
     private func checkPermissions() {
         hasScreenRecording = manager.hasScreenRecordingPermission
         hasAccessibility = manager.hasAccessibilityPermission
+    }
+
+    /// Relaunches the app so granted Screen Recording takes effect (macOS
+    /// only applies it to a fresh launch). `NSApp.terminate` alone just quits;
+    /// this opens our own bundle first, then quits — and falls back to
+    /// terminate when not running from a bundle (e.g. `swift run`).
+    private func relaunchApp() {
+        let bundleURL = Bundle.main.bundleURL
+        let isBundled = bundleURL.pathExtension == "app"
+            && FileManager.default.fileExists(atPath: bundleURL.path)
+        if isBundled {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+            process.arguments = [bundleURL.path]
+            try? process.run()
+        }
+        NSApplication.shared.terminate(nil)
     }
 }

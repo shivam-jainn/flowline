@@ -49,8 +49,56 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Send
             await composition.boot()
         }
 
+        // Startup permission gate: check screen-recording + accessibility and
+        // notify the user immediately if anything is missing.
+        showPermissionsIfNeeded()
+
         // Hide dock icon if desired for menu bar utility, or keep accessory
         NSApp.setActivationPolicy(.accessory)
+    }
+
+    /// Shows the permissions window when screen-recording or accessibility
+    /// is missing, so the user is notified at startup rather than hitting a
+    /// silent empty recording later. Also triggers the OS prompts so the
+    /// user gets the system dialog, not just our window.
+    private func showPermissionsIfNeeded() {
+        let missingScreen = !composition.permissions.hasScreenRecordingPermission
+        let missingAX = !composition.permissions.hasAccessibilityPermission
+        guard missingScreen || missingAX else { return }
+        // Trigger the OS-level prompts first (these post the system dialog).
+        if missingScreen {
+            _ = composition.permissions.requestScreenRecordingPermission()
+        }
+        if missingAX {
+            _ = composition.permissions.requestAccessibilityPermission()
+        }
+        // Then open our window listing exactly what is missing.
+        openPermissions()
+    }
+
+    /// Recording-time gate: refuse to start when permissions are missing and
+    /// tell the user exactly what to enable. Without this, recording produces
+    /// black pill-only frames (no Screen Recording) and no click events at
+    /// all (no Accessibility) — the "screen not showing for anything" bug.
+    private func ensurePermissionsForRecording() -> Bool {
+        let missingScreen = !composition.permissions.hasScreenRecordingPermission
+        let missingAX = !composition.permissions.hasAccessibilityPermission
+        guard missingScreen || missingAX else { return true }
+        var parts: [String] = []
+        if missingScreen { parts.append("Screen Recording (else captures are black)") }
+        if missingAX { parts.append("Accessibility (else clicks are never seen)") }
+        let alert = NSAlert()
+        alert.messageText = "StepIt needs system permissions"
+        alert.informativeText = "Missing: " + parts.joined(separator: " + ")
+            + ". Grant them in System Settings, then start recording again."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Open Permissions")
+        alert.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertFirstButtonReturn {
+            openPermissions()
+        }
+        return false
     }
 
     private func setupStatusItem() {
@@ -149,6 +197,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Send
 
     @MainActor
     @objc public func toggleRecording() {
+        guard ensurePermissionsForRecording() else { return }
         Task { @MainActor in
             await composition.controller.toggleRecording()
         }
@@ -156,6 +205,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Send
 
     @MainActor
     @objc public func startRecording() {
+        guard ensurePermissionsForRecording() else { return }
         Task { @MainActor in
             await composition.controller.startRecording()
         }

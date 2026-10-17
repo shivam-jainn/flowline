@@ -52,6 +52,7 @@ public final class FloatingHUDWindowController: @unchecked Sendable {
         )
         
         panel.level = .floating
+        panel.sharingType = .none
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.isFloatingPanel = true
         panel.backgroundColor = .clear

@@ -37,12 +37,19 @@ public final class ScreenRecorder: @unchecked Sendable {
             }
         }
         
-        // Capture screen image
-        guard let rawImage = CGWindowListCreateImage(
-            targetRect,
-            .optionOnScreenOnly,
-            kCGNullWindowID,
-            [.bestResolution]
+        // Synchronous exclusion: build the on-screen window list WITHOUT our
+        // own windows and capture only those via FromArray. orderOut+grab
+        // races WindowServer (the compositor hasn't hidden the pill yet when
+        // the grab runs), so hiding alone still photobombs. FromArray never
+        // includes the pill in the first place.
+        let captureRect = targetRect == .null
+            ? (NSScreen.screens.first { $0.frame.contains(clickPoint ?? .zero) }?.frame
+                ?? NSScreen.main?.frame
+                ?? CGRect(x: 0, y: 0, width: 2000, height: 1200))
+            : targetRect
+        guard let rawImage = Self.createScreenImageExcludingStepItWindows(
+            rect: captureRect,
+            options: .bestResolution
         ) else {
             return nil
         }
@@ -217,5 +224,126 @@ public final class ScreenRecorder: @unchecked Sendable {
             return nil
         }
         return data as Data
+    }
+
+    /// Synchronous, race-free screen grab that NEVER includes StepIt-owned
+    /// windows. Captures everything BELOW our backmost window in true
+    /// front-to-back z-order (wallpaper + other apps included, all StepIt
+    /// windows above excluded). Returns nil without Screen Recording
+    /// permission instead of a misleading pill-only black frame.
+    public static func createScreenImageExcludingStepItWindows(
+        rect: CGRect,
+        options: CGWindowImageOption
+    ) -> CGImage? {
+        // Without permission the compositor only gives us our own windows —
+        // refuse instead of producing a pill-on-black frame.
+        if !hasScreenRecordingPermission() { return nil }
+        if let belowID = backmostStepItWindowIDInZOrder(), belowID != kCGNullWindowID {
+            if let img = CGWindowListCreateImage(rect, .optionOnScreenBelowWindow, belowID, [options]) {
+                return img
+            }
+        }
+        return CGWindowListCreateImage(rect, .optionOnScreenOnly, kCGNullWindowID, [options])
+    }
+
+    static func hasScreenRecordingPermission() -> Bool {
+        if #available(macOS 10.15, *) {
+            return CGPreflightScreenCaptureAccess()
+        }
+        return true
+    }
+
+    /// The backmost StepIt-owned window in true WindowServer front-to-back
+    /// order (windowNumbers do NOT reflect z-order, so read the ordered list).
+    private static func backmostStepItWindowIDInZOrder() -> CGWindowID? {
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+        let stepItNumbers = Set(NSApp.windows.map { $0.windowNumber })
+        guard let info = CGWindowListCopyWindowInfo(
+            .optionOnScreenOnly, kCGNullWindowID
+        ) as? [[String: Any]] else { return nil }
+        var lastStepItID: CGWindowID?
+        for dict in info {
+            let isOwn: Bool = {
+                if let pid = dict[kCGWindowOwnerPID as String] as? Int, pid == Int(ownPID) { return true }
+                if let num = dict[kCGWindowNumber as String] as? Int, stepItNumbers.contains(num) { return true }
+                return false
+            }()
+            if isOwn, let num = dict[kCGWindowNumber as String] as? Int {
+                lastStepItID = CGWindowID(num)
+            }
+        }
+        return lastStepItID
+    }
+
+    /// Every on-screen window ID except StepIt-owned ones (own PID excluded
+    /// so the HUD pill / review / settings can never photobomb a recording).
+    /// Kept for tests/callers that need the filtered list; the capture path
+    /// itself uses BelowWindow (wallpaper-safe) — see above.
+    public static func onScreenWindowIDsExcludingStepItWindows() -> [CGWindowID] {
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+        let stepItNumbers = Set(NSApp.windows.map { $0.windowNumber })
+        guard let info = CGWindowListCopyWindowInfo(
+            .optionOnScreenOnly, kCGNullWindowID
+        ) as? [[String: Any]] else { return [] }
+        var ids: [CGWindowID] = []
+        ids.reserveCapacity(info.count)
+        for dict in info {
+            if let pid = dict[kCGWindowOwnerPID as String] as? Int32, pid == ownPID { continue }
+            if let pid = dict[kCGWindowOwnerPID as String] as? Int, pid == Int(ownPID) { continue }
+            if let num = dict[kCGWindowNumber as String] as? Int {
+                if stepItNumbers.contains(num) { continue }
+                ids.append(CGWindowID(num))
+            }
+        }
+        return ids
+    }
+
+    private static func backmostStepItWindowID() -> CGWindowID {
+        let numbers = NSApp.windows.map { $0.windowNumber }
+        guard let minNum = numbers.min() else { return kCGNullWindowID }
+        return CGWindowID(minNum)
+    }
+
+    @discardableResult
+    static func hideStepItWindowsForCapture() -> [NSWindow] {
+        hideStepItWindows()
+    }
+
+    static func restoreStepItWindowsAfterCapture(_ windows: [NSWindow]) {
+        restoreStepItWindows(windows)
+    }
+
+    /// Order out StepIt-owned windows synchronously; returns the hidden set
+    /// for restoration. Must run on main thread; falls back to enumeration
+    /// when off-main.
+    @discardableResult
+    private static func hideStepItWindows() -> [NSWindow] {
+        let owned = NSApp.windows.filter { $0.sharingType == .none || $0.level == .floating }
+        guard !owned.isEmpty else { return [] }
+        if Thread.isMainThread {
+            owned.forEach { $0.orderOut(nil) }
+        } else {
+            DispatchQueue.main.sync { owned.forEach { $0.orderOut(nil) } }
+        }
+        return owned
+    }
+
+    private static func restoreStepItWindows(_ windows: [NSWindow]) {
+        guard !windows.isEmpty else { return }
+        if Thread.isMainThread {
+            windows.forEach { $0.orderFrontRegardless() }
+        } else {
+            DispatchQueue.main.sync { windows.forEach { $0.orderFrontRegardless() } }
+        }
+    }
+
+    /// Full windowList with StepIt-owned IDs removed (callers pass the
+    /// remainder to filtered capture paths).
+    private static func windowListExcludingStepItWindows() -> [CGWindowID] {
+        let excluded = Set(NSApp.windows.filter { $0.sharingType == .none }.map { $0.windowNumber })
+        guard let info = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] else { return [] }
+        return info.compactMap { $0[kCGWindowNumber as String] as? Int }
+            .filter { !excluded.contains($0) }
+            .map { CGWindowID($0) }
     }
 }

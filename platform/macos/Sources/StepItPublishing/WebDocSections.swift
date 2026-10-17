@@ -62,7 +62,13 @@ extension WebDocGenerator {
             let hasZoom = step.assets.zoomCrop != nil
             let hasMedia = hasScreenshot || hasGif || hasWebm || hasZoom
             
-            let defaultView = (hasGif && session.mediaMode != .staticOnly) ? "gif" : (hasScreenshot ? "screenshot" : (hasZoom ? "zoom" : "webm"))
+            let defaultView: String = {
+                if let pref = step.preferredMedia?.lowercased() {
+                    if pref == "gif", hasGif { return "gif" }
+                    if pref == "static", hasScreenshot { return "screenshot" }
+                }
+                return (hasGif && session.mediaMode != .staticOnly) ? "gif" : (hasScreenshot ? "screenshot" : (hasZoom ? "zoom" : "webm"))
+            }()
             let actionName = actionDisplayName(step.action)
             let winTitle = step.windowTitle.isEmpty ? (step.appName.isEmpty ? "Application Window" : step.appName) : step.windowTitle
             let formattedIndex = String(format: "%02d", step.index)

@@ -114,6 +114,9 @@ public struct Step: Identifiable, Codable, Sendable, Equatable {
     public var hotkeyCombo: String?
     /// `true` when OCR redaction blurred sensitive regions in this step's media.
     public var isRedacted: Bool?
+    /// Post-recording media choice: "static" or "gif". Nil = default
+    /// (gif when available and session allows it, else static).
+    public var preferredMedia: String?
     
     public init(
         id: String = UUID().uuidString,
@@ -137,7 +140,8 @@ public struct Step: Identifiable, Codable, Sendable, Equatable {
         assets: MediaAssets = MediaAssets(),
         workingDirectory: String? = nil,
         hotkeyCombo: String? = nil,
-        isRedacted: Bool? = nil
+        isRedacted: Bool? = nil,
+        preferredMedia: String? = nil
     ) {
         self.id = id
         self.index = index
@@ -160,6 +164,7 @@ public struct Step: Identifiable, Codable, Sendable, Equatable {
         self.workingDirectory = workingDirectory
         self.hotkeyCombo = hotkeyCombo
         self.isRedacted = isRedacted
+        self.preferredMedia = preferredMedia
         self.actionDescription = actionDescription.isEmpty ? Self.synthesizeDefaultDescription(
             action: action,
             elementTitle: elementTitle,

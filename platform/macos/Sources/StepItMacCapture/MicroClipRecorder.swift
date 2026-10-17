@@ -68,12 +68,11 @@ public final class MicroClipRecorder: @unchecked Sendable {
     
     private func captureCurrentFrame() {
         guard let screen = NSScreen.main else { return }
-        // Capture at standard or half resolution for micro-GIF efficiency
-        guard let cgImage = CGWindowListCreateImage(
-            screen.frame,
-            .optionOnScreenOnly,
-            kCGNullWindowID,
-            [.nominalResolution]
+        // Race-free: FromArray exclusion never includes the pill (orderOut
+        // + immediate grab races the compositor and still photobombs).
+        guard let cgImage = ScreenRecorder.createScreenImageExcludingStepItWindows(
+            rect: screen.frame,
+            options: .nominalResolution
         ) else { return }
         
         let now = Date()
@@ -111,13 +110,14 @@ public final class MicroClipRecorder: @unchecked Sendable {
             // Collect post-click frames synchronously on background queue
             for _ in 0..<postFrameCount {
                 Thread.sleep(forTimeInterval: frameInterval)
-                if let screen = NSScreen.main,
-                   let cgImage = CGWindowListCreateImage(
-                    screen.frame,
-                    .optionOnScreenOnly,
-                    kCGNullWindowID,
-                    [.nominalResolution]
-                   ) {
+                let cgImage: CGImage? = {
+                    guard let screen = NSScreen.main else { return nil }
+                    return ScreenRecorder.createScreenImageExcludingStepItWindows(
+                        rect: screen.frame,
+                        options: .nominalResolution
+                    )
+                }()
+                if let cgImage {
                     postFrames.append(CapturedFrame(image: cgImage, timestamp: Date()))
                 }
             }

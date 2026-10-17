@@ -12,6 +12,18 @@ public struct ReviewStepsPane: View {
 
     @State private var selectedStepIndex: Int = 1
     @State private var showingZoomCrop: [Int: Bool] = [:]
+    private func mediaChoiceBinding(for listIndex: Int) -> Binding<String> {
+        Binding(
+            get: {
+                if let saved = session.steps[listIndex].preferredMedia { return saved }
+                return "Static"
+            },
+            set: {
+                session.steps[listIndex].preferredMedia = $0
+                try? store.saveSession(session)
+            }
+        )
+    }
 
     public init(
         session: Binding<StepSession>,
@@ -127,8 +139,38 @@ public struct ReviewStepsPane: View {
                 .buttonStyle(PlainButtonStyle())
             }
 
-            // Thumbnail / Scrubber / 2.4x Zoom View
-            if let screenshotPath = step.assets.screenshot {
+            // MediaChoice: per-step GIF vs Static image toggle (post-recording).
+            // Persisted to step.preferredMedia and actually switches the preview.
+            if step.assets.gif != nil, step.assets.screenshot != nil {
+                Picker("MediaChoice", selection: mediaChoiceBinding(for: index)) {
+                    Text("Static").tag("Static")
+                    Text("GIF").tag("GIF")
+                }
+                .pickerStyle(.segmented)
+                .controlSize(.small)
+            }
+
+            // Thumbnail / Scrubber / 2.4x Zoom View — honors the GIF/static choice.
+            let wantsGIF = (session.steps[index].preferredMedia == "GIF") && step.assets.gif != nil
+            if wantsGIF, let gifPath = step.assets.gif {
+                let gifURL = store.resolveMediaPath(sessionID: session.id, relativePath: gifPath)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Animated GIF preview")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                    if let nsImage = NSImage(contentsOf: gifURL) {
+                        Image(nsImage: nsImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxHeight: 180)
+                            .cornerRadius(8)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                            )
+                    }
+                }
+            } else if let screenshotPath = step.assets.screenshot {
                 let showZoom = (showingZoomCrop[step.index] ?? false) && (step.assets.zoomCrop != nil)
                 let activePath = showZoom ? (step.assets.zoomCrop ?? screenshotPath) : screenshotPath
                 let imgURL = store.resolveMediaPath(sessionID: session.id, relativePath: activePath)
