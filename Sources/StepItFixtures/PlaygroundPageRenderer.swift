@@ -10,7 +10,6 @@ import StepItIR
 import WebKit
 import AppKit
 import CoreGraphics
-import StepItCore
 
 /// Renders the Playground fixture pages (`Fixtures/playground-web`) through an
 /// offscreen WebKit renderer and overlays StepIt annotations.

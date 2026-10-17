@@ -1,5 +1,4 @@
 import Foundation
-import StepItIR
 
 public enum MediaMode: String, Codable, CaseIterable, Sendable {
     case hybrid = "hybrid"
