@@ -26,6 +26,45 @@ final class PostRecordingMediaChoiceTests: XCTestCase {
         )
     }
 
+    /// The GIF preview must actually animate. SwiftUI `Image(nsImage:)` renders
+    /// only the first frame of a GIF, so the review pane needs a dedicated
+    /// animated view (NSImageView with animates=true) on the GIF branch.
+    func testGIFPreviewAnimates() {
+        let pane = readSource("platform/macos/Sources/StepIt/UI/ReviewStepsPane.swift")
+        XCTAssertFalse(pane.isEmpty, "could not locate ReviewStepsPane")
+        XCTAssertTrue(
+            pane.contains("AnimatedGIFView") && pane.contains("animates"),
+            "GIF branch must use an animating view (AnimatedGIFView, animates=true) — Image(nsImage:) shows a still frame"
+        )
+    }
+
+    /// The per-step default must agree with web export (GIF when available),
+    /// otherwise review shows Static while the export ships Animation.
+    func testGIFIsDefaultWhenAvailable() {
+        let pane = readSource("platform/macos/Sources/StepIt/UI/ReviewStepsPane.swift")
+        XCTAssertFalse(pane.isEmpty, "could not locate ReviewStepsPane")
+        XCTAssertTrue(
+            pane.contains("preferredMedia") && pane.contains("return \"GIF\""),
+            "unset preferredMedia must default to GIF when a gif asset exists (matching WebDocSections)"
+        )
+    }
+
+    /// Full-screen, full-framerate micro-clips encode to tens of MB and take
+    /// seconds on the engine path — GIFs never appear. Clips must be
+    /// downsampled (frame cap + max width) before encoding.
+    func testMicroClipsAreDownsampledBeforeEncoding() {
+        let recorder = readSource("platform/macos/Sources/StepItMacCapture/MicroClipRecorder.swift")
+        XCTAssertFalse(recorder.isEmpty, "could not locate MicroClipRecorder")
+        XCTAssertTrue(
+            recorder.contains("maxClipFrames") || recorder.contains("maxFrames"),
+            "clip frames must be capped before GIF/MP4 encoding"
+        )
+        XCTAssertTrue(
+            recorder.contains("maxClipWidth") || recorder.contains("maxWidth"),
+            "clip frames must be downscaled before GIF/MP4 encoding"
+        )
+    }
+
     private func readSource(_ relative: String) -> String {
         let thisFile = URL(fileURLWithPath: #filePath)
         var dir: URL? = thisFile.deletingLastPathComponent()
