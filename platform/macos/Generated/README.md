@@ -5,13 +5,13 @@ rebuilt by `make ffi` (`tooling/toolchain/build-rust-ffi.sh`, run from the
 repo root):
 
 ```
-apps/desktop/Generated/
+platform/macos/Generated/
   StepItFFI/stepit_ffi.swift            — uniffi-bindgen Swift bindings
   stepit_ffiFFI.xcframework/            — staticlib + headers for SwiftPM
   FFIHeaders/stepit_ffiFFI.h + module.modulemap — staging dir for xcodebuild
 ```
 
-`apps/desktop/Package.swift` consumes them as:
+`platform/macos/Package.swift` consumes them as:
 
 - `.binaryTarget(name: "stepit_ffiFFI", path: "Generated/stepit_ffiFFI.xcframework")`
 - `.target(name: "StepItFFI", path: "Generated/StepItFFI")`

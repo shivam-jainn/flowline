@@ -1,11 +1,11 @@
 # ── StepIt monolith ignores ──────────────────────────────────────────
-# Layout: apps/desktop (SwiftPM) + core (Cargo) + shared (data) + tooling.
+# Layout: platform/macos (SwiftPM) + core (Cargo) + shared (data) + tooling.
 # Generated FFI/WASM outputs are rebuilt via `make ffi`
 # (tooling/toolchain/build-rust-ffi.sh) and never committed.
 # docs/ and shared/ are source — never ignore them.
 
-# ── SwiftPM / Xcode (apps/desktop) ─────────────────────────────────
-apps/desktop/.build/
+# ── SwiftPM / Xcode (platform/macos) ─────────────────────────────────
+platform/macos/.build/
 .swiftpm/
 *.xcodeproj/
 *.xcworkspace/
@@ -24,10 +24,10 @@ core/crates/stepit_ffi/pkg-web/
 target/
 
 # ── Generated UniFFI/XCFramework outputs (rebuilt by `make ffi`) ───
-apps/desktop/Generated/stepit_ffiFFI.xcframework/
-apps/desktop/Generated/FFIHeaders/
-apps/desktop/Generated/StepItFFI/stepit_ffi.swift
-!apps/desktop/Generated/StepItFFI/.gitkeep
+platform/macos/Generated/stepit_ffiFFI.xcframework/
+platform/macos/Generated/FFIHeaders/
+platform/macos/Generated/StepItFFI/stepit_ffi.swift
+!platform/macos/Generated/StepItFFI/.gitkeep
 
 # ── Release artifacts ──────────────────────────────────────────────
 dist/

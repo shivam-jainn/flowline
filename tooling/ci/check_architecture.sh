@@ -2,10 +2,10 @@
 # StepIt architecture & layout gate (docs/PLAN.md, docs/phase1-plan.md §9.2/§11).
 #
 # Monolith map (turborepo-style):
-#   apps/desktop     SwiftPM package — ALL Swift lives here
+#   platform/macos     SwiftPM package — ALL Swift lives here
 #   core/            Cargo workspace — ALL Rust lives here
 #   shared/          Language-agnostic: contracts, fixtures, goldens (data only)
-#   platform/        Per-OS signposts (macos → apps/desktop, windows → core/…)
+#   platform/        Per-OS signposts (macos → platform/macos, windows → core/…)
 #   tooling/         Builds + gates (this file lives in tooling/ci/)
 #
 # Verifies the repository boundaries are intact (Phase R: modular core):
@@ -14,7 +14,7 @@
 #   2. The legacy coordinator / typing aggregator stay deleted.
 #   3. Named singletons are not referenced outside the composition root + tests.
 #   4. Removed legacy folders stay removed (StepItCore/*, Capture/, Playground/).
-#   5. Fixture-driven tooling lives in apps/desktop Sources/StepItFixtures and
+#   5. Fixture-driven tooling lives in platform/macos Sources/StepItFixtures and
 #      resolves shared/fixtures/playground-web.
 #   6. WebKit/PDFKit stay confined to StepItPublishing (PDFGenerator only);
 #      AppKit lives only in StepItMacCapture; AIGateway/Publishing may add
@@ -22,7 +22,7 @@
 #   7. No absolute user paths are baked into code, tests, or scripts.
 #   8. Phase 0 conventions (shared/fixtures/ data-only, DataLine PhaseNN*/PhaseRNN*).
 #   9. MiniApps never import core modules.
-#   10. Language separation: no Swift under core/, no Rust under apps/,
+#   10. Language separation: no Swift under core/, no Rust under platform/,
 #      no code at all under shared/ (contracts/fixtures/goldens are data).
 #
 # Usage: tooling/ci/check_architecture.sh   (run from the repo root; exits 1 on any violation)
@@ -31,8 +31,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT_DIR}"
 
-SWIFT_SOURCES="apps/desktop/Sources"
-SWIFT_TESTS="apps/desktop/Tests"
+SWIFT_SOURCES="platform/macos/Sources"
+SWIFT_TESTS="platform/macos/Tests"
 
 failures=0
 
@@ -108,17 +108,17 @@ check_empty \
   "${SWIFT_SOURCES}/StepIt/UI" "${SWIFT_SOURCES}/StepIt/CLI" "${SWIFT_SOURCES}/StepIt/main.swift" "${SWIFT_SOURCES}/StepItFixtures" "${SWIFT_SOURCES}/StepItIR" "${SWIFT_SOURCES}/StepItPipeline" "${SWIFT_SOURCES}/StepItEngine" "${SWIFT_SOURCES}/StepItStorage" "${SWIFT_SOURCES}/StepItCaptureAPI" "${SWIFT_SOURCES}/StepItMacCapture" "${SWIFT_SOURCES}/StepItPublishing" "${SWIFT_SOURCES}/StepItAIGateway" "${SWIFT_SOURCES}/StepItPermissions"
 
 # 4. Removed legacy folders must not come back.
-check_dir_absent "apps/desktop/Sources/StepItCore/ removed (R/M1-08 husk deletion)" "apps/desktop/Sources/StepItCore"
-check_dir_absent "apps/desktop/Sources/StepItCore/Capture/ removed" "apps/desktop/Sources/StepItCore/Capture"
-check_dir_absent "apps/desktop/Sources/StepItCore/Playground/ removed (fixtures live in StepItFixtures)" "apps/desktop/Sources/StepItCore/Playground"
-check_dir_absent "Repo-root Sources/ removed (Swift lives in apps/desktop/)" "Sources"
-check_dir_absent "Repo-root Tests/ removed (Swift lives in apps/desktop/)" "Tests"
+check_dir_absent "platform/macos/Sources/StepItCore/ removed (R/M1-08 husk deletion)" "platform/macos/Sources/StepItCore"
+check_dir_absent "platform/macos/Sources/StepItCore/Capture/ removed" "platform/macos/Sources/StepItCore/Capture"
+check_dir_absent "platform/macos/Sources/StepItCore/Playground/ removed (fixtures live in StepItFixtures)" "platform/macos/Sources/StepItCore/Playground"
+check_dir_absent "Repo-root Sources/ removed (Swift lives in platform/macos/)" "Sources"
+check_dir_absent "Repo-root Tests/ removed (Swift lives in platform/macos/)" "Tests"
 check_dir_absent "Repo-root Rust/ removed (Rust lives in core/)" "Rust"
 check_dir_absent "Repo-root Scripts/ removed (scripts live in tooling/)" "Scripts"
 check_dir_absent "Repo-root Fixtures/ removed (fixtures live in shared/fixtures/)" "Fixtures"
 
 # 5. Fixture-driven tooling lives in the StepItFixtures target and resolves shared/fixtures/playground-web.
-check_dir_present "apps/desktop/Sources/StepItFixtures/ exists" "${SWIFT_SOURCES}/StepItFixtures"
+check_dir_present "platform/macos/Sources/StepItFixtures/ exists" "${SWIFT_SOURCES}/StepItFixtures"
 check_empty \
   "No stale Playground/web paths (use shared/fixtures/playground-web)" \
   "Playground/web" \
@@ -178,17 +178,17 @@ else
 fi
 
 if [[ ! -f "${SWIFT_TESTS}/StepItTests/Support/DataLineFixtures.swift" ]]; then
-  echo "❌ apps/desktop/Tests/StepItTests/Support/DataLineFixtures.swift is missing (Phase 0 T0.1)"
+  echo "❌ platform/macos/Tests/StepItTests/Support/DataLineFixtures.swift is missing (Phase 0 T0.1)"
   failures=$((failures + 1))
 else
-  echo "✅ apps/desktop/Tests/StepItTests/Support/DataLineFixtures.swift exists"
+  echo "✅ platform/macos/Tests/StepItTests/Support/DataLineFixtures.swift exists"
 fi
 
 if [[ ! -f "${SWIFT_TESTS}/StepItTests/Support/GoldenAssertions.swift" ]]; then
-  echo "❌ apps/desktop/Tests/StepItTests/Support/GoldenAssertions.swift is missing (Phase 0 T0.2)"
+  echo "❌ platform/macos/Tests/StepItTests/Support/GoldenAssertions.swift is missing (Phase 0 T0.2)"
   failures=$((failures + 1))
 else
-  echo "✅ apps/desktop/Tests/StepItTests/Support/GoldenAssertions.swift exists"
+  echo "✅ platform/macos/Tests/StepItTests/Support/GoldenAssertions.swift exists"
 fi
 
 bad_dataline="$(find "${SWIFT_TESTS}/StepItTests/DataLine" -name "*.swift" -print 2>/dev/null | grep -vE "/Phase(R[0-9]+[A-Za-z0-9_]*|[0-9]+[A-Za-z0-9_]*)\.swift$" || true)"
@@ -206,7 +206,7 @@ check_empty \
   "^import StepIt" \
   "${SWIFT_SOURCES}/StepIt/UI/MiniApps"
 
-# 10. Language separation: Swift lives in apps/desktop, Rust in core,
+# 10. Language separation: Swift lives in platform/macos, Rust in core,
 #     shared/ is data (contracts/fixtures/goldens) — no code anywhere else.
 swift_in_core="$(find core -name "*.swift" -not -path "*/target/*" -print 2>/dev/null || true)"
 if [[ -n "${swift_in_core}" ]]; then
@@ -218,11 +218,11 @@ else
 fi
 rust_in_apps="$(find apps -name "*.rs" -print 2>/dev/null || true)"
 if [[ -n "${rust_in_apps}" ]]; then
-  echo "❌ No Rust under apps/ (Swift package is Rust-free)"
+  echo "❌ No Rust under platform/ (Swift package is Rust-free)"
   echo "${rust_in_apps}" | sed 's/^/   /'
   failures=$((failures + 1))
 else
-  echo "✅ No Rust under apps/"
+  echo "✅ No Rust under platform/"
 fi
 code_in_shared="$(find shared -name "*.swift" -o -name "*.rs" -print 2>/dev/null || true)"
 if [[ -n "${code_in_shared}" ]]; then

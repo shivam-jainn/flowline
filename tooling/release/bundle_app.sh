@@ -8,11 +8,12 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 cd "${ROOT_DIR}"
 
-# 1. Compile Release Binary
-swift build -c release
+# 1. Compile Release Binary (FFI artifacts must exist: run `make ffi` first
+#    on a clean checkout — same requirement as `make build`)
+swift build --package-path "${ROOT_DIR}/platform/macos" -c release
 
-BIN_PATH="${ROOT_DIR}/.build/release/stepit"
-APP_DIR="${ROOT_DIR}/.build/StepIt.app"
+BIN_PATH="${ROOT_DIR}/platform/macos/.build/release/stepit"
+APP_DIR="${ROOT_DIR}/platform/macos/.build/StepIt.app"
 CONTENTS_DIR="${APP_DIR}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
 RESOURCES_DIR="${CONTENTS_DIR}/Resources"
@@ -69,8 +70,8 @@ cat <<EOF > "${CONTENTS_DIR}/Info.plist"
 EOF
 
 # 4. Copy Icon
-if [ -f "${ROOT_DIR}/apps/desktop/Assets/AppIcon.icns" ]; then
-    cp "${ROOT_DIR}/apps/desktop/Assets/AppIcon.icns" "${RESOURCES_DIR}/AppIcon.icns"
+if [ -f "${ROOT_DIR}/platform/macos/Assets/AppIcon.icns" ]; then
+    cp "${ROOT_DIR}/platform/macos/Assets/AppIcon.icns" "${RESOURCES_DIR}/AppIcon.icns"
 fi
 
 # 5. Copy the fixture tree (Playground web app used by the demo tooling)
@@ -79,10 +80,26 @@ if [ -d "${ROOT_DIR}/shared/fixtures/playground-web" ]; then
     cp -R "${ROOT_DIR}/shared/fixtures/playground-web" "${RESOURCES_DIR}/Fixtures/"
 fi
 
-# 6. Ad-hoc codesign
+# 6. Code signing: prefer a persistent local identity so TCC grants
+# (Screen Recording / Accessibility) survive rebuilds. Ad-hoc (`-`)
+# re-signs change identity every build and macOS drops the grants.
+# Override with: CODESIGN_IDENTITY="Apple Development: you@x.com" make bundle
+SIGN_IDENTITY="${CODESIGN_IDENTITY:-}"
+if [ -z "${SIGN_IDENTITY}" ]; then
+    # NB: find-identity -p codesigning hides untrusted self-signed certs;
+    # detect via the cert itself. Sign by SHA-1 hash (not label) so stray
+    # same-label keys can never make the match ambiguous.
+    CERT_HASH="$(security find-certificate -c "StepIt Local Dev" -Z 2>/dev/null | awk '/SHA-1 hash:/ {print $NF; exit}')"
+    if [ -n "${CERT_HASH}" ]; then
+        SIGN_IDENTITY="${CERT_HASH}"
+    else
+        SIGN_IDENTITY="-"
+    fi
+fi
+echo "Signing with identity: ${SIGN_IDENTITY}"
 if command -v codesign >/dev/null 2>&1; then
     echo "Signing application bundle..."
-    codesign --force --deep --sign - "${APP_DIR}" 2>/dev/null || true
+    codesign --force --deep --sign "${SIGN_IDENTITY}" "${APP_DIR}" 2>/dev/null || true
 fi
 
 echo "✅ StepIt.app successfully bundled at: ${APP_DIR}"

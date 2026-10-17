@@ -5,7 +5,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 # Resolve paths relative to the repository root so the script works from any CWD.
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-ASSETS_DIR = os.path.join(REPO_ROOT, "Assets", "dmg")
+ASSETS_DIR = os.path.join(REPO_ROOT, "platform", "macos", "Assets", "dmg")
 
 def create_fun_apple_dmg_background():
     # Window dimensions in create_dmg.sh: 660 x 440 pt -> 1320 x 880 px (@2x Retina)

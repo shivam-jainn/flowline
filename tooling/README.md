@@ -9,7 +9,7 @@ tooling/
   toolchain/ Cross-toolchain builds. build-rust-ffi.sh — cargo build
              (stepit_ffi, release) + uniffi-bindgen Swift bindings +
              xcodebuild xcframework. Rebuilds everything under
-             apps/desktop/Generated/ (gitignored). Entry point: `make ffi`.
+             platform/macos/Generated/ (gitignored). Entry point: `make ffi`.
   ci/       Gates. Every file exits non-zero on violation.
             check_architecture.sh — module boundaries (imports,
               singletons, WebKit/PDFKit/AppKit confinement, fixture
@@ -24,7 +24,7 @@ tooling/
 
 Rules:
 
-- `toolchain/` writes only to gitignored paths (`apps/desktop/Generated/`, `core/target/`).
+- `toolchain/` writes only to gitignored paths (`platform/macos/Generated/`, `core/target/`).
 - `ci/` never writes; it only checks and exits 1 with a `❌` line.
 - `dev/` and `release/` may write to `dist/` (gitignored).
 - No absolute home-directory paths in any script (enforced by the arch gate).

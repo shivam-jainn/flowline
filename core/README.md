@@ -24,10 +24,10 @@ Boundaries:
 - `unsafe_code = forbid` at the workspace level. No `unsafe` anywhere.
 - Each crate has `tests/parity.rs` running the goldens both suites share
   (`shared/goldens/`, schemas in `shared/contracts/`).
-- Swift twins in `apps/desktop/Sources/` delegate to this core via `StepItFFI`
+- Swift twins in `platform/macos/Sources/` delegate to this core via `StepItFFI`
   (UniFFI). Do not fork logic — port it here and delete the twin at parity.
 - `stepit_ffi` is the only crate with foreign interfaces (UniFFI/WASM).
-  Platform capture stays in `apps/desktop/Sources/StepItMacCapture` (Swift/macOS)
+  Platform capture stays in `platform/macos/Sources/StepItMacCapture` (Swift/macOS)
   and `stepit_win_capture` (Rust/Windows).
 - Commands (run from repo root): `make check-rust`, or
   `cargo test --workspace --locked` + `cargo clippy --workspace --all-targets -- --deny warnings`
