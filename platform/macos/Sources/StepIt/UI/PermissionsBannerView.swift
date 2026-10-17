@@ -153,6 +153,23 @@ public struct PermissionsBannerView: View {
         // Observable verdicts: GUI-vs-CLI permission mismatches are otherwise
         // undebuggable (unified log: `log show --predicate 'process == "StepIt"'`).
         NSLog("StepIt perms verdict: screen=%@ ax=%@", hasScreenRecording as NSNumber, hasAccessibility as NSNumber)
+        Self.appendDiagnosticsLine("check screen=\(hasScreenRecording) ax=\(hasAccessibility)")
+    }
+
+    /// File fallback for verdicts (unified log swallows NSLog from some launch
+    /// contexts): `/tmp/stepit-perms.log`, one line per check.
+    static func appendDiagnosticsLine(_ message: String) {
+        let line = "\(Date()) pid=\(ProcessInfo.processInfo.processIdentifier) \(message) bundle=\(Bundle.main.bundleURL.path)\n"
+        guard let data = line.data(using: .utf8) else { return }
+        let url = URL(fileURLWithPath: "/tmp/stepit-perms.log")
+        if FileManager.default.fileExists(atPath: url.path) {
+            guard let handle = try? FileHandle(forWritingTo: url) else { return }
+            try? handle.seekToEnd()
+            try? handle.write(contentsOf: data)
+            try? handle.close()
+        } else {
+            try? data.write(to: url)
+        }
     }
 
     /// Relaunches the app so granted Screen Recording takes effect (macOS
