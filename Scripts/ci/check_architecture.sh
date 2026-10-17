@@ -100,6 +100,39 @@ check_empty \
   "/Users/" \
   --exclude=check_architecture.sh Sources Tests Scripts
 
+# 8. Phase 0 convention (docs/roadmap.md T0.4): Fixtures/ stays data-only;
+#    DataLine tests are PhaseNN*, shared helpers stay in Support/.
+if find Fixtures -name "*.swift" -print -quit | grep -q .; then
+  echo "❌ Fixtures/ stays data-only (found .swift under Fixtures/)"
+  find Fixtures -name "*.swift" | sed 's/^/   /'
+  failures=$((failures + 1))
+else
+  echo "✅ Fixtures/ stays data-only (no .swift)"
+fi
+
+if [[ ! -f "Tests/StepItTests/Support/DataLineFixtures.swift" ]]; then
+  echo "❌ Tests/StepItTests/Support/DataLineFixtures.swift is missing (Phase 0 T0.1)"
+  failures=$((failures + 1))
+else
+  echo "✅ Tests/StepItTests/Support/DataLineFixtures.swift exists"
+fi
+
+if [[ ! -f "Tests/StepItTests/Support/GoldenAssertions.swift" ]]; then
+  echo "❌ Tests/StepItTests/Support/GoldenAssertions.swift is missing (Phase 0 T0.2)"
+  failures=$((failures + 1))
+else
+  echo "✅ Tests/StepItTests/Support/GoldenAssertions.swift exists"
+fi
+
+bad_dataline="$(find Tests/StepItTests/DataLine -name "*.swift" -print 2>/dev/null | grep -vE "/Phase[0-9]+[A-Za-z0-9_]*\.swift$" || true)"
+if [[ -n "${bad_dataline}" ]]; then
+  echo "❌ Tests/StepItTests/DataLine/ files must be PhaseNN*.swift (Phase 0 T0.4)"
+  echo "${bad_dataline}" | sed 's/^/   /'
+  failures=$((failures + 1))
+else
+  echo "✅ Tests/StepItTests/DataLine/ naming is PhaseNN*"
+fi
+
 if [[ "${failures}" -gt 0 ]]; then
   echo ""
   echo "Architecture check failed with ${failures} violation(s)."
