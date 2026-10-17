@@ -6,3 +6,7 @@
 DerivedData/
 dist/
 docs/
+Rust/target/
+Generated/stepit_ffiFFI.xcframework/
+Generated/FFIHeaders/
+Rust/crates/stepit_ffi/pkg-web/

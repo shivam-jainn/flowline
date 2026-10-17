@@ -1,13 +1,22 @@
 import SwiftUI
-import StepItCore
+import StepItFixtures
+import StepItStorage
+import StepItMacCapture
+import StepItCaptureAPI
+import StepItPublishing
+import StepItAIGateway
+import StepItPipeline
+import StepItEngine
+import StepItIR
 
 public struct FloatingHUDView: View {
-    @ObservedObject var controller = WorkflowController.shared
+    @ObservedObject var controller: WorkflowController
     public var onStop: () -> Void
-    
+
     @State private var isPulsing = false
-    
-    public init(onStop: @escaping () -> Void = {}) {
+
+    public init(controller: WorkflowController, onStop: @escaping () -> Void = {}) {
+        self.controller = controller
         self.onStop = onStop
     }
     

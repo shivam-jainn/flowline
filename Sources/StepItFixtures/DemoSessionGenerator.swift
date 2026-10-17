@@ -1,13 +1,41 @@
 import Foundation
+import StepItStorage
+import StepItMacCapture
+import StepItCaptureAPI
+import StepItPublishing
+import StepItAIGateway
+import StepItPipeline
+import StepItEngine
+import StepItIR
 import AppKit
 import CoreGraphics
-import StepItCore
 
-public struct DemoSessionGenerator {
+public struct DemoSessionGenerator: Sendable {
+    private let store: any SessionStoreProtocol
+    private let renderer: any PlaygroundCaptureRenderer
+    private let pngEncoder: PNGEncoder
+
+    public init(
+        store: any SessionStoreProtocol = SessionStore(),
+        renderer: any PlaygroundCaptureRenderer = PlaygroundPageRenderer(),
+        pngEncoder: @escaping PNGEncoder = { ScreenRecorder().imageToPNGData($0) }
+    ) {
+        self.store = store
+        self.renderer = renderer
+        self.pngEncoder = pngEncoder
+    }
+
+    /// Live convenience: builds a generator over the default store, the live
+    /// WebKit renderer and `ScreenRecorder` PNG encoding (no singletons).
     @MainActor
     public static func generateDemoSession() async throws -> StepSession {
+        try await DemoSessionGenerator().generate()
+    }
+
+    @MainActor
+    public func generate() async throws -> StepSession {
         let sessionId = "sess_showcase_report"
-        let mediaDir = SessionStore.shared.mediaDirectory(for: sessionId)
+        let mediaDir = store.mediaDirectory(for: sessionId)
         try FileManager.default.createDirectory(at: mediaDir, withIntermediateDirectories: true)
         
         var steps: [Step] = []
@@ -35,19 +63,19 @@ public struct DemoSessionGenerator {
         
         // --- Step 2: Playground Page 1 (Auth & Onboarding) with Clean 2.4x Zoom Crop ---
         print("  🌐 [Step 2/6] Rendering live WebKit capture + 2.4x Zoom for Page 1: Auth & Onboarding...")
-        let step2Capture = try await PlaygroundPageRenderer.shared.renderStepCapture(
+        let step2Capture = try await renderer.renderStepCapture(
             filename: "page1_onboarding.html",
             targetElementId: "btn-submit-onboarding",
             stepIndex: 2
         )
         
-        let step2Png = ScreenRecorder.shared.imageToPNGData(step2Capture.screenshot)!
-        let step2Rel = try SessionStore.shared.saveMedia(data: step2Png, sessionID: sessionId, filename: "step_02.png")
+        let step2Png = pngEncoder(step2Capture.screenshot)!
+        let step2Rel = try store.saveMedia(data: step2Png, sessionID: sessionId, filename: "step_02.png")
         
-        let step2ZoomPng = ScreenRecorder.shared.imageToPNGData(step2Capture.zoomCrop)!
-        let step2ZoomRel = try SessionStore.shared.saveMedia(data: step2ZoomPng, sessionID: sessionId, filename: "step_02_zoom.png")
+        let step2ZoomPng = pngEncoder(step2Capture.zoomCrop)!
+        let step2ZoomRel = try store.saveMedia(data: step2ZoomPng, sessionID: sessionId, filename: "step_02_zoom.png")
         
-        let step2GifRel = try SessionStore.shared.saveMedia(data: step2Capture.gifData, sessionID: sessionId, filename: "step_02.gif")
+        let step2GifRel = try store.saveMedia(data: step2Capture.gifData, sessionID: sessionId, filename: "step_02.gif")
         
         let step2 = Step(
             id: UUID().uuidString,
@@ -67,19 +95,19 @@ public struct DemoSessionGenerator {
         
         // --- Step 3: Playground Page 2 (E-Commerce Checkout) with Stepper Stepping ---
         print("  🌐 [Step 3/6] Rendering live WebKit capture + 2.4x Zoom for Page 2: Checkout...")
-        let step3Capture = try await PlaygroundPageRenderer.shared.renderStepCapture(
+        let step3Capture = try await renderer.renderStepCapture(
             filename: "page2_checkout.html",
             targetElementId: "btn-qty-plus-1",
             stepIndex: 3
         )
         
-        let step3Png = ScreenRecorder.shared.imageToPNGData(step3Capture.screenshot)!
-        let step3Rel = try SessionStore.shared.saveMedia(data: step3Png, sessionID: sessionId, filename: "step_03.png")
+        let step3Png = pngEncoder(step3Capture.screenshot)!
+        let step3Rel = try store.saveMedia(data: step3Png, sessionID: sessionId, filename: "step_03.png")
         
-        let step3ZoomPng = ScreenRecorder.shared.imageToPNGData(step3Capture.zoomCrop)!
-        let step3ZoomRel = try SessionStore.shared.saveMedia(data: step3ZoomPng, sessionID: sessionId, filename: "step_03_zoom.png")
+        let step3ZoomPng = pngEncoder(step3Capture.zoomCrop)!
+        let step3ZoomRel = try store.saveMedia(data: step3ZoomPng, sessionID: sessionId, filename: "step_03_zoom.png")
         
-        let step3GifRel = try SessionStore.shared.saveMedia(data: step3Capture.gifData, sessionID: sessionId, filename: "step_03.gif")
+        let step3GifRel = try store.saveMedia(data: step3Capture.gifData, sessionID: sessionId, filename: "step_03.gif")
         
         let step3 = Step(
             id: UUID().uuidString,
@@ -120,19 +148,19 @@ public struct DemoSessionGenerator {
         
         // --- Step 5: Playground Page 6 (Developer API Gateway) with Live Request Button ---
         print("  🌐 [Step 5/6] Rendering live WebKit capture + 2.4x Zoom for Page 6: API Gateway...")
-        let step5Capture = try await PlaygroundPageRenderer.shared.renderStepCapture(
+        let step5Capture = try await renderer.renderStepCapture(
             filename: "page6_apigateway.html",
             targetElementId: "btn-send-request",
             stepIndex: 5
         )
         
-        let step5Png = ScreenRecorder.shared.imageToPNGData(step5Capture.screenshot)!
-        let step5Rel = try SessionStore.shared.saveMedia(data: step5Png, sessionID: sessionId, filename: "step_05.png")
+        let step5Png = pngEncoder(step5Capture.screenshot)!
+        let step5Rel = try store.saveMedia(data: step5Png, sessionID: sessionId, filename: "step_05.png")
         
-        let step5ZoomPng = ScreenRecorder.shared.imageToPNGData(step5Capture.zoomCrop)!
-        let step5ZoomRel = try SessionStore.shared.saveMedia(data: step5ZoomPng, sessionID: sessionId, filename: "step_05_zoom.png")
+        let step5ZoomPng = pngEncoder(step5Capture.zoomCrop)!
+        let step5ZoomRel = try store.saveMedia(data: step5ZoomPng, sessionID: sessionId, filename: "step_05_zoom.png")
         
-        let step5GifRel = try SessionStore.shared.saveMedia(data: step5Capture.gifData, sessionID: sessionId, filename: "step_05.gif")
+        let step5GifRel = try store.saveMedia(data: step5Capture.gifData, sessionID: sessionId, filename: "step_05.gif")
         
         let step5 = Step(
             id: UUID().uuidString,
@@ -152,19 +180,19 @@ public struct DemoSessionGenerator {
         
         // --- Step 6: Playground Page 9 (Enterprise Data Grid) with Batch Export ---
         print("  🌐 [Step 6/6] Rendering live WebKit capture + 2.4x Zoom for Page 9: Data Grid...")
-        let step6Capture = try await PlaygroundPageRenderer.shared.renderStepCapture(
+        let step6Capture = try await renderer.renderStepCapture(
             filename: "page9_datagrid.html",
             targetElementId: "btn-batch-export",
             stepIndex: 6
         )
         
-        let step6Png = ScreenRecorder.shared.imageToPNGData(step6Capture.screenshot)!
-        let step6Rel = try SessionStore.shared.saveMedia(data: step6Png, sessionID: sessionId, filename: "step_06.png")
+        let step6Png = pngEncoder(step6Capture.screenshot)!
+        let step6Rel = try store.saveMedia(data: step6Png, sessionID: sessionId, filename: "step_06.png")
         
-        let step6ZoomPng = ScreenRecorder.shared.imageToPNGData(step6Capture.zoomCrop)!
-        let step6ZoomRel = try SessionStore.shared.saveMedia(data: step6ZoomPng, sessionID: sessionId, filename: "step_06_zoom.png")
+        let step6ZoomPng = pngEncoder(step6Capture.zoomCrop)!
+        let step6ZoomRel = try store.saveMedia(data: step6ZoomPng, sessionID: sessionId, filename: "step_06_zoom.png")
         
-        let step6GifRel = try SessionStore.shared.saveMedia(data: step6Capture.gifData, sessionID: sessionId, filename: "step_06.gif")
+        let step6GifRel = try store.saveMedia(data: step6Capture.gifData, sessionID: sessionId, filename: "step_06.gif")
         
         let step6 = Step(
             id: UUID().uuidString,

@@ -1,0 +1,22 @@
+[package]
+name = "stepit_win_capture"
+version = "0.1.0"
+edition = "2021"
+
+# Win32 hook interop is inherently unsafe; the workspace `unsafe_code`
+# forbid is lifted for this crate only (R/M3-01). All unsafe is confined to
+# `plugin::win32` (cfg(windows)); portable code stays safe.
+[lints.rust]
+unsafe_code = "allow"
+
+
+[dependencies]
+stepit_ir = { path = "../stepit_ir" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+parity_harness = { path = "../parity_harness" }
+serde_json = { workspace = true }
+stepit_engine = { path = "../stepit_engine" }

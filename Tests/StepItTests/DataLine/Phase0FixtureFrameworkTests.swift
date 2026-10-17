@@ -1,4 +1,13 @@
 import XCTest
+import StepItStorage
+import StepItCaptureAPI
+import StepItMacCapture
+import StepItPublishing
+import StepItAIGateway
+import StepItPermissions
+import StepItIR
+import StepItPipeline
+import StepItEngine
 @testable import StepItCore
 
 /// Phase 0 gate: the fixture TDD framework itself is tested before any

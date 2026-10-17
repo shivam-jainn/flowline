@@ -44,7 +44,7 @@ Tests/StepItTests/   Unit & integration tests (mirrors Sources/)
 ## Documentation
 
 - **[docs/PLAN.md](docs/PLAN.md)** — vision, decoupled architecture, roadmap, and target layout.
-- **[docs/roadmap.md](docs/roadmap.md)** — build order + exit gates (Phase 0 TDD framework first, then Phases 1–22).
+- **[docs/roadmap/](docs/roadmap/)** — build order + per-phase exit gates (Phase 0 TDD framework first, then Phase R modular-core refactor, then Phases 1–22; start at `index.md`).
 - **[docs/phase1-plan.md](docs/phase1-plan.md)** — Phase 1 execution plan (driver SPI, `RecorderWorkflowEngine`, `MockCaptureDriver`).
 - **[docs/phase6-plan.md](docs/phase6-plan.md)** — Phase 6 execution plan (view-layer post-recording UI rehaul on macOS Tahoe Liquid Glass; exporter/schema work merged into Phases 3–4).
 - **[docs/data-line-plan.md](docs/data-line-plan.md)** — Phases 7–22 execution plan (data supply line for AI labs: capture policy, verification, QA, dataset packaging; one phase per domain).

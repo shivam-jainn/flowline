@@ -1,20 +1,43 @@
 import Foundation
+import StepItStorage
+import StepItMacCapture
+import StepItCaptureAPI
+import StepItPublishing
+import StepItAIGateway
+import StepItPipeline
+import StepItEngine
+import StepItIR
 import AppKit
 import CoreGraphics
-import StepItCore
 
 public final class AutomatedWorkflowRecorder: @unchecked Sendable {
-    public static let shared = AutomatedWorkflowRecorder()
-    
-    public init() {}
-    
+    private let store: any SessionStoreProtocol
+    private let renderer: any PlaygroundCaptureRenderer
+    private let pngEncoder: PNGEncoder
+    private let publisher: PublishingCoordinator
+    private let publishing: PublishingSettings
+
+    public init(
+        store: any SessionStoreProtocol = SessionStore(),
+        renderer: any PlaygroundCaptureRenderer = PlaygroundPageRenderer(),
+        pngEncoder: @escaping PNGEncoder = { ScreenRecorder().imageToPNGData($0) },
+        publisher: PublishingCoordinator = PublishingCoordinator(),
+        publishing: PublishingSettings = PublishingSettings()
+    ) {
+        self.store = store
+        self.renderer = renderer
+        self.pngEncoder = pngEncoder
+        self.publisher = publisher
+        self.publishing = publishing
+    }
+
     @MainActor
     public func recordPlaygroundWorkflow(openInBrowserAfter: Bool = true) async throws -> StepSession {
         print("⚡️ [StepIt Automate] Initializing Automated Workflow Recording across all 10 Playground Pages...")
-        
+
         let sessionId = "sess_playground_tour_\(Int(Date().timeIntervalSince1970))"
-        let sessionDir = SessionStore.shared.sessionDirectory(for: sessionId)
-        let mediaDir = SessionStore.shared.mediaDirectory(for: sessionId)
+        let sessionDir = store.sessionDirectory(for: sessionId)
+        let mediaDir = store.mediaDirectory(for: sessionId)
         try FileManager.default.createDirectory(at: mediaDir, withIntermediateDirectories: true)
         
         // Comprehensive 10-step enterprise workflow mapping 1:1 to the 10 live HTML pages:
@@ -148,13 +171,13 @@ public final class AutomatedWorkflowRecorder: @unchecked Sendable {
             print("  📸 Recording Step \(stepNum)/\(scenarioSteps.count): \(item.title) on [\(item.page)] -> #\(item.elementId)...")
             
             // Render genuine live WebKit snapshot with coordinates resolved from live DOM
-            let capture = try await PlaygroundPageRenderer.shared.renderStepCapture(
+            let capture = try await renderer.renderStepCapture(
                 filename: item.page,
                 targetElementId: item.elementId,
                 stepIndex: stepNum
             )
             
-            guard let pngData = ScreenRecorder.shared.imageToPNGData(capture.screenshot) else {
+            guard let pngData = pngEncoder(capture.screenshot) else {
                 throw NSError(
                     domain: "AutomatedWorkflowRecorder",
                     code: 500,
@@ -163,14 +186,14 @@ public final class AutomatedWorkflowRecorder: @unchecked Sendable {
             }
             
             let pngName = String(format: "step_%02d.png", stepNum)
-            let screenshotRel = try SessionStore.shared.saveMedia(data: pngData, sessionID: sessionId, filename: pngName)
+            let screenshotRel = try store.saveMedia(data: pngData, sessionID: sessionId, filename: pngName)
             
-            let zoomPngData = ScreenRecorder.shared.imageToPNGData(capture.zoomCrop)!
+            let zoomPngData = pngEncoder(capture.zoomCrop)!
             let zoomPngName = String(format: "step_%02d_zoom.png", stepNum)
-            let zoomRel = try SessionStore.shared.saveMedia(data: zoomPngData, sessionID: sessionId, filename: zoomPngName)
+            let zoomRel = try store.saveMedia(data: zoomPngData, sessionID: sessionId, filename: zoomPngName)
             
             let gifName = String(format: "step_%02d.gif", stepNum)
-            let gifRel = try SessionStore.shared.saveMedia(data: capture.gifData, sessionID: sessionId, filename: gifName)
+            let gifRel = try store.saveMedia(data: capture.gifData, sessionID: sessionId, filename: gifName)
             
             let step = Step(
                 id: UUID().uuidString,
@@ -288,18 +311,17 @@ _Generated automatically via [StepIt macOS](https://github.com/stepit/stepit) us
             synthesizedMarkdown: synthesizedDoc
         )
         
-        try SessionStore.shared.saveSession(session)
+        try store.saveSession(session)
         print("  💾 Saved session metadata to: \(sessionDir.path)")
         
-        let settings = SessionStore.shared.loadSettings()
         print("  🌐 Compiling Interactive Web Documentation with dark theme & stepper...")
-        let webURL = try PublishingCoordinator.shared.exportWeb(session: session, settings: settings)
+        let webURL = try publisher.exportWeb(session: session, publishing: publishing)
         
         print("  📄 Rendering Print-Ready PDF with WebKit paged media...")
-        let pdfURL = try? await PublishingCoordinator.shared.exportPDF(session: session, settings: settings)
+        let pdfURL = try? await publisher.exportPDF(session: session, publishing: publishing)
         
         print("  📝 Exporting GitHub-flavored Markdown README...")
-        let mdURL = try PublishingCoordinator.shared.exportMarkdown(session: session)
+        let mdURL = try publisher.exportMarkdown(session: session)
         
         print("\n🎉 [StepIt Automate] 10-Page Workflow Tour & Multi-Format Publishing Complete!")
         print("  🌐 Interactive Web Site: \(webURL.path)")
@@ -310,7 +332,7 @@ _Generated automatically via [StepIt macOS](https://github.com/stepit/stepit) us
         
         if openInBrowserAfter {
             print("  🚀 Launching interactive documentation in default browser...")
-            PublishingCoordinator.shared.openInBrowser(url: webURL)
+            publisher.openInBrowser(url: webURL)
         }
         
         return session

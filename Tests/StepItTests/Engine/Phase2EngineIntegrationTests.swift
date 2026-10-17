@@ -1,4 +1,13 @@
 import XCTest
+import StepItStorage
+import StepItCaptureAPI
+import StepItMacCapture
+import StepItPublishing
+import StepItAIGateway
+import StepItPermissions
+import StepItIR
+import StepItPipeline
+import StepItEngine
 @testable import StepItCore
 
 /// Phase 2 end-to-end matrix (T10): hotkeys, terminal `pwd`, pre-capture
@@ -46,7 +55,7 @@ final class Phase2EngineIntegrationTests: XCTestCase {
     @discardableResult
     private func startRecording(settings: StepItSettings? = nil) async throws -> StepSession {
         if let settings = settings {
-            try store.saveSettings(settings)
+            await engine.applySettings(settings)
         }
         let session = try await engine.startRecording()
         return try XCTUnwrap(session)

@@ -1,4 +1,13 @@
 import Foundation
+import StepItStorage
+import StepItCaptureAPI
+import StepItMacCapture
+import StepItPublishing
+import StepItAIGateway
+import StepItPermissions
+import StepItIR
+import StepItPipeline
+import StepItEngine
 import XCTest
 
 /// Phase 0 — golden / determinism / leak assertions shared by all data-line tests.

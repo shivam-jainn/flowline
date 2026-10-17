@@ -1,4 +1,13 @@
 import Foundation
+import StepItStorage
+import StepItCaptureAPI
+import StepItMacCapture
+import StepItPublishing
+import StepItAIGateway
+import StepItPermissions
+import StepItIR
+import StepItPipeline
+import StepItEngine
 @testable import StepItCore
 
 /// Phase 0 — deterministic builders for every data-line phase (7–22).

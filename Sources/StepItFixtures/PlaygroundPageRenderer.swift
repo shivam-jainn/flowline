@@ -1,8 +1,15 @@
 import Foundation
+import StepItStorage
+import StepItMacCapture
+import StepItCaptureAPI
+import StepItPublishing
+import StepItAIGateway
+import StepItPipeline
+import StepItEngine
+import StepItIR
 import WebKit
 import AppKit
 import CoreGraphics
-import StepItCore
 
 /// Renders the Playground fixture pages (`Fixtures/playground-web`) through an
 /// offscreen WebKit renderer and overlays StepIt annotations.
@@ -392,7 +399,7 @@ public final class PlaygroundPageRenderer: NSObject, WKNavigationDelegate, @unch
             }
         }
         
-        return MicroClipRecorder.shared.createGIF(from: frames, fps: 8) ?? Data()
+        return MicroClipRecorder().createGIF(from: frames, fps: 8) ?? Data()
     }
     
     // MARK: - WKNavigationDelegate

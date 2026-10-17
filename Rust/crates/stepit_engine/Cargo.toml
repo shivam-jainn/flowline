@@ -1,0 +1,18 @@
+[package]
+name = "stepit_engine"
+version = "0.1.0"
+edition = "2021"
+
+[lints]
+workspace = true
+
+[dependencies]
+stepit_ir = { path = "../stepit_ir" }
+stepit_pipeline = { path = "../stepit_pipeline" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+parity_harness = { path = "../parity_harness" }
+serde_json = { workspace = true }
