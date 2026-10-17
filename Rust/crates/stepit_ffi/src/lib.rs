@@ -18,12 +18,17 @@ pub use stepit_pipeline as pipeline;
 pub use stepit_projections as projections;
 pub use stepit_storage as storage;
 
+pub mod web;
+
 use thiserror::Error;
+
+uniffi::setup_scaffolding!("stepit_ffi");
 
 /// Versioned FFI surface. Hosts assert this before calling anything else.
 pub const API_VERSION: &str = "r-m2.1";
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, uniffi::Error)]
+#[uniffi(flat_error)]
 pub enum Error {
     #[error("bad input JSON: {0}")]
     BadInput(String),
@@ -48,22 +53,25 @@ fn decode<T: serde::de::DeserializeOwned>(json: &str, what: &str) -> Result<T, E
 }
 
 /// Parse + re-emit a session (proves the IR codec across the boundary).
-pub fn session_round_trip(session_json: &str) -> Result<String, Error> {
-    let session: ir::StepSession = decode(session_json, "StepSession")?;
+#[uniffi::export]
+pub fn session_round_trip(session_json: String) -> Result<String, Error> {
+    let session: ir::StepSession = decode(&session_json, "StepSession")?;
     serde_json::to_string(&session).map_err(|e| Error::BadInput(e.to_string()))
 }
 
 /// Classify a typing context → golden label (`text`/`code:<lang>`/`terminal`).
-pub fn classify_text(text: &str, app_name: &str, window_title: &str) -> String {
-    pipeline::classify::classify_parts(text, app_name, None, window_title).label()
+#[uniffi::export]
+pub fn classify_text(text: String, app_name: String, window_title: String) -> String {
+    pipeline::classify::classify_parts(&text, &app_name, None, &window_title).label()
 }
 
 /// Detect secrets → `[[kind, matched_text], …]` JSON array (Swift raw values).
-pub fn detect_secrets(text: &str) -> String {
+#[uniffi::export]
+pub fn detect_secrets(text: String) -> String {
     let detector =
         pipeline::redact::SensitiveDataDetector::new(pipeline::redact::DetectorConfig::default());
     let hits: Vec<(String, String)> = detector
-        .matches(text)
+        .matches(&text)
         .iter()
         .map(|m| {
             (
@@ -76,9 +84,10 @@ pub fn detect_secrets(text: &str) -> String {
 }
 
 /// Render markdown for a session JSON + asset prefix.
-pub fn export_markdown(session_json: &str, relative_asset_prefix: &str) -> Result<String, Error> {
-    let session: ir::StepSession = decode(session_json, "StepSession")?;
-    Ok(projections::markdown::export_markdown(&session, relative_asset_prefix))
+#[uniffi::export]
+pub fn export_markdown(session_json: String, relative_asset_prefix: String) -> Result<String, Error> {
+    let session: ir::StepSession = decode(&session_json, "StepSession")?;
+    Ok(projections::markdown::export_markdown(&session, &relative_asset_prefix))
 }
 
 /// Parse a documentation style name (`sop_guide`, …).
@@ -94,30 +103,32 @@ fn parse_style(style: &str) -> Result<ai_gateway::prompts::DocumentationStyle, E
 }
 
 /// Build a gateway payload for a session/settings JSON pair.
+#[uniffi::export]
 pub fn gateway_build_request(
-    session_json: &str,
-    settings_json: &str,
-    style: &str,
-    custom_instructions: Option<&str>,
-    recorded_at_display: &str,
+    session_json: String,
+    settings_json: String,
+    style: String,
+    custom_instructions: Option<String>,
+    recorded_at_display: String,
 ) -> Result<String, Error> {
-    let session: ir::StepSession = decode(session_json, "StepSession")?;
-    let settings: ai_gateway::GatewaySettings = decode(settings_json, "GatewaySettings")?;
+    let session: ir::StepSession = decode(&session_json, "StepSession")?;
+    let settings: ai_gateway::GatewaySettings = decode(&settings_json, "GatewaySettings")?;
     let req = ai_gateway::payload::build_request(
         &session,
         &settings,
-        parse_style(style)?,
-        custom_instructions,
-        recorded_at_display,
+        parse_style(&style)?,
+        custom_instructions.as_deref(),
+        &recorded_at_display,
         &[],
     );
     serde_json::to_string(&req).map_err(|e| Error::BadInput(e.to_string()))
 }
 
 /// Validate a plugin manifest JSON against a host version.
-pub fn manifest_valid_for_host(manifest_json: &str, host_version: &str) -> bool {
-    let Ok(manifest): Result<ir::PluginManifest, _> = serde_json::from_str(manifest_json) else {
+#[uniffi::export]
+pub fn manifest_valid_for_host(manifest_json: String, host_version: String) -> bool {
+    let Ok(manifest): Result<ir::PluginManifest, _> = serde_json::from_str(&manifest_json) else {
         return false;
     };
-    manifest.validate_host(host_version)
+    manifest.validate_host(&host_version)
 }

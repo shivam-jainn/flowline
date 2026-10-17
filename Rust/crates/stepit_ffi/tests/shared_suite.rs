@@ -14,15 +14,15 @@ fn api_version_is_pinned() {
 #[test]
 fn session_round_trip_matches_golden() {
     let golden = parity_harness::load_golden("session.sample.json");
-    let out = ffi::session_round_trip(&golden).expect("round-trip");
+    let out = ffi::session_round_trip(golden.clone()).expect("round-trip");
     parity_harness::assert_parity(&out, "session.sample.json");
 }
 
 #[test]
 fn classify_and_redact_share_pipeline() {
-    assert_eq!(ffi::classify_text("git status", "Terminal", "zsh"), "terminal");
-    assert_eq!(ffi::classify_text("hello world", "TextEdit", "Untitled"), "text");
-    let hits = ffi::detect_secrets("key sk-1234567890abcdef1234567890abcdef12 end");
+    assert_eq!(ffi::classify_text("git status".into(), "Terminal".into(), "zsh".into()), "terminal");
+    assert_eq!(ffi::classify_text("hello world".into(), "TextEdit".into(), "Untitled".into()), "text");
+    let hits = ffi::detect_secrets("key sk-1234567890abcdef1234567890abcdef12 end".into());
     assert!(hits.contains("openAIAPIKey"), "got: {hits}");
     assert!(hits.contains("sk-1234567890abcdef1234567890abcdef12"), "got: {hits}");
 }
@@ -32,7 +32,7 @@ fn markdown_end_to_end_matches_golden() {
     let session = parity_harness::load_golden("session.sample.json");
     let expected = parity_harness::load_golden("markdown.sample.md");
     assert_eq!(
-        ffi::export_markdown(&session, "../").expect("markdown"),
+        ffi::export_markdown(session, "../".into()).expect("markdown"),
         expected
     );
 }
@@ -69,11 +69,11 @@ fn gateway_end_to_end_matches_golden() {
         "temperature": 0.2,
     });
     let out = ffi::gateway_build_request(
-        &session.to_string(),
-        &settings.to_string(),
-        "sop_guide",
+        session.to_string(),
+        settings.to_string(),
+        "sop_guide".into(),
         None,
-        "1/3/2026, 3:30\u{202f}PM",
+        "1/3/2026, 3:30\u{202f}PM".into(),
     )
     .expect("payload");
     parity_harness::assert_parity(&out, "gateway.payload.json");
@@ -91,11 +91,11 @@ fn unknown_style_fails_fast() {
         "temperature": 0.2,
     });
     assert!(ffi::gateway_build_request(
-        &session,
-        &settings.to_string(),
-        "nope",
+        session,
+        settings.to_string(),
+        "nope".into(),
         None,
-        "x"
+        "x".into()
     )
     .is_err());
 }
@@ -103,7 +103,7 @@ fn unknown_style_fails_fast() {
 #[test]
 fn manifest_validation_end_to_end() {
     let manifest = parity_harness::load_golden("manifest.sample.json");
-    assert!(ffi::manifest_valid_for_host(&manifest, "r-m1"));
-    assert!(!ffi::manifest_valid_for_host(&manifest, "r-m0"));
-    assert!(!ffi::manifest_valid_for_host("not json", "r-m1"));
+    assert!(ffi::manifest_valid_for_host(manifest.clone(), "r-m1".into()));
+    assert!(!ffi::manifest_valid_for_host(manifest.clone(), "r-m0".into()));
+    assert!(!ffi::manifest_valid_for_host("not json".into(), "r-m1".into()));
 }
