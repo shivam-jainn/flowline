@@ -43,3 +43,6 @@ pkg/
 !.env.example
 *.pem
 *.key
+
+# ── Product docs (local only, never committed) ───────────────────────
+docs/
