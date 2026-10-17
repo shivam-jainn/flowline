@@ -49,6 +49,24 @@ final class StartupPermissionChecksTests: XCTestCase {
         )
     }
 
+    /// Green ticks must lead somewhere: when both permissions are granted the
+    /// window has to offer an onward action (close + start recording),
+    /// otherwise the user is stuck on a fully-checked list.
+    func testGrantedPermissionsOfferWayForward() {
+        let banner = readSource("platform/macos/Sources/StepIt/UI/PermissionsBannerView.swift")
+        let delegate = readSource("platform/macos/Sources/StepIt/App/AppDelegate.swift")
+        XCTAssertFalse(banner.isEmpty, "could not locate PermissionsBannerView.swift")
+        XCTAssertFalse(delegate.isEmpty, "could not locate AppDelegate.swift")
+        XCTAssertTrue(
+            banner.contains("onContinue") && banner.contains("Start Recording"),
+            "banner must expose an onContinue action with a Start Recording button for the all-granted state"
+        )
+        XCTAssertTrue(
+            delegate.contains("onContinue"),
+            "AppDelegate must wire the banner continue action (close window + start recording)"
+        )
+    }
+
     private func readSource(_ relative: String) -> String {
         let thisFile = URL(fileURLWithPath: #filePath)
         var dir: URL? = thisFile.deletingLastPathComponent()
