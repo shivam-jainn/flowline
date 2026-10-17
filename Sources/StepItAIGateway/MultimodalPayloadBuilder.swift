@@ -1,5 +1,9 @@
 import Foundation
-import AppKit
+import StepItIR
+import StepItCore
+import StepItStorage
+import CoreGraphics
+import ImageIO
 
 public struct MultimodalContentPart: Codable, Sendable {
     public var type: String
@@ -103,38 +107,52 @@ public final class MultimodalPayloadBuilder: @unchecked Sendable {
     }
     
     private func encodeAndDownsampleImage(data: Data, maxWidth: CGFloat) -> String? {
-        guard let image = NSImage(data: data) else { return nil }
-        
-        var targetSize = image.size
-        if targetSize.width > maxWidth {
-            let scale = maxWidth / targetSize.width
-            targetSize = CGSize(width: maxWidth, height: targetSize.height * scale)
+        // AppKit-free downsample (R/M1-06): decode via ImageIO, thumbnail to
+        // the same target size as before (width capped at maxWidth, aspect
+        // preserved, never upscaled), then re-encode as PNG. Fallbacks return
+        // the original bytes, exactly as the previous bitmap path did.
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let pixelWidth = (props[kCGImagePropertyPixelWidth] as? NSNumber)?.doubleValue,
+              let pixelHeight = (props[kCGImagePropertyPixelHeight] as? NSNumber)?.doubleValue,
+              pixelWidth > 0, pixelHeight > 0 else {
+            return nil
         }
         
-        guard let rep = NSBitmapImageRep(
-            bitmapDataPlanes: nil,
-            pixelsWide: Int(targetSize.width),
-            pixelsHigh: Int(targetSize.height),
-            bitsPerSample: 8,
-            samplesPerPixel: 4,
-            hasAlpha: true,
-            isPlanar: false,
-            colorSpaceName: .deviceRGB,
-            bytesPerRow: 0,
-            bitsPerPixel: 0
-        ) else {
+        var targetWidth = pixelWidth
+        var targetHeight = pixelHeight
+        if targetWidth > Double(maxWidth) {
+            let scale = Double(maxWidth) / targetWidth
+            targetWidth = Double(maxWidth)
+            targetHeight = targetHeight * scale
+        }
+        
+        let thumbnail: CGImage?
+        if targetWidth == pixelWidth && targetHeight == pixelHeight {
+            thumbnail = CGImageSourceCreateImageAtIndex(source, 0, nil)
+        } else {
+            let maxPixelSize = Int(max(targetWidth, targetHeight).rounded())
+            let options: CFDictionary = [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceShouldCacheImmediately: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: maxPixelSize
+            ] as CFDictionary
+            thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, options)
+        }
+        
+        guard let image = thumbnail else {
             return data.base64EncodedString()
         }
         
-        NSGraphicsContext.saveGraphicsState()
-        let context = NSGraphicsContext(bitmapImageRep: rep)
-        NSGraphicsContext.current = context
-        image.draw(in: NSRect(origin: .zero, size: targetSize), from: .zero, operation: .copy, fraction: 1.0)
-        NSGraphicsContext.restoreGraphicsState()
-        
-        if let pngData = rep.representation(using: .png, properties: [:]) {
-            return pngData.base64EncodedString()
+        guard let mutableData = CFDataCreateMutable(nil, 0),
+              let destination = CGImageDestinationCreateWithData(mutableData, "public.png" as CFString, 1, nil) else {
+            return data.base64EncodedString()
         }
-        return data.base64EncodedString()
+        CGImageDestinationAddImage(destination, image, nil)
+        guard CGImageDestinationFinalize(destination) else {
+            return data.base64EncodedString()
+        }
+        return (mutableData as Data).base64EncodedString()
     }
 }
