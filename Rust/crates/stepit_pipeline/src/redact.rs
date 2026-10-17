@@ -2,17 +2,15 @@
 //! (`Sources/StepItPipeline/SensitiveDataDetector.swift`,
 //! `PrivacyRedactionEngine.swift`).
 //!
-//! No `regex` dependency is available, so every Swift `NSRegularExpression`
-//! pattern is mirrored by a hand-rolled char scanner with identical semantics
-//! on the seeded corpus: `\b` boundaries, greedy quantifiers with the same
-//! backtracking outcomes, `{n,}`/`{n}` counts, the case-insensitive bearer
-//! rule, and the Luhn validator.
+//! Every Swift `NSRegularExpression` pattern is mirrored by a hand-rolled char
+//! scanner with identical semantics on the seeded corpus: `\b` boundaries,
+//! greedy quantifiers with the same backtracking outcomes, `{n,}`/`{n}`
+//! counts, the case-insensitive bearer rule, and the Luhn validator.
 //!
-//! Deviations (reported): `customPatterns` are matched as case-insensitive
-//! literal substrings rather than full regexes — the seeded corpus carries no
-//! custom patterns, so parity holds; arbitrary-regex support would need a
-//! regex engine. Offsets are char offsets (identical to UTF-16 offsets on the
-//! ASCII corpus).
+//! `customPatterns` compile as case-insensitive regexes (Swift parity:
+//! `NSRegularExpression(pattern:options:[.caseInsensitive])`; invalid patterns
+//! match nothing, as Swift's `try?` yields no rule). Offsets are char offsets
+//! (identical to UTF-16 offsets on the ASCII corpus).
 
 use stepit_ir::{ElementRect, OcrTextItem};
 
@@ -462,25 +460,32 @@ fn scan_emails(chars: &[char], out: &mut Vec<SensitiveDataMatch>) {
     }
 }
 
-// Custom patterns: case-insensitive literal substring search.
-//
-// NOTE (reported deviation): Swift compiles these as regexes
-// (case-insensitive). Without a regex engine this port matches them
-// literally; the seeded corpus has no custom patterns so parity holds.
+// Custom patterns: case-insensitive regexes (Swift parity —
+// `NSRegularExpression(pattern, [.caseInsensitive])`; an invalid pattern
+// compiles to no rule, matching Swift's `try?` guard).
 fn scan_custom(chars: &[char], pattern: &str, out: &mut Vec<SensitiveDataMatch>) {
-    let pat: Vec<char> = pattern.chars().map(|c| c.to_ascii_lowercase()).collect();
-    if pat.is_empty() || pat.len() > chars.len() {
+    let Ok(re) = regex::RegexBuilder::new(pattern)
+        .case_insensitive(true)
+        .build()
+    else {
         return;
+    };
+    let text: String = chars.iter().collect();
+    // Byte → char index map (regex reports byte offsets; matches carry char
+    // offsets, identical to UTF-16 offsets on the ASCII corpus).
+    let mut byte_to_char = vec![0usize; text.len() + 1];
+    let mut ci = 0;
+    for (bi, _) in text.char_indices() {
+        byte_to_char[bi] = ci;
+        ci += 1;
     }
-    let lower: Vec<char> = chars.iter().map(|c| c.to_ascii_lowercase()).collect();
-    let mut i = 0;
-    while i + pat.len() <= chars.len() {
-        if lower[i..i + pat.len()] == pat[..] {
-            push(out, MatchKind::Custom, chars, i, i + pat.len());
-            i += pat.len();
-        } else {
-            i += 1;
+    byte_to_char[text.len()] = ci;
+    for m in re.find_iter(&text) {
+        let (s, e) = (byte_to_char[m.start()], byte_to_char[m.end()]);
+        if s == e {
+            continue;
         }
+        push(out, MatchKind::Custom, chars, s, e);
     }
 }
 
@@ -683,5 +688,43 @@ mod tests {
         let plan = engine.plan(&items);
         assert!(!plan.is_redacted());
         assert!(plan.regions.is_empty());
+    }
+
+    #[test]
+    fn custom_patterns_are_case_insensitive_regexes() {
+        let det = SensitiveDataDetector::new(DetectorConfig {
+            detect_api_keys: false,
+            detect_credit_cards: false,
+            detect_emails: false,
+            custom_patterns: vec!["secret-\\d+".to_string()],
+        });
+        let m = det.matches("leaked SECRET-42 today");
+        assert_eq!(m.len(), 1);
+        assert_eq!(m[0].kind, MatchKind::Custom);
+        assert_eq!(m[0].matched_text, "SECRET-42");
+        assert_eq!((m[0].start, m[0].end), (7, 16));
+    }
+
+    #[test]
+    fn custom_literal_still_matches() {
+        let det = SensitiveDataDetector::new(DetectorConfig {
+            detect_api_keys: false,
+            detect_credit_cards: false,
+            detect_emails: false,
+            custom_patterns: vec!["confidential".to_string()],
+        });
+        assert!(det.contains_sensitive_data("this is CONFIDENTIAL ok"));
+    }
+
+    #[test]
+    fn invalid_custom_pattern_matches_nothing() {
+        // Swift `try? NSRegularExpression` parity: invalid regex = no rule.
+        let det = SensitiveDataDetector::new(DetectorConfig {
+            detect_api_keys: false,
+            detect_credit_cards: false,
+            detect_emails: false,
+            custom_patterns: vec!["([unclosed".to_string()],
+        });
+        assert!(!det.contains_sensitive_data("([unclosed text here"));
     }
 }
