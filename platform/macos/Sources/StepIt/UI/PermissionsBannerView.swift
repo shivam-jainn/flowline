@@ -152,7 +152,7 @@ public struct PermissionsBannerView: View {
         hasAccessibility = manager.hasAccessibilityPermission
         // Observable verdicts: GUI-vs-CLI permission mismatches are otherwise
         // undebuggable (unified log: `log show --predicate 'process == "StepIt"'`).
-        NSLog("StepIt perms verdict: screen=%d ax=%d", hasScreenRecording, hasAccessibility)
+        NSLog("StepIt perms verdict: screen=%@ ax=%@", hasScreenRecording as NSNumber, hasAccessibility as NSNumber)
     }
 
     /// Relaunches the app so granted Screen Recording takes effect (macOS

@@ -23,7 +23,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, @unchecked Send
         // Identity line for support: proves which copy launched (rules out
         // stale duplicates / translocation when permissions misbehave).
         NSLog(
-            "StepIt launch: id=%s path=%s",
+            "StepIt launch: id=%@ path=%@",
             Bundle.main.bundleIdentifier ?? "none",
             Bundle.main.bundleURL.path
         )
