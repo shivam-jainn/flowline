@@ -16,7 +16,8 @@ cd "${ROOT_DIR}"
 
 export PATH="$HOME/.cargo/bin:/opt/homebrew/opt/rustup/bin:$PATH"
 
-echo "===== 1/5 Swift ====="
+echo "===== 1/5 Swift (+ Rust FFI artifacts first) ====="
+Scripts/build-rust-ffi.sh
 swift build
 swift test
 
