@@ -109,6 +109,7 @@ doctor:
 	@echo "binary:  $$(stat -f '%Sm' $(SWIFT_PKG)/.build/StepIt.app/Contents/MacOS/StepIt 2>/dev/null || echo MISSING)  hash=$$(shasum $(SWIFT_PKG)/.build/StepIt.app/Contents/MacOS/StepIt 2>/dev/null | cut -c1-12 || echo none)"
 	@pgrep -x StepIt >/dev/null && ps -o pid,lstart -p $$(pgrep -x StepIt | head -1) || echo "running: no StepIt process"
 	@echo "signing: $$(codesign -dv $(SWIFT_PKG)/.build/StepIt.app 2>&1 | grep -E 'flags|TeamIdentifier' | tr '\n' ' ')"
+	@TEAM=$$(codesign -dv $(SWIFT_PKG)/.build/StepIt.app 2>&1 | sed -n 's/^TeamIdentifier=//p'); if [ "$$TEAM" = "not set" ] || [ -z "$$TEAM" ]; then echo "grant stability: AD-HOC — dies on every rebuild (make sign-setup ends this)"; else echo "grant stability: STABLE ($$TEAM) — rebuilds keep grants"; fi
 	@security find-identity -v -p codesigning 2>/dev/null | grep -qE "Apple Development|Mac Developer" && echo "team cert: YES (rebuilds keep grants)" || echo "team cert: NONE (every rebuild kills grants — run: make sign-setup)"
 	@echo "rule: grant in Settings must happen for THIS binary hash, then relaunch WITHOUT rebuilding (make run)."
 	@echo "note: 'stepit status' from a terminal reflects the TERMINAL context — the in-app window is the real verdict."
