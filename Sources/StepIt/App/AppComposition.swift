@@ -68,6 +68,21 @@ public final class AppComposition {
             manifest: PluginManifest(id: "noop", version: "1.0.0", minimumHostVersion: "r-m1"),
             factory: { StepItNoopDriver() }
         )
+        // R/M3-01: the Windows native driver. Manifest mirrors
+        // `stepit_win_capture::plugin::windows_manifest()` 1:1; on macOS the
+        // factory is a Mock-backed placeholder (no Win32 hooks here) so the
+        // registry resolves `windows` alongside mac/mock/noop and sessions
+        // flow through the untouched core. On Windows the real Win32-hook
+        // driver binary backs this same manifest id.
+        drivers.register(
+            manifest: PluginManifest(
+                id: "windows",
+                version: "1.0.0",
+                capabilities: ["snapshots", "micro-clips", "accessibility-tree", "secure-field-detection"],
+                minimumHostVersion: "r-m1"
+            ),
+            factory: { MockCaptureDriver() }
+        )
 
         let exporters = ExporterRegistry()
         exporters.register(
