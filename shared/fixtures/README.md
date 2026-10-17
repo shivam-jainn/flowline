@@ -29,14 +29,14 @@ automation target.
 
 ## How it is consumed
 
-- **`Sources/StepItFixtures/`** — `FixtureLocator` resolves this tree and
+- **`apps/desktop/Sources/StepItFixtures/`** — `FixtureLocator` resolves this tree and
   `PlaygroundPageRenderer` renders pages offscreen via WebKit for automated
   captures. Lookup order: `STEPIT_FIXTURES_DIR` env var → walk up from the
   working directory → walk up from the source file → app bundle resources.
 - **CLI** — `swift run stepit serve [port]` serves `playground-web/` over HTTP;
   `swift run stepit demo` and `swift run stepit automate` build demo sessions
   from these pages.
-- **Tests** — `Tests/StepItTests/Fixtures/` and `Tests/StepItTests/StepItTests.swift`
+- **Tests** — `apps/desktop/Tests/StepItTests/Fixtures/` and `apps/desktop/Tests/StepItTests/StepItTests.swift`
   assert page integrity, DOM interaction, and full end-to-end sessions against
   this tree.
 

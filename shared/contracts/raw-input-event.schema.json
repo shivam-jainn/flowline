@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stepit.dev/contracts/raw-input-event.schema.json",
+  "title": "RawInputEvent",
+  "description": "Single captured input event. Implemented by StepItIR.RawInputEvent (Swift) and stepit_ir::events (Rust). `kind` is a single-key tagged object. See shared/goldens/events.sample.json(.jsonl).",
+  "type": "object",
+  "required": ["id", "timestamp", "kind"],
+  "properties": {
+    "id": { "type": "string", "format": "uuid" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "kind": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 1,
+      "properties": {
+        "mouseClick": {
+          "type": "object",
+          "required": ["button", "clickCount"],
+          "properties": {
+            "button": { "enum": ["left", "right", "middle"] },
+            "clickCount": { "type": "integer" }
+          }
+        },
+        "keyStroke": {
+          "type": "object",
+          "required": ["key", "modifiers"],
+          "properties": {
+            "key": { "type": "string" },
+            "code": { "type": ["integer", "null"] },
+            "modifiers": { "type": "integer" }
+          }
+        },
+        "hotkeyCombo": {
+          "type": "object",
+          "required": ["combo"],
+          "properties": { "combo": { "type": "string" } }
+        },
+        "userGesture": {
+          "type": "object",
+          "required": ["name", "action"],
+          "properties": {
+            "name": { "type": "string" },
+            "action": { "enum": ["none", "pause_resume", "stop_and_review", "discard_last_step", "add_checkpoint", "capture_snapshot"] }
+          }
+        },
+        "mouseDrag": {
+          "type": "object",
+          "required": ["start", "end"],
+          "properties": {
+            "start": { "$ref": "#/$defs/Point" },
+            "end": { "$ref": "#/$defs/Point" }
+          }
+        },
+        "appSwitch": {
+          "type": "object",
+          "required": ["appName", "windowTitle"],
+          "properties": {
+            "bundleId": { "type": ["string", "null"] },
+            "appName": { "type": "string" },
+            "windowTitle": { "type": "string" }
+          }
+        },
+        "terminalCommand": {
+          "type": "object",
+          "required": ["command"],
+          "properties": {
+            "command": { "type": "string" },
+            "workingDir": { "type": ["string", "null"] },
+            "exitCode": { "type": ["integer", "null"] }
+          }
+        },
+        "pageNavigation": {
+          "type": "object",
+          "required": ["url"],
+          "properties": {
+            "url": { "type": "string" },
+            "title": { "type": ["string", "null"] }
+          }
+        }
+      }
+    },
+    "location": { "$ref": "#/$defs/Point" },
+    "targetContext": {
+      "type": ["object", "null"],
+      "description": "RawElementContext snapshot when the driver could inspect cheaply",
+      "properties": {
+        "appName": { "type": "string" },
+        "bundleIdentifier": { "type": ["string", "null"] },
+        "windowTitle": { "type": "string" },
+        "role": { "type": ["string", "null"] },
+        "subrole": { "type": ["string", "null"] },
+        "title": { "type": ["string", "null"] },
+        "value": { "type": ["string", "null"] },
+        "isSecure": { "type": "boolean" }
+      }
+    }
+  },
+  "$defs": {
+    "Point": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      }
+    }
+  }
+}

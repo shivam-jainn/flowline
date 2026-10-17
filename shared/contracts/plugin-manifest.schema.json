@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stepit.dev/contracts/plugin-manifest.schema.json",
+  "title": "PluginManifest",
+  "description": "Manifest every capture driver, exporter, and AI provider ships; hosts assert minimum versions at startup. Implemented by StepItIR.PluginManifest (Swift) and stepit_ir::manifest (Rust). See shared/goldens/manifest.sample.json.",
+  "type": "object",
+  "required": ["id", "version", "capabilities", "minimumHostVersion"],
+  "properties": {
+    "id": { "type": "string" },
+    "version": { "type": "string" },
+    "capabilities": { "type": "array", "items": { "type": "string" } },
+    "minimumHostVersion": { "type": "string" }
+  }
+}

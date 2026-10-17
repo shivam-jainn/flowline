@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stepit.dev/contracts/step-session.schema.json",
+  "title": "StepSession",
+  "description": "Canonical StepIt recording session. Implemented by StepItIR.StepSession (Swift, Codable) and stepit_ir::session (Rust, serde camelCase). Wire timestamps are RFC 3339 strings. See shared/goldens/session.sample.json.",
+  "type": "object",
+  "required": ["id", "startedAt", "title", "theme", "mediaMode", "steps", "exports"],
+  "properties": {
+    "id": { "type": "string", "description": "sess_<8 hex> (Swift) or equivalent" },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "endedAt": { "type": ["string", "null"], "format": "date-time" },
+    "title": { "type": "string" },
+    "summary": { "type": ["string", "null"] },
+    "theme": { "$ref": "#/$defs/ThemeName" },
+    "mediaMode": { "$ref": "#/$defs/MediaMode" },
+    "steps": { "type": "array", "items": { "$ref": "#/$defs/Step" } },
+    "exports": { "$ref": "#/$defs/ExportPaths" },
+    "synthesizedMarkdown": { "type": ["string", "null"] }
+  },
+  "$defs": {
+    "MediaMode": {
+      "type": "string",
+      "enum": ["hybrid", "static", "animated"]
+    },
+    "ThemeName": {
+      "type": "string",
+      "enum": ["modern-minimal", "developer-dark", "enterprise-sop"]
+    },
+    "ActionType": {
+      "type": "string",
+      "enum": ["click", "right_click", "double_click", "key_press", "typing", "write_code", "app_switch", "mouse_drag", "manual"]
+    },
+    "Point": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      }
+    },
+    "Rect": {
+      "type": "object",
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number" },
+        "height": { "type": "number" }
+      }
+    },
+    "MediaAssets": {
+      "type": "object",
+      "properties": {
+        "screenshot": { "type": ["string", "null"] },
+        "gif": { "type": ["string", "null"] },
+        "webm": { "type": ["string", "null"] },
+        "zoomCrop": { "type": ["string", "null"] },
+        "screenshotOriginal": { "type": ["string", "null"] }
+      }
+    },
+    "Step": {
+      "type": "object",
+      "required": ["id", "index", "timestamp", "action", "appName", "windowTitle", "actionDescription", "isCode", "assets"],
+      "properties": {
+        "id": { "type": "string" },
+        "index": { "type": "integer" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "action": { "$ref": "#/$defs/ActionType" },
+        "appName": { "type": "string" },
+        "bundleIdentifier": { "type": ["string", "null"] },
+        "windowTitle": { "type": "string" },
+        "elementRole": { "type": ["string", "null"] },
+        "elementTitle": { "type": ["string", "null"] },
+        "elementValue": { "type": ["string", "null"] },
+        "coordinates": { "$ref": "#/$defs/Point" },
+        "windowBounds": { "$ref": "#/$defs/Rect" },
+        "elementBounds": { "$ref": "#/$defs/Rect" },
+        "actionDescription": { "type": "string" },
+        "userNotes": { "type": ["string", "null"] },
+        "textBlob": { "type": ["string", "null"] },
+        "isCode": { "type": "boolean" },
+        "codeLanguage": { "type": ["string", "null"] },
+        "assets": { "$ref": "#/$defs/MediaAssets" },
+        "workingDirectory": { "type": ["string", "null"] },
+        "hotkeyCombo": { "type": ["string", "null"] },
+        "isRedacted": { "type": ["boolean", "null"] }
+      }
+    },
+    "ExportPaths": {
+      "type": "object",
+      "properties": {
+        "pdf": { "type": ["string", "null"] },
+        "web": { "type": ["string", "null"] },
+        "markdown": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
