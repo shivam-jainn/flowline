@@ -6,7 +6,7 @@
 #   tooling/       Builds + gates (ci, toolchain, dev, release)
 #
 # Run `make` for the default target (build).
-.PHONY: all build test ffi check-arch check-rust check-wasm check-phase-r serve demo automate bundle dmg clean test-dev dev run sign-setup
+.PHONY: all build test ffi check-arch check-rust check-wasm check-phase-r serve demo automate bundle dmg clean test-dev dev run sign-setup doctor
 
 SWIFT_PKG := platform/macos
 RUST_MANIFEST := core/Cargo.toml
@@ -98,3 +98,16 @@ run:
 	open $(SWIFT_PKG)/.build/StepIt.app
 	sleep 1
 	ps -o pid,lstart,command -p $$(pgrep -x StepIt | head -1) || true
+
+# One-shot diagnosis for "permissions show granted but the app says denied":
+# binary hash vs running process, signing identity, team cert. The classic
+# trap: Settings still shows the toggle ON for a binary hash macOS no longer
+# recognizes (any ad-hoc rebuild), while CGPreflight/AXIsProcessTrusted
+# correctly report denied for the CURRENT binary.
+doctor:
+	@echo "— StepIt doctor —"
+	@echo "binary:  $$(stat -f '%Sm' $(SWIFT_PKG)/.build/StepIt.app/Contents/MacOS/StepIt 2>/dev/null || echo MISSING)  hash=$$(shasum $(SWIFT_PKG)/.build/StepIt.app/Contents/MacOS/StepIt 2>/dev/null | cut -c1-12 || echo none)"
+	@pgrep -x StepIt >/dev/null && ps -o pid,lstart -p $$(pgrep -x StepIt | head -1) || echo "running: no StepIt process"
+	@echo "signing: $$(codesign -dv $(SWIFT_PKG)/.build/StepIt.app 2>&1 | grep -E 'flags|TeamIdentifier' | tr '\n' ' ')"
+	@security find-identity -v -p codesigning 2>/dev/null | grep -qE "Apple Development|Mac Developer" && echo "team cert: YES (rebuilds keep grants)" || echo "team cert: NONE (every rebuild kills grants — run: make sign-setup)"
+	@echo "rule: grant in Settings must happen for THIS binary hash, then relaunch WITHOUT rebuilding (make run)."

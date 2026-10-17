@@ -21,6 +21,12 @@ CONTENTS_DIR="${APP_DIR}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
 RESOURCES_DIR="${CONTENTS_DIR}/Resources"
 
+# Remember the previous binary hash: with ad-hoc signing ANY rebuild is a new
+# identity to macOS, so a changed hash means previously granted TCC entries
+# just died. Warn loudly at the end (Apple-signed builds are TeamID-keyed
+# and immune — no warning needed there).
+OLD_HASH="$(shasum "${MACOS_DIR}/StepIt" 2>/dev/null | cut -d' ' -f1 || true)"
+
 rm -rf "${APP_DIR}"
 mkdir -p "${MACOS_DIR}" "${RESOURCES_DIR}"
 
@@ -106,6 +112,13 @@ echo "Signing with identity: ${SIGN_IDENTITY}"
 if command -v codesign >/dev/null 2>&1; then
     echo "Signing application bundle..."
     codesign --force --deep --sign "${SIGN_IDENTITY}" "${APP_DIR}" 2>/dev/null || true
+fi
+
+NEW_HASH="$(shasum "${MACOS_DIR}/StepIt" 2>/dev/null | cut -d' ' -f1 || true)"
+if [ "${SIGN_IDENTITY}" = "-" ] && [ -n "${OLD_HASH}" ] && [ "${OLD_HASH}" != "${NEW_HASH}" ]; then
+    echo "⚠️  Binary identity changed under ad-hoc signing — macOS treats this as a NEW app:"
+    echo "   previously granted Screen Recording / Accessibility entries are now dead (Settings may still show them ON)."
+    echo "   Re-grant both in Settings, then relaunch with 'make run' (no rebuild)."
 fi
 
 echo "✅ StepIt.app successfully bundled at: ${APP_DIR}"
