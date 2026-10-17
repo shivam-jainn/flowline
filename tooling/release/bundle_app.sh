@@ -8,11 +8,14 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 cd "${ROOT_DIR}"
 
-# 1. Compile Release Binary (FFI artifacts must exist: run `make ffi` first
-#    on a clean checkout — same requirement as `make build`)
-swift build --package-path "${ROOT_DIR}/platform/macos" -c release
+# 1. Compile (FFI artifacts must exist: run `make ffi` first
+#    on a clean checkout — same requirement as `make build`).
+#    CONFIG=debug for the fast incremental dev loop (`make dev`);
+#    default release for shippable bundles (`make test-dev`, DMG).
+CONFIG="${CONFIG:-release}"
+swift build --package-path "${ROOT_DIR}/platform/macos" -c "${CONFIG}"
 
-BIN_PATH="${ROOT_DIR}/platform/macos/.build/release/stepit"
+BIN_PATH="${ROOT_DIR}/platform/macos/.build/${CONFIG}/stepit"
 APP_DIR="${ROOT_DIR}/platform/macos/.build/StepIt.app"
 CONTENTS_DIR="${APP_DIR}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
@@ -80,21 +83,24 @@ if [ -d "${ROOT_DIR}/shared/fixtures/playground-web" ]; then
     cp -R "${ROOT_DIR}/shared/fixtures/playground-web" "${RESOURCES_DIR}/Fixtures/"
 fi
 
-# 6. Code signing: prefer a persistent local identity so TCC grants
-# (Screen Recording / Accessibility) survive rebuilds. Ad-hoc (`-`)
-# re-signs change identity every build and macOS drops the grants.
+# 6. Code signing. TCC (Screen Recording / Accessibility) survives rebuilds
+# ONLY under an Apple-issued identity (TeamIdentifier set): ad-hoc and
+# self-signed certs are hash-keyed, so every rebuild looks like a new app
+# and macOS drops the grants.
 # Override with: CODESIGN_IDENTITY="Apple Development: you@x.com" make bundle
 SIGN_IDENTITY="${CODESIGN_IDENTITY:-}"
 if [ -z "${SIGN_IDENTITY}" ]; then
-    # NB: find-identity -p codesigning hides untrusted self-signed certs;
-    # detect via the cert itself. Sign by SHA-1 hash (not label) so stray
-    # same-label keys can never make the match ambiguous.
-    CERT_HASH="$(security find-certificate -c "StepIt Local Dev" -Z 2>/dev/null | awk '/SHA-1 hash:/ {print $NF; exit}')"
-    if [ -n "${CERT_HASH}" ]; then
-        SIGN_IDENTITY="${CERT_HASH}"
-    else
-        SIGN_IDENTITY="-"
-    fi
+    # First Apple-issued development identity, if any (BSD-sed-safe: one
+    # expression per cert kind).
+    SIGN_IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
+        | sed -n -e 's/^.*"\(Apple Development[^"]*\)".*/\1/p' \
+                 -e 's/^.*"\(Mac Developer[^"]*\)".*/\1/p' \
+                 -e 's/^.*"\(Developer ID Application[^"]*\)".*/\1/p' \
+        | head -1)"
+fi
+if [ -z "${SIGN_IDENTITY}" ]; then
+    SIGN_IDENTITY="-"
+    echo "⚠️  Ad-hoc signing: TCC grants will NOT survive rebuilds. Run 'make sign-setup' once (free Apple ID) to fix permanently."
 fi
 echo "Signing with identity: ${SIGN_IDENTITY}"
 if command -v codesign >/dev/null 2>&1; then

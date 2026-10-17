@@ -1,59 +1,38 @@
 #!/usr/bin/env bash
-# Ensures a persistent local code-signing identity exists so rebuilds keep
-# the same signing identity and macOS TCC (Screen Recording / Accessibility)
-# grants survive `make test-dev`. Ad-hoc (`-`) signatures change identity on
-# every rebuild, which is what wipes grants in a loop.
+# Checks for an Apple-issued development signing identity. Only those carry a
+# TeamIdentifier, which is what makes macOS TCC (Screen Recording /
+# Accessibility) grants survive rebuilds. Ad-hoc (`-`) and self-signed certs
+# are keyed by binary hash, so every rebuild looks like a new app and the
+# grants get dropped — that loop cannot be scripted away, it needs a real
+# identity (free Apple ID, no paid Developer Program for local signing).
 set -euo pipefail
 
-NAME="StepIt Local Dev"
-
-# NB: `find-identity -p codesigning` only lists policy-trusted identities, so
-# it hides our self-signed cert. Detect via the cert itself instead.
-if security find-certificate -c "${NAME}" >/dev/null 2>&1; then
-    echo "✅ Signing identity '${NAME}' already exists."
+if security find-identity -v -p codesigning 2>/dev/null | grep -qE "Apple Development|Mac Developer|Developer ID Application"; then
+    echo "✅ Apple-issued signing identity found:"
+    security find-identity -v -p codesigning 2>/dev/null | grep -E "Apple Development|Mac Developer|Developer ID Application" | head -3
+    echo "Rebuilds will keep TCC grants. Nothing to do."
     exit 0
 fi
 
-echo "🔑 Creating persistent signing identity '${NAME}' (one-time)..."
-TMP_DIR="$(mktemp -d -t stepit_sign)"
-trap 'rm -rf "${TMP_DIR}"' EXIT
+cat <<'EOF'
+❌ No Apple-issued development identity. One-time fix (free, ~2 min):
 
-cat > "${TMP_DIR}/openssl.cnf" <<EOF
-[req]
-distinguished_name = dn
-x509_extensions = ext
-prompt = no
-[dn]
-CN = ${NAME}
-[ext]
-extendedKeyUsage = codeSigning
-keyUsage = digitalSignature
+  1. Open Xcode → Settings… → Accounts → + → Apple ID → sign in
+     (a free Apple ID is enough — no paid Developer Program needed
+     for local development signing).
+  2. Xcode automatically mints an "Apple Development" certificate.
+  3. Re-run:  make sign-setup   (should now print ✅)
+  4. Then:    make test-dev     (fresh build, signed with your team)
+  5. Grant Screen Recording + Accessibility once, `make run` to relaunch.
+
+Why not a script-made cert: only Apple-issued certs embed a
+TeamIdentifier. macOS keys TCC grants on (TeamID, BundleID) for those,
+but on the binary hash for ad-hoc/self-signed — so script-made certs
+rebuild the same grant-wiping loop. (Same answer as the Apple dev forums
+give for "permissions reset on every build".)
+
+NOTE: an old stale "StepIt Local Dev" self-signed cert may exist in your
+login keychain from an earlier attempt. It is now unused and safe to
+ignore (or delete it in Keychain Access).
 EOF
-
-openssl req -x509 -newkey rsa:2048 \
-    -keyout "${TMP_DIR}/key.pem" \
-    -out "${TMP_DIR}/cert.pem" \
-    -days 8250 -nodes \
-    -config "${TMP_DIR}/openssl.cnf" 2>/dev/null
-
-openssl pkcs12 -export -legacy \
-    -out "${TMP_DIR}/identity.p12" \
-    -inkey "${TMP_DIR}/key.pem" \
-    -in "${TMP_DIR}/cert.pem" \
-    -passout pass:stepit \
-    -name "${NAME}"
-
-security import "${TMP_DIR}/identity.p12" \
-    -k "${HOME}/Library/Keychains/login.keychain-db" \
-    -P stepit -T /usr/bin/codesign
-
-# Best-effort: trust the cert for code signing so it also shows up under
-# `find-identity -p codesigning`. Needs admin; harmless to skip (signing and
-# TCC stability work without it — detection above uses the cert directly).
-if [ -t 0 ]; then
-    sudo security add-trusted-cert -d -r trustRoot -p codeSign \
-        -k /Library/Keychains/System.keychain "${TMP_DIR}/cert.pem" 2>/dev/null || true
-fi
-
-echo "✅ Created '${NAME}'."
-echo "ℹ️  If codesign prompts for keychain access on first build, choose 'Always Allow'."
+exit 1

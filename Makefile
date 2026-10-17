@@ -6,7 +6,7 @@
 #   tooling/       Builds + gates (ci, toolchain, dev, release)
 #
 # Run `make` for the default target (build).
-.PHONY: all build test ffi check-arch check-rust check-wasm check-phase-r serve demo automate bundle dmg clean test-dev run sign-setup
+.PHONY: all build test ffi check-arch check-rust check-wasm check-phase-r serve demo automate bundle dmg clean test-dev dev run sign-setup
 
 SWIFT_PKG := platform/macos
 RUST_MANIFEST := core/Cargo.toml
@@ -49,9 +49,9 @@ automate:
 bundle:
 	tooling/release/bundle_app.sh
 
-# One-time: creates the persistent "StepIt Local Dev" signing identity so
-# rebuilds keep TCC grants. Run once, grant permissions once, then rebuilds
-# stop wiping them.
+# One-time check: reports whether an Apple-issued development identity exists
+# (the only signing that keeps TCC grants across rebuilds). Prints the free
+# 2-minute Xcode setup when missing.
 sign-setup:
 	tooling/release/ensure_local_signing_identity.sh
 
@@ -62,11 +62,12 @@ clean:
 	rm -rf $(SWIFT_PKG)/.build core/target dist
 
 # Stale-proof manual test loop: kills any running StepIt menu-bar instance,
-# forces a fresh StepIt.app bundle (never reuses the cached .build output),
-# then launches it and prints PID/start time so you can confirm it's fresh.
+# forces a fresh release StepIt.app bundle (never reuses the cached .build
+# output), then launches it and prints PID/start time so you can confirm
+# it's fresh. Needs re-granting TCC afterwards unless signed with an
+# Apple-issued identity (see sign-setup).
 test-dev:
-	killall StepIt 2>/dev/null || true
-	pkill -f "StepIt.app" 2>/dev/null || true
+	pkill -x StepIt 2>/dev/null || true
 	sleep 1
 	rm -rf $(SWIFT_PKG)/.build/StepIt.app
 	tooling/release/bundle_app.sh
@@ -76,13 +77,22 @@ test-dev:
 	sleep 1
 	ps -o pid,lstart,command -p $$(pgrep -x StepIt | head -1) || true
 
+# Fast dev loop — the closest thing to hot reload for a TCC-gated recorder:
+# incremental DEBUG build (seconds after the first one), re-bundle, relaunch.
+# No clean, no release optimization, no shasum noise. A relaunch is always
+# required anyway (macOS applies Screen Recording only to fresh processes),
+# so edit → make dev → test is the whole cycle.
+dev:
+	pkill -x StepIt 2>/dev/null || true
+	sleep 1
+	CONFIG=debug tooling/release/bundle_app.sh
+	open $(SWIFT_PKG)/.build/StepIt.app
+
 # Relaunch the EXISTING bundle without rebuilding. Use this after granting
-# permissions: ad-hoc signatures change on every rebuild, which makes macOS
-# drop Screen Recording / Accessibility grants. `test-dev` rebuilds (grant
-# invalid); `run` preserves the binary (grant survives).
+# permissions: any rebuild re-signs the binary, and without an Apple-issued
+# identity macOS drops Screen Recording / Accessibility grants on re-sign.
 run:
-	killall StepIt 2>/dev/null || true
-	pkill -f "StepIt.app" 2>/dev/null || true
+	pkill -x StepIt 2>/dev/null || true
 	sleep 1
 	test -d $(SWIFT_PKG)/.build/StepIt.app || tooling/release/bundle_app.sh
 	open $(SWIFT_PKG)/.build/StepIt.app
