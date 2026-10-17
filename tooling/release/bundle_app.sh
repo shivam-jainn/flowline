@@ -4,7 +4,7 @@ set -euo pipefail
 echo "⚡️ Building StepIt macOS Application..."
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 cd "${ROOT_DIR}"
 
@@ -69,14 +69,14 @@ cat <<EOF > "${CONTENTS_DIR}/Info.plist"
 EOF
 
 # 4. Copy Icon
-if [ -f "${ROOT_DIR}/Assets/AppIcon.icns" ]; then
-    cp "${ROOT_DIR}/Assets/AppIcon.icns" "${RESOURCES_DIR}/AppIcon.icns"
+if [ -f "${ROOT_DIR}/apps/desktop/Assets/AppIcon.icns" ]; then
+    cp "${ROOT_DIR}/apps/desktop/Assets/AppIcon.icns" "${RESOURCES_DIR}/AppIcon.icns"
 fi
 
 # 5. Copy the fixture tree (Playground web app used by the demo tooling)
-if [ -d "${ROOT_DIR}/Fixtures/playground-web" ]; then
+if [ -d "${ROOT_DIR}/shared/fixtures/playground-web" ]; then
     mkdir -p "${RESOURCES_DIR}/Fixtures"
-    cp -R "${ROOT_DIR}/Fixtures/playground-web" "${RESOURCES_DIR}/Fixtures/"
+    cp -R "${ROOT_DIR}/shared/fixtures/playground-web" "${RESOURCES_DIR}/Fixtures/"
 fi
 
 # 6. Ad-hoc codesign

@@ -4,11 +4,11 @@
 # Runs the shared fixture suite across the Rust core:
 #   cargo test --workspace + cargo clippy --deny warnings
 #
-# Usage: Scripts/ci/check_rust.sh   (run from the repo root; exits 1 on failure)
+# Usage: tooling/ci/check_rust.sh   (run from the repo root; exits 1 on failure)
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-cd "${ROOT_DIR}/Rust"
+cd "${ROOT_DIR}/core"
 
 echo "== cargo test --workspace =="
 cargo test --workspace --locked

@@ -6,7 +6,7 @@ set -euo pipefail
 # icon pedestals, drag-to-install flow, and ad-hoc code signing.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 VERSION="${1:-1.0.0}"
 APP_NAME="StepIt"
@@ -15,9 +15,9 @@ DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 DIST_DIR="${ROOT_DIR}/dist"
 BUILD_DIR="${ROOT_DIR}/.build"
 APP_BUNDLE="${BUILD_DIR}/${APP_NAME}.app"
-BG_IMAGE="${ROOT_DIR}/Assets/dmg/background.png"
-BG_RETINA="${ROOT_DIR}/Assets/dmg/background@2x.png"
-ICON_FILE="${ROOT_DIR}/Assets/AppIcon.icns"
+BG_IMAGE="${ROOT_DIR}/apps/desktop/Assets/dmg/background.png"
+BG_RETINA="${ROOT_DIR}/apps/desktop/Assets/dmg/background@2x.png"
+ICON_FILE="${ROOT_DIR}/apps/desktop/Assets/AppIcon.icns"
 
 echo "=================================================="
 echo "⚡️ Building ${APP_NAME} v${VERSION} Release DMG"
