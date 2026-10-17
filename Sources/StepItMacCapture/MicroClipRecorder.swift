@@ -1,4 +1,6 @@
 import Foundation
+import StepItIR
+import StepItPipeline
 import AppKit
 import CoreGraphics
 import ImageIO

@@ -1,4 +1,6 @@
 import Foundation
+import StepItIR
+import StepItPipeline
 import CoreImage
 import CoreGraphics
 import ImageIO
@@ -106,7 +108,7 @@ public struct BlurCompositor: Sendable {
         CIImage(color: CIColor(red: 0, green: 0, blue: 0, alpha: 1.0)).cropped(to: region)
     }
 
-    static func encodePNG(_ image: CGImage) -> Data? {
+    public static func encodePNG(_ image: CGImage) -> Data? {
         let data = NSMutableData()
         guard let destination = CGImageDestinationCreateWithData(data as CFMutableData, UTType.png.identifier as CFString, 1, nil) else {
             return nil

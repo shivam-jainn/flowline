@@ -1,4 +1,7 @@
 import Foundation
+import StepItIR
+import StepItPipeline
+import StepItCaptureAPI
 import AppKit
 
 /// Extract a working-directory path from a terminal window/tab title.
@@ -122,7 +125,7 @@ public final class TerminalContextInspector: TerminalInspectorProtocol, @uncheck
 
     // MARK: - Tier 2: AppleScript
 
-    static func appleScript(for bundleId: String?) -> String? {
+    public static func appleScript(for bundleId: String?) -> String? {
         switch bundleId {
         case "com.apple.Terminal":
             return #"tell application "Terminal" to get custom title of selected tab of front window"#

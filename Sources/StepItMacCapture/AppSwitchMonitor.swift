@@ -1,4 +1,6 @@
 import Foundation
+import StepItIR
+import StepItPipeline
 import AppKit
 
 /// Observes frontmost-application changes for the recording pipeline

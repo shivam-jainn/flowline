@@ -1,4 +1,6 @@
 import Foundation
+import StepItIR
+import StepItPipeline
 import AppKit
 
 /// macOS global/local `NSEvent` monitors.

@@ -1,4 +1,6 @@
 import Foundation
+import StepItIR
+import StepItPipeline
 
 /// Tracks press → release geometry and classifies click vs. deliberate drag
 /// (Phase 2, T8 / B6).
