@@ -1,4 +1,5 @@
 import Foundation
+import StepItCaptureAPI
 import StepItIR
 import StepItPipeline
 import StepItCore

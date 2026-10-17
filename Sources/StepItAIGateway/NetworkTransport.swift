@@ -1,4 +1,5 @@
 import Foundation
+import StepItIR
 
 /// Injected network transport (Phase R §4). Core builds prompts/payloads;
 /// Native (or tests) provides the socket. `URLSession` conforms at the

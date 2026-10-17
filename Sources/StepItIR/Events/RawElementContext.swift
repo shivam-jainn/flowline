@@ -1,4 +1,5 @@
 import Foundation
+import StepItIR
 
 /// Normalized, platform-neutral description of *what the user acted on*.
 ///

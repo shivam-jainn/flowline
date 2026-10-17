@@ -1,4 +1,5 @@
 import Foundation
+import StepItIR
 
 /// IR for a still capture (currently the bare `(image, pngData)` tuple returned
 /// by `ScreenRecorder`). Lets `MockCaptureDriver` return a 1×1 PNG without any

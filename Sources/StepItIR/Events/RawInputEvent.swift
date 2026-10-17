@@ -1,4 +1,5 @@
 import Foundation
+import StepItIR
 
 /// Platform-neutral 2D point used by every core API.
 ///

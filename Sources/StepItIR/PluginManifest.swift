@@ -1,4 +1,5 @@
 import Foundation
+import StepItIR
 
 /// Shared plugin manifest (Phase R §2). Every capture driver, exporter and
 /// AI provider ships one; hosts assert minimum versions at startup.

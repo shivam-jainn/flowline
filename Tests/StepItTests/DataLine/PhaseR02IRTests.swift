@@ -1,4 +1,10 @@
 import XCTest
+import StepItStorage
+import StepItCaptureAPI
+import StepItMacCapture
+import StepItPublishing
+import StepItAIGateway
+import StepItPermissions
 import Foundation
 import StepItIR
 import StepItCore

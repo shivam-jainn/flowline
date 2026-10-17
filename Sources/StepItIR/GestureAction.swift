@@ -1,4 +1,5 @@
 import Foundation
+import StepItIR
 
 /// Gesture action vocabulary (owns: StepItIR). Moved from
 /// StepItCore/Model/Settings.swift during R/M1-02: `RawInputEvent.Kind`

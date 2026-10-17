@@ -1,4 +1,5 @@
 import Foundation
+import StepItIR
 
 // MARK: - Phase 2: Privacy Configuration (owns: StepItPipeline)
 // Moved here from StepItCore/Model/Settings.swift during R/M1-02 so the

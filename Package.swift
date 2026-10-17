@@ -36,7 +36,7 @@ let package = Package(
         ),
         .target(
             name: "StepItCaptureAPI",
-            dependencies: ["StepItIR"],
+            dependencies: ["StepItIR", "StepItPipeline", "StepItCore"],
             path: "Sources/StepItCaptureAPI"
         ),
         .target(
@@ -46,22 +46,22 @@ let package = Package(
         ),
         .target(
             name: "StepItStorage",
-            dependencies: ["StepItIR"],
+            dependencies: ["StepItIR", "StepItCore"],
             path: "Sources/StepItStorage"
         ),
         .target(
             name: "StepItMacCapture",
-            dependencies: ["StepItIR", "StepItCaptureAPI", "StepItPipeline"],
+            dependencies: ["StepItIR", "StepItCaptureAPI", "StepItPipeline", "StepItCore", "StepItStorage"],
             path: "Sources/StepItMacCapture"
         ),
         .target(
             name: "StepItPublishing",
-            dependencies: ["StepItIR", "StepItStorage"],
+            dependencies: ["StepItIR", "StepItStorage", "StepItCore"],
             path: "Sources/StepItPublishing"
         ),
         .target(
             name: "StepItAIGateway",
-            dependencies: ["StepItIR"],
+            dependencies: ["StepItIR", "StepItCore", "StepItStorage"],
             path: "Sources/StepItAIGateway"
         ),
         .target(

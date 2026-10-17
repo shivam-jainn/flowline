@@ -1,4 +1,5 @@
 import Foundation
+import StepItIR
 
 /// AI provider plugin contract (Phase R §2). Pure request/response models;
 /// transport is injected (see NetworkTransport.swift).

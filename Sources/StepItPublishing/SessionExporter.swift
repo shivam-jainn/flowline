@@ -1,4 +1,5 @@
 import Foundation
+import StepItIR
 
 /// Exported artifact descriptor. Pure data — rendering happens in Native.
 public struct ExportArtifact: Sendable, Equatable {

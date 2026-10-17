@@ -1,4 +1,10 @@
 import Foundation
+import StepItPermissions
+import StepItStorage
+import StepItMacCapture
+import StepItCaptureAPI
+import StepItPublishing
+import StepItAIGateway
 import StepItPipeline
 import StepItEngine
 import StepItIR

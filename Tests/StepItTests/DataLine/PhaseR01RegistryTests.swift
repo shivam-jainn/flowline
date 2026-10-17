@@ -1,4 +1,7 @@
 import XCTest
+import StepItStorage
+import StepItMacCapture
+import StepItPermissions
 import StepItIR
 import StepItPipeline
 import StepItEngine
