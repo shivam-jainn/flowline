@@ -1,5 +1,4 @@
 import Foundation
-import AppKit
 import ApplicationServices
 import CoreGraphics
 
@@ -9,10 +8,21 @@ public enum PermissionStatus: String, Sendable {
     case notDetermined
 }
 
-public final class PermissionsManager: @unchecked Sendable {
+public final class PermissionsManager: Permissions, @unchecked Sendable {
     public static let shared = PermissionsManager()
     
     public init() {}
+    
+    // MARK: - Permissions protocol
+    
+    public func status(for kind: PermissionKind) -> PermissionStatus {
+        switch kind {
+        case .screenRecording:
+            return hasScreenRecordingPermission ? .granted : .denied
+        case .accessibility:
+            return hasAccessibilityPermission ? .granted : .denied
+        }
+    }
     
     // MARK: - Screen Recording
     
@@ -33,7 +43,7 @@ public final class PermissionsManager: @unchecked Sendable {
     
     public func openScreenRecordingSettings() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
-            NSWorkspace.shared.open(url)
+            openSystemURL(url)
         }
     }
     
@@ -51,7 +61,7 @@ public final class PermissionsManager: @unchecked Sendable {
     
     public func openAccessibilitySettings() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-            NSWorkspace.shared.open(url)
+            openSystemURL(url)
         }
     }
     
@@ -59,5 +69,16 @@ public final class PermissionsManager: @unchecked Sendable {
     
     public var allPermissionsGranted: Bool {
         return hasScreenRecordingPermission && hasAccessibilityPermission
+    }
+    
+    // MARK: - Private
+    
+    /// AppKit-free equivalent of the shared-workspace open-URL call (R/M1-06:
+    /// zero AppKit in this target). Opens the same URL via `/usr/bin/open`.
+    private func openSystemURL(_ url: URL) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        process.arguments = [url.absoluteString]
+        try? process.run()
     }
 }

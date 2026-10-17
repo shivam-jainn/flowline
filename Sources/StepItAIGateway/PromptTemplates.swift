@@ -1,4 +1,5 @@
 import Foundation
+import StepItIR
 
 public enum DocumentationStyle: String, Codable, CaseIterable, Sendable {
     case sopGuide = "sop_guide"

@@ -1,4 +1,5 @@
 import Foundation
+import StepItIR
 
 public final class MarkdownExporter: @unchecked Sendable {
     public static let shared = MarkdownExporter()

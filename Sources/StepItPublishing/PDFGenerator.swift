@@ -1,4 +1,7 @@
 import Foundation
+import StepItIR
+import StepItCore
+import StepItStorage
 import WebKit
 import PDFKit
 

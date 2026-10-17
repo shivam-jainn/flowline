@@ -1,4 +1,6 @@
 import Foundation
+import StepItIR
+import StepItCore
 
 public enum AIGatewayError: LocalizedError, Sendable {
     case invalidURL(String)
