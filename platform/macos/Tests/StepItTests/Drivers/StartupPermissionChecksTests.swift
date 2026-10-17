@@ -49,6 +49,17 @@ final class StartupPermissionChecksTests: XCTestCase {
         )
     }
 
+    /// Heisenbug support: the window verdict must be observable without a
+    /// debugger, so Refresh logs the live screen/ax verdicts to unified log.
+    func testPermissionVerdictsAreLogged() {
+        let banner = readSource("platform/macos/Sources/StepIt/UI/PermissionsBannerView.swift")
+        XCTAssertFalse(banner.isEmpty, "could not locate PermissionsBannerView.swift")
+        XCTAssertTrue(
+            banner.contains("NSLog") && banner.contains("hasScreenRecordingPermission"),
+            "permission checks must NSLog the live verdicts (else GUI-vs-CLI mismatches are undebuggable)"
+        )
+    }
+
     /// Green ticks must lead somewhere: when both permissions are granted the
     /// window has to offer an onward action (close + start recording),
     /// otherwise the user is stuck on a fully-checked list.
