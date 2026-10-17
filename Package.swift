@@ -73,6 +73,17 @@ let package = Package(
             dependencies: coreModules,
             path: "Sources/StepItFixtures"
         ),
+        // R/M2-07: UniFFI-generated Swift bindings over the Rust core.
+        // Rebuilt by Scripts/build-rust-ffi.sh (binary artifact gitignored).
+        .binaryTarget(
+            name: "stepit_ffiFFI",
+            path: "Generated/stepit_ffiFFI.xcframework"
+        ),
+        .target(
+            name: "StepItFFI",
+            dependencies: ["stepit_ffiFFI"],
+            path: "Generated/StepItFFI"
+        ),
         .executableTarget(
             name: "StepIt",
             dependencies: ["StepItFixtures"] + coreModules,
@@ -80,7 +91,7 @@ let package = Package(
         ),
         .testTarget(
             name: "StepItTests",
-            dependencies: ["StepItFixtures"] + coreModules,
+            dependencies: ["StepItFixtures", "StepItFFI"] + coreModules,
             path: "Tests/StepItTests"
         )
     ]
