@@ -157,7 +157,7 @@ fn toc_anchor(description: &str) -> String {
 /// DIVERGENCE (pinned, documented): Swift uses `session.started_at.formatted()`
 /// — `Date.FormatStyle` with the ambient locale/timezone, i.e.
 /// non-deterministic across machines. The golden
-/// (`Rust/goldens/markdown.sample.md`) was captured under an en-IN/IST
+/// (`shared/goldens/markdown.sample.md`) was captured under an en-IN/IST
 /// environment: `2026-03-01T10:00:00Z` renders as `1/3/2026, 3:30 PM`
 /// (D/M/YYYY order, UTC+05:30, 12-hour clock, unpadded day/month/hour,
 /// zero-padded minutes, and — matching Apple's `time(.shortened)` style — a

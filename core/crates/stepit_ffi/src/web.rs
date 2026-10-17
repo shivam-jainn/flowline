@@ -3,7 +3,7 @@
 //! The Phase 4 web driver consumes this WASM core, never a second
 //! implementation. Same JSON-string boundaries as [`crate`] — data in,
 //! data out — so Swift, Rust, and WASM run the identical goldens.
-//! Built with `wasm-pack build Rust/crates/stepit_ffi --target web`;
+//! Built with `wasm-pack build core/crates/stepit_ffi --target web`;
 //! verified headless with `wasm-pack test --node`.
 
 use wasm_bindgen::prelude::*;

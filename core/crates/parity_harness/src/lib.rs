@@ -1,7 +1,7 @@
 //! Parity harness (R/M2-00).
 //!
 //! One harness, all crates use it: loads the Swift-exported fixture corpus
-//! from `Rust/goldens/` and asserts byte-identical output at the *canonical*
+//! from `shared/goldens/` and asserts byte-identical output at the *canonical*
 //! JSON level (object keys sorted recursively, compact separators). Swift
 //! goldens are dumped with `JSONEncoder(sortedKeys:)`; Rust outputs pass
 //! through [`canonical`] before comparison, so struct field order never
@@ -9,19 +9,27 @@
 
 use std::path::{Path, PathBuf};
 
-/// Workspace `Rust/` dir, resolved from this crate's manifest location.
+/// Workspace `core/` dir, resolved from this crate's manifest location.
 pub fn rust_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("crates/<name>/..")
         .parent()
-        .expect("Rust/")
+        .expect("core/")
         .to_path_buf()
 }
 
-/// Read a golden file from `Rust/goldens/<name>`.
+/// Repo root, resolved from the `core/` workspace dir.
+pub fn repo_root() -> PathBuf {
+    rust_dir()
+        .parent()
+        .expect("repo root above core/")
+        .to_path_buf()
+}
+
+/// Read a golden file from `shared/goldens/<name>`.
 pub fn load_golden(name: &str) -> String {
-    let path = rust_dir().join("goldens").join(name);
+    let path = repo_root().join("shared").join("goldens").join(name);
     std::fs::read_to_string(&path)
         .unwrap_or_else(|e| panic!("missing golden {}: {e}", path.display()))
 }

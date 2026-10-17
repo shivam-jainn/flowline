@@ -19,7 +19,7 @@ fn markdown_matches_golden_byte_for_byte() {
     assert_eq!(
         markdown::export_markdown(&session, ""),
         expected,
-        "markdown export diverged from Rust/goldens/markdown.sample.md"
+        "markdown export diverged from shared/goldens/markdown.sample.md"
     );
 }
 

@@ -1,7 +1,7 @@
 //! Prompt templates — byte-identical port of `PromptTemplates.swift`.
 //!
 //! Whitespace/newlines mirror the Swift multiline literals exactly; see the
-//! parity test against `Rust/goldens/gateway.payload.json`.
+//! parity test against `shared/goldens/gateway.payload.json`.
 
 use stepit_ir::StepSession;
 

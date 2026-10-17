@@ -1,4 +1,4 @@
-//! Golden parity vs `Rust/goldens/` (R/M2-02).
+//! Golden parity vs `shared/goldens/` (R/M2-02).
 
 use stepit_pipeline::aggregate::{TypingBatchAggregator, TypingBatchResult};
 use stepit_pipeline::classify::{InputClassification, classify_parts};
