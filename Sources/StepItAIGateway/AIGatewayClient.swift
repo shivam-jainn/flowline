@@ -1,6 +1,6 @@
 import Foundation
 import StepItIR
-import StepItCore
+import StepItStorage
 
 public enum AIGatewayError: LocalizedError, Sendable {
     case invalidURL(String)
@@ -29,9 +29,11 @@ public final class AIGatewayClient: @unchecked Sendable {
     public static let shared = AIGatewayClient()
     
     private let urlSession: URLSession
-    
-    public init(urlSession: URLSession = .shared) {
+    private let payloadBuilder: MultimodalPayloadBuilder
+
+    public init(urlSession: URLSession = .shared, store: any SessionStoreProtocol = SessionStore()) {
         self.urlSession = urlSession
+        self.payloadBuilder = MultimodalPayloadBuilder(store: store)
     }
     
     public func generateStream(
@@ -71,7 +73,7 @@ public final class AIGatewayClient: @unchecked Sendable {
                     request.setValue("https://github.com/stepit/stepit", forHTTPHeaderField: "HTTP-Referer")
                     request.setValue("StepIt macOS", forHTTPHeaderField: "X-Title")
                     
-                    let chatPayload = MultimodalPayloadBuilder.shared.buildRequest(
+                    let chatPayload = payloadBuilder.buildRequest(
                         session: session,
                         settings: settings,
                         style: style,

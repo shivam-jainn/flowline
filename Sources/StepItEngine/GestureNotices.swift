@@ -2,7 +2,6 @@ import Foundation
 import StepItCaptureAPI
 import StepItIR
 import StepItPipeline
-import StepItCore
 
 // MARK: - Clip and gesture orchestration (gesture half) (R/M1-03 reducer split; verbatim logic from RecorderWorkflowEngine)
 

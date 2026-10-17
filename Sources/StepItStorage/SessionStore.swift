@@ -1,6 +1,5 @@
 import Foundation
 import StepItIR
-import StepItCore
 
 public final class SessionStore: SessionStoreProtocol, @unchecked Sendable {
     public static let shared = SessionStore()
@@ -116,23 +115,5 @@ public final class SessionStore: SessionStoreProtocol, @unchecked Sendable {
 
     public func resolveMediaPath(sessionID: String, relativePath: String) -> URL {
         sessionDirectory(for: sessionID).appendingPathComponent(relativePath)
-    }
-
-    // MARK: - Settings
-
-    public func loadSettings() -> StepItSettings {
-        guard let data = try? gateway.readData(at: settingsURL),
-              let settings = try? decoder.decode(StepItSettings.self, from: data) else {
-            let defaultSettings = StepItSettings.defaultSettings
-            try? saveSettings(defaultSettings)
-            return defaultSettings
-        }
-        return settings
-    }
-
-    public func saveSettings(_ settings: StepItSettings) throws {
-        try ensureDirectoryExists(baseDirectory)
-        let data = try encoder.encode(settings)
-        try gateway.writeData(data, to: settingsURL)
     }
 }

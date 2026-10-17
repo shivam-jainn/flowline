@@ -1,7 +1,7 @@
 import Foundation
 import StepItIR
 import StepItPipeline
-import StepItCore
+import StepItCaptureAPI
 import AppKit
 
 public struct GestureEventNotice: Sendable {

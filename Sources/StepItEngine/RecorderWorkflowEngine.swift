@@ -3,7 +3,6 @@ import StepItCaptureAPI
 import StepItStorage
 import StepItIR
 import StepItPipeline
-import StepItCore
 
 /// Pure domain state machine of StepIt's recording pipeline.
 ///
@@ -68,7 +67,7 @@ public actor RecorderWorkflowEngine {
     // MARK: - Dependencies
 
     internal let driver: any CaptureDriver
-    internal let store: SessionStore
+    internal let store: any SessionStoreProtocol
     internal let time: TimeProvider
     internal let config: EngineConfig
     internal let aggregator: TypingBatchAggregator
@@ -87,6 +86,10 @@ public actor RecorderWorkflowEngine {
     internal var streamContinuations: [UUID: AsyncStream<RecorderSnapshot>.Continuation] = [:]
 
     // Phase 2 state — settings snapshot for the active recording.
+    // Owned in-memory (R/M1-07): seeded from defaults, updated through
+    // `applySettings`. The engine never reads settings back from the store,
+    // so the store stays a pure session/media gateway.
+    internal var engineSettings = EngineSettings()
     internal var privacySettings = PrivacySettings()
     internal var hotkeySettings = HotkeyCaptureSettings()
     internal var captureSettings = CaptureSettings()
@@ -131,7 +134,7 @@ public actor RecorderWorkflowEngine {
 
     public init(
         driver: any CaptureDriver,
-        store: SessionStore,
+        store: any SessionStoreProtocol,
         time: TimeProvider = SystemTimeProvider(),
         config: EngineConfig = EngineConfig()
     ) {
@@ -206,7 +209,7 @@ public actor RecorderWorkflowEngine {
         state = .recording
         debouncer.reset()
 
-        let settings = store.loadSettings()
+        let settings = engineSettings
         applyLocalSettings(settings)
         await applyHotkeyPolicyToDriver(settings)
 

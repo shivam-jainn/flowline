@@ -2,7 +2,6 @@ import Foundation
 import StepItCaptureAPI
 import StepItIR
 import StepItPipeline
-import StepItCore
 
 /// One atomic value the controller mirrors into `@Published` vars — no torn
 /// reads across `async` hops.

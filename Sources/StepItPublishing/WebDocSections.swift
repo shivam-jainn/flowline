@@ -1,6 +1,5 @@
 import Foundation
 import StepItIR
-import StepItCore
 
 extension WebDocGenerator {
     func generateSidebarNav(session: StepSession) -> String {

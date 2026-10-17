@@ -1,6 +1,5 @@
 import Foundation
 import StepItIR
-import StepItCore
 import StepItStorage
 import CoreGraphics
 import ImageIO
@@ -62,8 +61,12 @@ public struct ChatCompletionRequest: Codable, Sendable {
 
 public final class MultimodalPayloadBuilder: @unchecked Sendable {
     public static let shared = MultimodalPayloadBuilder()
-    
-    public init() {}
+
+    private let store: any SessionStoreProtocol
+
+    public init(store: any SessionStoreProtocol = SessionStore()) {
+        self.store = store
+    }
     
     public func buildRequest(
         session: StepSession,
@@ -83,7 +86,7 @@ public final class MultimodalPayloadBuilder: @unchecked Sendable {
         if settings.visionEnabled {
             for step in session.steps {
                 guard let relPath = step.assets.screenshot else { continue }
-                let fileURL = SessionStore.shared.resolveMediaPath(sessionID: session.id, relativePath: relPath)
+                let fileURL = store.resolveMediaPath(sessionID: session.id, relativePath: relPath)
                 if let imageData = try? Data(contentsOf: fileURL),
                    let base64String = encodeAndDownsampleImage(data: imageData, maxWidth: maxImageWidth) {
                     let caption = "Screenshot for Step \(step.index) (\(step.actionDescription)):"

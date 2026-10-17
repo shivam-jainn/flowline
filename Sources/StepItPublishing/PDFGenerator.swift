@@ -1,17 +1,19 @@
 import Foundation
 import StepItIR
-import StepItCore
 import StepItStorage
 import WebKit
 import PDFKit
 
 public final class PDFGenerator: NSObject, WKNavigationDelegate, @unchecked Sendable {
     public static let shared = PDFGenerator()
-    
+
+    private let store: any SessionStoreProtocol
+
     private var activeWebView: WKWebView?
     private var navigationContinuation: CheckedContinuation<Void, Error>?
-    
-    public override init() {
+
+    public init(store: any SessionStoreProtocol = SessionStore()) {
+        self.store = store
         super.init()
     }
     
@@ -20,8 +22,8 @@ public final class PDFGenerator: NSObject, WKNavigationDelegate, @unchecked Send
         session: StepSession,
         settings: PublishingSettings = PublishingSettings()
     ) async throws -> URL {
-        let sessionDir = SessionStore.shared.sessionDirectory(for: session.id)
-        let exportsDir = SessionStore.shared.exportsDirectory(for: session.id)
+        let sessionDir = store.sessionDirectory(for: session.id)
+        let exportsDir = store.exportsDirectory(for: session.id)
         try? FileManager.default.createDirectory(at: exportsDir, withIntermediateDirectories: true)
         
         let pdfURL = exportsDir.appendingPathComponent("guide.pdf")
@@ -98,7 +100,7 @@ public final class PDFGenerator: NSObject, WKNavigationDelegate, @unchecked Send
         // Update session export paths
         var updatedSession = session
         updatedSession.exports.pdf = "exports/guide.pdf"
-        try? SessionStore.shared.saveSession(updatedSession)
+        try? store.saveSession(updatedSession)
         
         self.activeWebView = nil
         return pdfURL

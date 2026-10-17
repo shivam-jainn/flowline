@@ -2,7 +2,6 @@ import Foundation
 import StepItIR
 import StepItPipeline
 import StepItCaptureAPI
-import StepItCore
 import AppKit
 
 /// macOS implementation of the `CaptureDriver` SPI.

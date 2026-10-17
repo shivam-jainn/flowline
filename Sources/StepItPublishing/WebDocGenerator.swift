@@ -1,6 +1,5 @@
 import Foundation
 import StepItIR
-import StepItCore
 
 public final class WebDocGenerator: @unchecked Sendable {
     public static let shared = WebDocGenerator()

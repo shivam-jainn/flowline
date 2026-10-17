@@ -1,7 +1,6 @@
 import Foundation
 import StepItIR
 import StepItPipeline
-import StepItCore
 
 // MARK: - Capture Driver SPI
 //

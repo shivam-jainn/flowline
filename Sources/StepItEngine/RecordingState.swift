@@ -2,7 +2,6 @@ import Foundation
 import StepItCaptureAPI
 import StepItIR
 import StepItPipeline
-import StepItCore
 
 /// Recording state machine states. Moved out of the pre-Phase-1 coordinator file
 /// unchanged (same 3 cases, same public name) so no call site churns.

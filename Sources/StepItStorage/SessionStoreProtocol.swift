@@ -1,12 +1,12 @@
 import Foundation
 import StepItIR
-import StepItCore
 
 // MARK: - Session store protocol (owns: StepItStorage, R/M1-04)
 //
 // Every public method of `SessionStore`, so the engine and surfaces can depend
-// on the abstraction. `StepItSettings` still lives in StepItCore (m1-07 moves
-// it next to its owning modules); the protocol references it transitionally.
+// on the abstraction. Settings persistence moved out in R/M1-07 (the
+// aggregate lives in `StepItEngine`; JSON load/save is owned by the app
+// composition layer via `SettingsFileStore`, reusing `settingsURL` below).
 
 /// Abstract session persistence. Conformed to by `SessionStore`.
 public protocol SessionStoreProtocol: Sendable {
@@ -26,7 +26,4 @@ public protocol SessionStoreProtocol: Sendable {
 
     func saveMedia(data: Data, sessionID: String, filename: String) throws -> String
     func resolveMediaPath(sessionID: String, relativePath: String) -> URL
-
-    func loadSettings() -> StepItSettings
-    func saveSettings(_ settings: StepItSettings) throws
 }
