@@ -37,8 +37,8 @@ final class PhaseR02IRTests: XCTestCase {
     func testPrivacySettingsOwnedByPipeline() {
         let p = PrivacySettings()
         XCTAssertTrue(p.maskSecureInputFields)
-        let coreAlias: PrivacySettings = StepItCore.PrivacySettings()
-        XCTAssertEqual(p, coreAlias)
+        let pipelineHome: PrivacySettings = StepItPipeline.PrivacySettings()
+        XCTAssertEqual(p, pipelineHome)
     }
 
     func testGestureActionOwnedByIR() {

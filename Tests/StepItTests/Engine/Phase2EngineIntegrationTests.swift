@@ -55,7 +55,7 @@ final class Phase2EngineIntegrationTests: XCTestCase {
     @discardableResult
     private func startRecording(settings: StepItSettings? = nil) async throws -> StepSession {
         if let settings = settings {
-            try store.saveSettings(settings)
+            await engine.applySettings(settings)
         }
         let session = try await engine.startRecording()
         return try XCTUnwrap(session)
