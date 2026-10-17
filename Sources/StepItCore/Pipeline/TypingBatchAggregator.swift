@@ -24,14 +24,19 @@ public struct TypingBatchResult: Sendable {
 }
 
 /// Platform-free port of the legacy macOS typing aggregator: coalesces raw keystrokes into
-/// text/command batches, with two cuts made in Phase 1:
+/// text/command batches, with three cuts made across phases:
 ///
 /// 1. The debounce interval is injectable (`Configuration`).
 /// 2. The app / role / window context is pulled from an injected async
 ///    provider instead of the shared accessibility inspector + `NSWorkspace`.
+/// 3. **Phase 2 (T6):** when the focused element is `isSecure`, raw characters
+///    are *never* appended to the buffer — they become `•` masks (or are
+///    dropped entirely when `PrivacySettings.maskSecureInputFields` is off).
+///    This guarantees zero plaintext passwords in memory, disk or exports.
 ///
-/// Thread-safety: internal state lives on a private serial queue; the class is
-/// callable from the engine actor and from tests.
+/// Thread-safety: state is guarded by `NSLock`; all ingestion methods are
+/// `async` so the secure-field decision (which needs one AX probe per batch)
+/// happens **before** the first character is buffered.
 public final class TypingBatchAggregator: @unchecked Sendable {
     public struct Configuration: Sendable {
         /// Inactivity window that finalizes a normal typing block.
@@ -48,11 +53,12 @@ public final class TypingBatchAggregator: @unchecked Sendable {
     /// not explicitly awaiting.
     public var onBatchCompleted: (@Sendable (TypingBatchResult) -> Void)?
 
+    private let lock = NSLock()
     private var buffer: String = ""
     private var lastLocation: Point2D = .zero
-    private var lastKeyTime: Date = .distantPast
-    private var debounceWorkItem: DispatchWorkItem?
-    private let queue = DispatchQueue(label: "com.stepit.typingbatchaggregator", qos: .userInitiated)
+    private var debounceTask: Task<Void, Never>?
+    private var privacy = PrivacySettings()
+
     private let configuration: Configuration
     private let contextProvider: ContextProvider
     private let classifier = KeystrokeClassifier()
@@ -65,112 +71,132 @@ public final class TypingBatchAggregator: @unchecked Sendable {
         self.contextProvider = contextProvider
     }
 
+    /// Privacy policy (T6). Pushed by the engine at recording start / settings
+    /// save so the very next keystroke sees the latest rules.
+    public var privacySettings: PrivacySettings {
+        get { lock.withLock { privacy } }
+        set { lock.withLock { privacy = newValue } }
+    }
+
     public var hasPendingText: Bool {
-        queue.sync {
+        lock.withLock {
             !buffer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
     }
 
     // MARK: - Ingestion (parity: appendKeystroke / handleBackspace / handleReturnKey / handleControlC)
 
-    public func append(char: String, at location: Point2D) {
-        queue.async { [weak self] in
-            guard let self = self else { return }
+    public func append(char: String, at location: Point2D) async {
+        // Probe the focused element on **every** keystroke: a focus change in
+        // the middle of a batch (no debounce boundary yet) must never inherit a
+        // stale "not secure" verdict and buffer raw password characters.
+        let context = await contextProvider()
+        let isSecure = context?.isSecure ?? false
+        let shouldMask = lock.withLock { privacy.maskSecureInputFields }
 
-            // Cancel prior pending finalization
-            self.debounceWorkItem?.cancel()
-
-            self.buffer += char
-            self.lastLocation = location
-            self.lastKeyTime = Date()
-
-            let workItem = DispatchWorkItem { [weak self] in
-                self?.finalizeBuffer(at: location)
+        lock.withLock {
+            if isSecure {
+                // Zero-plaintext invariant: the raw character never enters the
+                // buffer — only masks (or nothing) do.
+                if shouldMask {
+                    buffer += String(repeating: "•", count: max(1, char.count))
+                }
+            } else {
+                buffer += char
             }
-            self.debounceWorkItem = workItem
-            self.queue.asyncAfter(deadline: .now() + self.configuration.debounceInterval, execute: workItem)
+            lastLocation = location
         }
+        armDebounce(at: location)
     }
 
-    public func handleBackspace(at location: Point2D) {
-        queue.async { [weak self] in
-            guard let self = self else { return }
-            if !self.buffer.isEmpty {
-                self.buffer.removeLast()
+    public func handleBackspace(at location: Point2D) async {
+        lock.withLock {
+            if !buffer.isEmpty {
+                buffer.removeLast()
             }
-            self.lastLocation = location
-            self.debounceWorkItem?.cancel()
-            let workItem = DispatchWorkItem { [weak self] in
-                self?.finalizeBuffer(at: location)
-            }
-            self.debounceWorkItem = workItem
-            self.queue.asyncAfter(deadline: .now() + self.configuration.debounceInterval, execute: workItem)
+            lastLocation = location
         }
+        armDebounce(at: location)
     }
 
     /// Enter / Return finalizes the command / line immediately.
-    public func handleReturn(at location: Point2D) {
-        queue.async { [weak self] in
-            guard let self = self else { return }
-            self.debounceWorkItem?.cancel()
-            self.debounceWorkItem = nil
-            self.finalizeBuffer(at: location)
-        }
+    public func handleReturn(at location: Point2D) async {
+        cancelDebounce()
+        await finalizeBuffer(at: location)
     }
 
     /// Control+C (Terminal SIGINT) appends the `^C` marker and finalizes.
-    public func handleControlC(at location: Point2D) {
-        queue.async { [weak self] in
-            guard let self = self else { return }
-            self.debounceWorkItem?.cancel()
-            self.debounceWorkItem = nil
-            if self.buffer.isEmpty {
-                self.buffer = "^C"
+    public func handleControlC(at location: Point2D) async {
+        cancelDebounce()
+        lock.withLock {
+            if buffer.isEmpty {
+                buffer = "^C"
             } else {
-                self.buffer += " ^C"
+                buffer += " ^C"
             }
-            self.finalizeBuffer(at: location)
+            lastLocation = location
         }
+        await finalizeBuffer(at: location)
     }
 
     /// The **only** flush API (replaces `forceFinalizeSynchronously`'s
     /// `queue.sync`). Returns the final batch so the engine appends it in
     /// order — no callback re-entrancy.
     public func flushPending() async -> TypingBatchResult? {
-        let pending: (text: String, location: Point2D)? = await withCheckedContinuation { continuation in
-            queue.async {
-                self.debounceWorkItem?.cancel()
-                self.debounceWorkItem = nil
-                let text = self.buffer
-                self.buffer = ""
-                if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    continuation.resume(returning: nil)
-                } else {
-                    continuation.resume(returning: (text, self.lastLocation))
-                }
+        let pending: (text: String, location: Point2D)? = lock.withLock {
+            debounceTask?.cancel()
+            debounceTask = nil
+            let text = buffer
+            buffer = ""
+            guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return nil
             }
+            return (text, lastLocation)
         }
 
         guard let pending = pending else { return nil }
         return await makeResult(text: pending.text, location: pending.location)
     }
 
+    // MARK: - Debounce
+
+    private func armDebounce(at location: Point2D) {
+        let interval = configuration.debounceInterval
+        lock.lock()
+        debounceTask?.cancel()
+        let task = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            await self?.finalizeBuffer(at: location)
+        }
+        debounceTask = task
+        lock.unlock()
+    }
+
+    private func cancelDebounce() {
+        lock.withLock {
+            debounceTask?.cancel()
+            debounceTask = nil
+        }
+    }
+
     // MARK: - Finalization
 
-    /// Runs on the internal queue. Grabs the buffer and resolves the async
-    /// context off-queue, then delivers through `onBatchCompleted`.
-    private func finalizeBuffer(at location: Point2D) {
-        let text = buffer
-        buffer = ""
+    /// Grabs the buffer and resolves the async context off-lock, then delivers
+    /// through `onBatchCompleted`.
+    private func finalizeBuffer(at location: Point2D) async {
+        let text: String = lock.withLock {
+            let text = buffer
+            buffer = ""
+            debounceTask = nil
+            return text
+        }
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return
         }
 
-        Task { [weak self] in
-            guard let self = self else { return }
-            let result = await self.makeResult(text: text, location: location)
-            self.onBatchCompleted?(result)
-        }
+        let result = await makeResult(text: text, location: location)
+        onBatchCompleted?(result)
     }
 
     private func makeResult(text: String, location: Point2D) async -> TypingBatchResult {
@@ -185,6 +211,10 @@ public final class TypingBatchAggregator: @unchecked Sendable {
         }
         if context.windowTitle.isEmpty {
             context.windowTitle = context.appName
+        }
+        if context.isSecure {
+            // Defense in depth: never let a secure field's value ride along.
+            context.value = nil
         }
 
         let classification = classifier.classify(text: text, context: context)

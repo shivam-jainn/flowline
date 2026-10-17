@@ -341,7 +341,7 @@ final class RecorderWorkflowEngineTests: XCTestCase {
         XCTAssertEqual(session.steps.first?.textBlob, "ab")
     }
 
-    func testTabAppendsWhitespaceToTheBatch() async throws {
+    func testTabEmitsDiscreteKeyPressStepAndFlushesPendingTyping() async throws {
         driver.focusedContextProvider = { RawEventFixtures.ctx(app: "Ghostty", bundleId: "com.mitchellh.ghostty") }
         _ = try await startRecording()
 
@@ -351,9 +351,17 @@ final class RecorderWorkflowEngineTests: XCTestCase {
         driver.emitKey("Tab", code: 48)
         driver.emitKey("Return", code: 36)
 
-        let waited = await expectSteps(1)
+        let waited = await expectSteps(2)
         let session = try XCTUnwrap(waited)
-        XCTAssertEqual(session.steps.first?.textBlob, "ls\t")
+
+        // Phase 2 (T3): the pending command is flushed *before* the Tab step.
+        XCTAssertEqual(session.steps.first?.action, .writeCode)
+        XCTAssertEqual(session.steps.first?.textBlob, "ls")
+
+        let tabStep = try XCTUnwrap(session.steps.last)
+        XCTAssertEqual(tabStep.action, .keyPress)
+        XCTAssertEqual(tabStep.actionDescription, "Press Tab in Ghostty")
+        XCTAssertNil(tabStep.hotkeyCombo, "Plain navigation keys carry no modifier combo")
     }
 
     func testClickFlushesPendingTypingFirst() async throws {
@@ -632,12 +640,10 @@ final class RecorderWorkflowEngineTests: XCTestCase {
 
     // MARK: - Reserved event kinds
 
-    func testReservedEventKindsAreIgnored() async throws {
+    func testPageNavigationRemainsReserved() async throws {
         _ = try await startRecording()
 
-        driver.emit(RawInputEvent(kind: .mouseDrag(start: Point2D(x: 1, y: 1), end: Point2D(x: 2, y: 2))))
-        driver.emit(RawInputEvent(kind: .appSwitch(bundleId: nil, appName: "Safari", windowTitle: "")))
-        driver.emit(RawInputEvent(kind: .terminalCommand(command: "ls", workingDir: "/tmp", exitCode: 0)))
+        // Phase 4 owns page navigation; Phase 2 handles the other reserved kinds.
         driver.emit(RawInputEvent(kind: .pageNavigation(url: "https://example.com", title: nil)))
 
         try? await Task.sleep(nanoseconds: 80_000_000)
@@ -656,7 +662,8 @@ final class RecorderWorkflowEngineTests: XCTestCase {
         await freshProbe.attach(to: freshEngine)
 
         // Seeded with the current (idle) snapshot on subscription.
-        XCTAssertEqual(freshProbe.snapshots.first?.state, .idle)
+        let seeded = await freshProbe.waitUntil { $0?.state == .idle }
+        XCTAssertTrue(seeded)
 
         try await freshEngine.startRecording()
         let delivered = await freshProbe.waitUntilState(.recording)

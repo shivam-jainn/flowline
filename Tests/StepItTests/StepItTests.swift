@@ -351,11 +351,11 @@ final class StepItTests: XCTestCase {
         }
         
         for character in "git status" {
-            aggregator.append(char: String(character), at: Point2D(x: 100, y: 100))
+            await aggregator.append(char: String(character), at: Point2D(x: 100, y: 100))
         }
         
         // Return key pressed
-        aggregator.handleReturn(at: Point2D(x: 100, y: 100))
+        await aggregator.handleReturn(at: Point2D(x: 100, y: 100))
         
         await fulfillment(of: [exp], timeout: 1.0)
         
@@ -386,10 +386,10 @@ final class StepItTests: XCTestCase {
         
         // Type "npm run devv" then backspace
         for character in "npm x" {
-            aggregator.append(char: String(character), at: Point2D(x: 50, y: 50))
+            await aggregator.append(char: String(character), at: Point2D(x: 50, y: 50))
         }
-        aggregator.handleBackspace(at: Point2D(x: 50, y: 50))
-        aggregator.handleControlC(at: Point2D(x: 50, y: 50))
+        await aggregator.handleBackspace(at: Point2D(x: 50, y: 50))
+        await aggregator.handleControlC(at: Point2D(x: 50, y: 50))
         
         await fulfillment(of: [exp], timeout: 1.0)
         

@@ -48,6 +48,15 @@ public final class MarkdownExporter: @unchecked Sendable {
                 let titleDesc = step.elementTitle != nil ? " (`\(step.elementTitle!)`)" : ""
                 md += "- **Target Element**: \(role)\(titleDesc)\n"
             }
+            if let combo = step.hotkeyCombo {
+                md += "- **Shortcut**: `\(combo)`\n"
+            }
+            if let directory = step.workingDirectory {
+                md += "- **Working Directory**: `\(directory)`\n"
+            }
+            if step.isRedacted == true {
+                md += "- **Redacted**: 🛡️ sensitive data blurred offline\n"
+            }
             if let coords = step.coordinates {
                 md += "- **Coordinates**: (\(Int(coords.x)), \(Int(coords.y)))\n"
             }

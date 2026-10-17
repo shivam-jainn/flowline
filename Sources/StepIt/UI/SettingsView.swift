@@ -28,6 +28,16 @@ public struct SettingsView: View {
                     Label("Smart Gestures", systemImage: "hand.tap.fill")
                 }
             
+            privacyTab
+                .tabItem {
+                    Label("Privacy", systemImage: "hand.raised.fill")
+                }
+
+            shortcutsTab
+                .tabItem {
+                    Label("Shortcuts", systemImage: "command")
+                }
+
             publishingTab
                 .tabItem {
                     Label("Publishing", systemImage: "doc.text.fill")
@@ -39,14 +49,15 @@ public struct SettingsView: View {
                 }
         }
         .padding()
-        .frame(width: 620, height: 500)
+        .frame(width: 620, height: 560)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save Settings") {
                     try? SessionStore.shared.saveSettings(settings)
-                    // Single-owner routing (fix F2): settings reach the driver
-                    // through the controller, never by writing the detector.
-                    Task { await WorkflowController.shared.applyGestureSettings(settings.gestures) }
+                    // Single-owner routing (fix F2 / Phase 2 T9): settings reach
+                    // the engine + driver through the controller, never by
+                    // writing detectors or recognizers directly.
+                    Task { await WorkflowController.shared.applySettings(settings) }
                     showSavedAlert = true
                 }
                 .buttonStyle(BorderedProminentButtonStyle())
@@ -130,6 +141,9 @@ public struct SettingsView: View {
                         Slider(value: $settings.capture.highlightRadius, in: 16...48, step: 2) {
                             Text("Highlight Marker Radius: \(Int(settings.capture.highlightRadius)) pt")
                         }
+
+                        Toggle("Record App Switches (Switch to Slack, …)", isOn: $settings.capture.recordAppSwitches)
+                            .help("Emits an 'app_switch' step whenever the frontmost application changes during a recording.")
                     }
                     .padding(10)
                 }
@@ -138,10 +152,136 @@ public struct SettingsView: View {
         }
     }
     
-    // MARK: - Publishing Tab
-    
-    private var publishingTab: some View {
+    // MARK: - Privacy Tab (Phase 2, T9)
+
+    private var privacyTab: some View {
         ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                GroupBox(label: Label("Password & Secure Input", systemImage: "key.fill")) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Toggle("Mask Password Fields", isOn: $settings.privacy.maskSecureInputFields)
+                            .help("Keystrokes in secure fields are stored as •••• or dropped entirely — raw characters never leave the field.")
+                        Text("Secure-field snapshots are blacked out before they are saved, and values are stripped from the step model.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(10)
+                }
+
+                GroupBox(label: Label("Offline OCR Redaction", systemImage: "eye.slash.fill")) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Toggle("Blur Sensitive Text in Screenshots", isOn: $settings.privacy.enableOfflineOCRRedaction)
+                            .fontWeight(.medium)
+                            .help("Apple Vision OCR runs fully on-device — nothing is uploaded.")
+
+                        if settings.privacy.enableOfflineOCRRedaction {
+                            Toggle("Auto-Redact API Keys & Tokens", isOn: $settings.privacy.autoRedactAPIKeys)
+                            Toggle("Auto-Redact Credit Cards", isOn: $settings.privacy.autoRedactCreditCards)
+                            Toggle("Auto-Redact Email Addresses", isOn: $settings.privacy.autoRedactEmails)
+
+                            Picker("Redaction Style", selection: $settings.privacy.blurStyle) {
+                                ForEach(RedactionBlurStyle.allCases, id: \.self) { (style: RedactionBlurStyle) in
+                                    Text(style.displayName).tag(style)
+                                }
+                            }
+
+                            Slider(value: $settings.privacy.blurRadius, in: 4...40, step: 2) {
+                                Text("Blur Radius: \(Int(settings.privacy.blurRadius)) pt")
+                            }
+                            .disabled(settings.privacy.blurStyle == .blackout)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Custom Regex Patterns (one per line)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                TextEditor(text: customPatternsBinding)
+                                    .font(.system(size: 11, design: .monospaced))
+                                    .frame(height: 60)
+                                    .border(Color.secondary.opacity(0.2))
+                                    .cornerRadius(4)
+                            }
+
+                            Text("Blurred steps show a 🛡️ badge in the Review Window and can be toggled (with the preserved original) before publishing.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(10)
+                }
+            }
+            .padding()
+        }
+    }
+
+    private var customPatternsBinding: Binding<String> {
+        Binding(
+            get: { settings.privacy.customRegexPatterns.joined(separator: "\n") },
+            set: { newValue in
+                settings.privacy.customRegexPatterns = newValue
+                    .components(separatedBy: .newlines)
+                    .map { $0.trimmingCharacters(in: .whitespaces) }
+                    .filter { !$0.isEmpty }
+            }
+        )
+    }
+
+    // MARK: - Shortcuts Tab (Phase 2, T2/T9)
+    
+    private var shortcutsTab: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                GroupBox(label: Label("Keyboard Capture", systemImage: "command")) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Toggle("Capture Modifier Shortcuts (⌘S, ⌘⇧P, ⌃C…)", isOn: $settings.hotkeyCapture.captureModifierShortcuts)
+                            .help("Each shortcut becomes a discrete 'key_press' step with a screenshot.")
+                        Toggle("Capture Navigation Keys (Esc, Tab, Arrows, F-Keys)", isOn: $settings.hotkeyCapture.captureNavigationKeys)
+                    }
+                    .padding(10)
+                }
+
+                GroupBox(label: Label("Always-Ignored Combos", systemImage: "nosign")) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("One combo per line (e.g. ⌘Tab, ⌘Space). These are consumed and never recorded.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        TextEditor(text: ignoredCombosBinding)
+                            .font(.system(size: 11, design: .monospaced))
+                            .frame(height: 60)
+                            .border(Color.secondary.opacity(0.2))
+                            .cornerRadius(4)
+                    }
+                    .padding(10)
+                }
+
+                GroupBox(label: Label("Recording Toggle", systemImage: "record.circle")) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField("Toggle Shortcut", text: $settings.hotkeys.toggleRecording)
+                            .help("Default ⌥ Space. The recorder consumes this combo and never records it as a step.")
+                    }
+                    .padding(10)
+                }
+            }
+            .padding()
+        }
+    }
+
+    private var ignoredCombosBinding: Binding<String> {
+        Binding(
+            get: { settings.hotkeyCapture.ignoredCombos.sorted().joined(separator: "\n") },
+            set: { newValue in
+                settings.hotkeyCapture.ignoredCombos = Set(
+                    newValue
+                        .components(separatedBy: .newlines)
+                        .map { $0.trimmingCharacters(in: .whitespaces) }
+                        .filter { !$0.isEmpty }
+                )
+            }
+        )
+    }
+
+    // MARK: - Publishing Tab
+
+    private var publishingTab: some View {        ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 GroupBox(label: Label("Documentation Output & Themes", systemImage: "doc.text.fill")) {
                     VStack(alignment: .leading, spacing: 14) {

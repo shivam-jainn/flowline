@@ -3,7 +3,8 @@ import Foundation
 /// In-memory `CaptureDriver` for headless tests: no `CGEvent`, no AX
 /// permission, no display. Behaving like a non-macOS driver also proves the SPI
 /// is implementable off-Apple.
-public final class MockCaptureDriver: CaptureDriver, GestureSettingsSink, @unchecked Sendable {
+public final class MockCaptureDriver: CaptureDriver, GestureSettingsSink, HotkeySettingsSink,
+    TerminalContextProviding, VisualObscuring, VisualRedactionProviding, @unchecked Sendable {
 
     // MARK: - Identity
 
@@ -26,6 +27,11 @@ public final class MockCaptureDriver: CaptureDriver, GestureSettingsSink, @unche
     public var snapshotProvider: (@Sendable (Point2D?) -> FrameSnapshot?)?
     /// Scripts micro-clips. Defaults to a GIF+MP4 stub pair.
     public var clipProvider: (@Sendable (Point2D) -> ClipAsset?)?
+    /// Scripts terminal `pwd` resolution (Phase 2, T4).
+    public var terminalInspector: (any TerminalInspectorProtocol)?
+    /// Scripts the OCR redaction facet (Phase 2, T7). Defaults to "no redaction".
+    /// The closure may suspend to simulate real Vision OCR latency.
+    public var redactionProvider: (@Sendable (FrameSnapshot, PrivacySettings) async -> RedactionOutcome)?
 
     // MARK: - Spy state
 
@@ -42,6 +48,10 @@ public final class MockCaptureDriver: CaptureDriver, GestureSettingsSink, @unche
     private var _lastHighlightPoint: Point2D?
     private var _clipRequests: [Point2D] = []
     private var _appliedGestureSettings: [GestureSettings] = []
+    private var _appliedHotkeySettings: [(settings: HotkeyCaptureSettings, toggleCombo: String)] = []
+    private var _terminalRequests: [(bundleId: String?, windowTitle: String?)] = []
+    private var _obscuredRegions: [(regions: [ElementRect], anchor: Point2D?)] = []
+    private var _redactionRequests: [PrivacySettings] = []
 
     public var started: Bool { lock.withLock { _started } }
     public var stoppedCount: Int { lock.withLock { _stoppedCount } }
@@ -55,6 +65,10 @@ public final class MockCaptureDriver: CaptureDriver, GestureSettingsSink, @unche
     public var lastHighlightPoint: Point2D? { lock.withLock { _lastHighlightPoint } }
     public var clipRequests: [Point2D] { lock.withLock { _clipRequests } }
     public var appliedGestureSettings: [GestureSettings] { lock.withLock { _appliedGestureSettings } }
+    public var appliedHotkeySettings: [(settings: HotkeyCaptureSettings, toggleCombo: String)] { lock.withLock { _appliedHotkeySettings } }
+    public var terminalRequests: [(bundleId: String?, windowTitle: String?)] { lock.withLock { _terminalRequests } }
+    public var obscuredRegions: [(regions: [ElementRect], anchor: Point2D?)] { lock.withLock { _obscuredRegions } }
+    public var redactionRequests: [PrivacySettings] { lock.withLock { _redactionRequests } }
 
     // MARK: - Init
 
@@ -128,6 +142,28 @@ public final class MockCaptureDriver: CaptureDriver, GestureSettingsSink, @unche
         ))
     }
 
+    public func emitDrag(start: Point2D, end: Point2D, timestamp: Date = Date()) {
+        emit(RawInputEvent(
+            timestamp: timestamp,
+            kind: .mouseDrag(start: start, end: end),
+            location: end
+        ))
+    }
+
+    public func emitAppSwitch(bundleId: String?, appName: String, windowTitle: String = "", timestamp: Date = Date()) {
+        emit(RawInputEvent(
+            timestamp: timestamp,
+            kind: .appSwitch(bundleId: bundleId, appName: appName, windowTitle: windowTitle)
+        ))
+    }
+
+    public func emitTerminalCommand(_ command: String, workingDir: String?, exitCode: Int32? = nil, timestamp: Date = Date()) {
+        emit(RawInputEvent(
+            timestamp: timestamp,
+            kind: .terminalCommand(command: command, workingDir: workingDir, exitCode: exitCode)
+        ))
+    }
+
     // MARK: - InputEventSource
 
     public func start() async throws {
@@ -195,5 +231,36 @@ public final class MockCaptureDriver: CaptureDriver, GestureSettingsSink, @unche
 
     public func updateGestureSettings(_ settings: GestureSettings) async {
         lock.withLock { _appliedGestureSettings.append(settings) }
+    }
+
+    // MARK: - HotkeySettingsSink
+
+    public func updateHotkeySettings(_ settings: HotkeyCaptureSettings, toggleCombo: String) async {
+        lock.withLock { _appliedHotkeySettings.append((settings, toggleCombo)) }
+    }
+
+    // MARK: - TerminalContextProviding
+
+    public func inspectTerminalWorkingDirectory(bundleId: String?, pid: Int32?, windowTitle: String?) async -> String? {
+        lock.withLock { _terminalRequests.append((bundleId, windowTitle)) }
+        guard let inspector = terminalInspector else { return nil }
+        return await inspector.inspectCurrentDirectory(forApp: bundleId, pid: pid, windowTitle: windowTitle)
+    }
+
+    // MARK: - VisualObscuring
+
+    public func obscureSensitiveRegions(in snapshot: FrameSnapshot, regions: [ElementRect], anchor: Point2D?) async -> FrameSnapshot {
+        lock.withLock { _obscuredRegions.append((regions, anchor)) }
+        return snapshot
+    }
+
+    // MARK: - VisualRedactionProviding
+
+    public func redactSensitiveContent(in snapshot: FrameSnapshot, settings: PrivacySettings) async -> RedactionOutcome {
+        lock.withLock { _redactionRequests.append(settings) }
+        guard let provider = redactionProvider else {
+            return RedactionOutcome(snapshot: snapshot, isRedacted: false)
+        }
+        return await provider(snapshot, settings)
     }
 }

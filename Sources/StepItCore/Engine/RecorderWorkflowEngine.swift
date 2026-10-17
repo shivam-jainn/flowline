@@ -5,7 +5,8 @@ import Foundation
 /// - Serializes all event reduction and session mutation through the actor; no
 ///   locks and no `DispatchQueue` pyramids.
 /// - Consumes a normalized `AsyncStream<RawInputEvent>` from a pluggable
-///   `CaptureDriver`; never touches AppKit, AX, ScreenCaptureKit or Combine.
+///   `CaptureDriver`; never touches AppKit, AX, ScreenCaptureKit, Vision or
+///   CoreImage.
 /// - Callers: `WorkflowController` (app) and tests (with
 ///   `MockCaptureDriver` + `TestClock`).
 ///
@@ -16,6 +17,13 @@ import Foundation
 ///   `stopRecording()` is dropped instead of appended.
 /// - `stopRecording()` flushes pending typing first, then sets `isFinalizing`
 ///   while it finalizes.
+///
+/// ## Phase 2 additions
+/// - Discrete `.keyPress` steps for workflow shortcuts and navigation keys (T2/T3).
+/// - Terminal `pwd` enrichment for `.writeCode` command steps (T4/T5).
+/// - Pre-capture secure-field suppression + snapshot blackout (T6).
+/// - Offline OCR redaction of captured screenshots (T7).
+/// - `.mouseDrag` and `.appSwitch` reduction (T8).
 public actor RecorderWorkflowEngine {
 
     // MARK: - Configuration
@@ -73,6 +81,22 @@ public actor RecorderWorkflowEngine {
     private var lastKnownLocation: Point2D?
     private var streamContinuations: [UUID: AsyncStream<RecorderSnapshot>.Continuation] = [:]
 
+    // Phase 2 state — settings snapshot for the active recording.
+    private var privacySettings = PrivacySettings()
+    private var hotkeySettings = HotkeyCaptureSettings()
+    private var captureSettings = CaptureSettings()
+    private var recognizer = HotkeyRecognizer()
+    private var toggleCombo: String
+    /// Latest frontmost app (seeded at recording start, updated by `.appSwitch`).
+    private var lastAppContext: RawElementContext?
+
+    // Step-production gate: privacy passes (OCR, secure blackout) can suspend a
+    // handler for hundreds of milliseconds, and the debounce path can deliver a
+    // typing batch out-of-band. Serializing production keeps step indices,
+    // media filenames and append order exact.
+    private var stepGateContinuations: [CheckedContinuation<Void, Never>] = []
+    private var isStepGateHeld = false
+
     /// Replaces the dead `StepItShowReviewWindow` notification (fix F3).
     private let reviewCallback = ReviewCallbackBox()
     public nonisolated var onSessionReadyForReview: (@MainActor (StepSession) -> Void)? {
@@ -110,6 +134,7 @@ public actor RecorderWorkflowEngine {
         self.store = store
         self.time = time
         self.config = config
+        self.toggleCombo = config.toggleHotkeyCombo
         self.debouncer = EventDebouncer(minInterval: config.minStepInterval)
         self.aggregator = TypingBatchAggregator(
             configuration: TypingBatchAggregator.Configuration(debounceInterval: config.typingDebounceInterval),
@@ -177,6 +202,11 @@ public actor RecorderWorkflowEngine {
         debouncer.reset()
 
         let settings = store.loadSettings()
+        applyLocalSettings(settings)
+        await applyHotkeyPolicyToDriver(settings)
+
+        // Seed the app-switch baseline so the first real switch is detectable.
+        lastAppContext = await driver.inspectFocusedElement()
 
         // Start micro-clip buffering if needed (parity: hybrid/animated only).
         if mediaMode != .staticOnly, driver.capabilities.microClips {
@@ -243,6 +273,60 @@ public actor RecorderWorkflowEngine {
         }
     }
 
+    // MARK: - Step-production gate
+
+    /// Runs `body` with exclusive access to step production. Actor reentrancy
+    /// plus long privacy passes would otherwise interleave producers; callers
+    /// inside an already-gated body use the `produce*` variants directly.
+    private func withStepGate<T>(_ body: () async -> T) async -> T {
+        await acquireStepGate()
+        defer { releaseStepGate() }
+        return await body()
+    }
+
+    private func acquireStepGate() async {
+        if isStepGateHeld {
+            await withCheckedContinuation { stepGateContinuations.append($0) }
+        } else {
+            isStepGateHeld = true
+        }
+    }
+
+    private func releaseStepGate() {
+        if stepGateContinuations.isEmpty {
+            isStepGateHeld = false
+        } else {
+            stepGateContinuations.removeFirst().resume()
+        }
+    }
+
+    // MARK: - Settings
+
+    /// Applies the full settings snapshot: privacy/hotkey policy locally, then
+    /// the driver-owned facets (gestures + hotkey recognizer). Called by
+    /// `WorkflowController` on save so changes take effect immediately (T9).
+    public func applySettings(_ settings: StepItSettings) async {
+        applyLocalSettings(settings)
+        await applyGestureSettings(settings.gestures)
+        await applyHotkeyPolicyToDriver(settings)
+        emitSnapshot()
+    }
+
+    private func applyLocalSettings(_ settings: StepItSettings) {
+        privacySettings = settings.privacy
+        hotkeySettings = settings.hotkeyCapture
+        captureSettings = settings.capture
+        toggleCombo = settings.hotkeys.toggleRecording.isEmpty ? config.toggleHotkeyCombo : settings.hotkeys.toggleRecording
+        recognizer.settings = settings.hotkeyCapture
+        recognizer.toggleCombo = toggleCombo
+        aggregator.privacySettings = settings.privacy
+    }
+
+    private func applyHotkeyPolicyToDriver(_ settings: StepItSettings) async {
+        guard let sink = driver as? HotkeySettingsSink else { return }
+        await sink.updateHotkeySettings(settings.hotkeyCapture, toggleCombo: toggleCombo)
+    }
+
     // MARK: - Event reduction
 
     /// The reduction switch. Public so tests can drive the engine
@@ -257,44 +341,127 @@ public actor RecorderWorkflowEngine {
             let action = StepFactory.actionType(for: button, clickCount: clickCount)
             await handleAction(action: action, at: event.location ?? lastKnownLocation ?? .zero, timestamp: event.timestamp)
 
-        case .keyStroke(let key, _, let modifiers):
-            handleKeystroke(key: key, modifiers: modifiers, at: event.location ?? lastKnownLocation)
+        case .keyStroke(let key, let code, let modifiers):
+            await handleKeystroke(key: key, code: code, modifiers: modifiers, at: event.location ?? lastKnownLocation)
 
         case .hotkeyCombo(let combo):
             if matchesToggleHotkey(combo) {
                 await toggleRecording()
             }
 
+        case .mouseDrag(let start, let end):
+            await handleMouseDrag(start: start, end: end, timestamp: event.timestamp)
+
+        case .appSwitch(let bundleId, let appName, let windowTitle):
+            await handleAppSwitch(bundleId: bundleId, appName: appName, windowTitle: windowTitle)
+
+        case .terminalCommand(let command, let workingDir, _):
+            await handleTerminalCommand(command: command, workingDirectory: workingDir)
+
         case .userGesture(let name, let action):
             await handleGesture(name: name, action: action, location: event.location ?? .zero)
 
-        case .mouseDrag, .appSwitch, .terminalCommand, .pageNavigation:
-            // Reserved for later phases: declared in the IR, never emitted in
-            // Phase 1, ignored by the engine.
+        case .pageNavigation:
+            // Reserved for Phase 4; ignored by the engine.
             break
         }
     }
 
-    private func handleKeystroke(key: String, modifiers: KeyModifiers, at location: Point2D?) {
-        guard state == .recording, !isFinalizing else { return }
-        let location = location ?? .zero
+    /// Routes an IR keystroke through the shared `HotkeyRecognizer` policy so
+    /// the engine and the macOS driver agree on every classification (T2).
+    private func handleKeystroke(key: String, code: Int?, modifiers: KeyModifiers, at location: Point2D?) async {
+        let decision = recognizer.evaluate(key: key, code: code, modifiers: modifiers)
 
-        if modifiers.contains(.control) && key.lowercased() == "c" {
-            aggregator.handleControlC(at: location)
+        // The toggle must fire in every state (F1 parity with `.hotkeyCombo`).
+        if case .toggleRecording = decision {
+            await toggleRecording()
             return
         }
 
+        guard state == .recording, !isFinalizing else { return }
+        let location = location ?? .zero
+
+        // ⌃C is the terminal SIGINT batch terminator (Phase 1 parity) and must
+        // work even when modifier-shortcut capture is disabled.
+        if modifiers.contains(.control), !modifiers.contains(.command),
+           key.lowercased() == "c" {
+            await aggregator.handleControlC(at: location)
+            return
+        }
+
+        switch decision {
+        case .toggleRecording:
+            break
+
+        case .systemConsumed, .ignored:
+            return
+
+        case .workflowShortcut(let chord):
+            await handleKeyPressStep(chord, at: location)
+
+        case .navigationKey(let chord):
+            await handleKeyPressStep(chord, at: location)
+
+        case .textInput(let key, _):
+            await handleTextInput(key: key, at: location)
+        }
+    }
+
+    /// Return / Backspace / printable characters feed the typing aggregator.
+    /// Named keys never reach this path (navigation is classified above), which
+    /// fixes the pre-Phase-2 hole where `"Escape"` was buffered as text.
+    private func handleTextInput(key: String, at location: Point2D) async {
         switch key {
         case "Return", "\r", "\n":
-            aggregator.handleReturn(at: location)
+            await aggregator.handleReturn(at: location)
         case "Backspace", "\u{7f}":
-            aggregator.handleBackspace(at: location)
-        case "Tab":
-            aggregator.append(char: "\t", at: location)
+            await aggregator.handleBackspace(at: location)
         default:
-            guard let first = key.unicodeScalars.first, first.value >= 32, first.value != 127 else { return }
-            aggregator.append(char: key, at: location)
+            guard key.count == 1,
+                  let first = key.unicodeScalars.first,
+                  first.value >= 32, first.value != 127 else { return }
+            await aggregator.append(char: key, at: location)
         }
+    }
+
+    // MARK: - Discrete key press steps (T3)
+
+    private func handleKeyPressStep(_ chord: HotkeyChord, at location: Point2D) async {
+        await withStepGate {
+            await produceKeyPressStep(chord, at: location)
+        }
+    }
+
+    private func produceKeyPressStep(_ chord: HotkeyChord, at location: Point2D) async {
+        // Ordering guarantee (T3): a pending command must precede "Press ⌘S".
+        if aggregator.hasPendingText, let batch = await aggregator.flushPending() {
+            await produceTypingStep(batch)
+        }
+
+        guard state == .recording, !isFinalizing, var session = currentSession else { return }
+
+        let nextIndex = session.steps.count + 1
+        let timestamp = time.now
+        let context = enriched(await driver.inspectFocusedElement() ?? .unknown)
+        let media = await captureStepMedia(context: context, at: location, stepIndex: nextIndex, sessionID: session.id)
+
+        // Post-await re-check: drop the step if the recording already stopped.
+        guard state == .recording, !isFinalizing, let freshSession = currentSession else { return }
+        session = freshSession
+
+        let step = StepFactory.makeKeyPressStep(
+            index: nextIndex,
+            timestamp: timestamp,
+            chord: chord,
+            context: context,
+            assets: media.assets,
+            isRedacted: media.isRedacted ? true : nil
+        )
+
+        session.steps.append(step)
+        currentSession = session
+        try? store.saveSession(session)
+        emitSnapshot()
     }
 
     // MARK: - Click / action handling
@@ -304,36 +471,41 @@ public actor RecorderWorkflowEngine {
     /// snapshot, append + persist + emit, then collect the micro-clip and patch
     /// assets by step id.
     private func handleAction(action: ActionType, at point: Point2D, timestamp: Date) async {
+        // The step gate covers context/media/privacy + append; the micro-clip
+        // capture (up to ~1.5 s) runs after release so typing batches never
+        // wait behind it.
+        let produced = await withStepGate {
+            await produceActionStep(action: action, at: point, timestamp: timestamp)
+        }
+        guard let produced = produced, produced.captureMicroClip else { return }
+        guard driver.capabilities.microClips else { return }
+
+        if let clip = await driver.captureMicroClip(around: point, postDuration: config.clickClipPostDuration) {
+            patchAssets(stepID: produced.id, gif: clip.gifData, video: clip.videoData)
+        }
+    }
+
+    private func produceActionStep(action: ActionType, at point: Point2D, timestamp: Date) async -> ProducedStep? {
         // Flush any pending typed text/commands before recording the subsequent action
         if aggregator.hasPendingText, let batch = await aggregator.flushPending() {
-            await handleTypingBatch(batch)
+            await produceTypingStep(batch)
         }
 
-        guard state == .recording, !isFinalizing else { return }
-        guard debouncer.shouldAccept(at: timestamp) else { return }
-        guard var session = currentSession else { return }
+        guard state == .recording, !isFinalizing else { return nil }
+        guard debouncer.shouldAccept(at: timestamp) else { return nil }
+        guard var session = currentSession else { return nil }
 
         let nextIndex = session.steps.count + 1
 
         // 1. Accessibility element inspection (fallback: .unknown placeholder)
-        let context = await driver.inspectElement(at: point) ?? .unknown
+        let context = enriched(await driver.inspectElement(at: point) ?? .unknown)
 
-        // 2. High-res snapshot capture with highlight
-        let snapshot = await driver.captureSnapshot(highlightAt: point, stepIndex: nextIndex)
+        // 2. High-res snapshot capture with highlight + privacy passes
+        let media = await captureStepMedia(context: context, at: point, stepIndex: nextIndex, sessionID: session.id)
 
         // Post-await re-check: drop the step if the recording already stopped.
-        guard state == .recording, !isFinalizing, let freshSession = currentSession else { return }
+        guard state == .recording, !isFinalizing, let freshSession = currentSession else { return nil }
         session = freshSession
-
-        var assets = MediaAssets()
-        let filenameBase = String(format: "step_%02d", nextIndex)
-
-        if let snapshot = snapshot, driver.capabilities.snapshots {
-            let pngName = "\(filenameBase).png"
-            if let relPath = try? store.saveMedia(data: snapshot.pngData, sessionID: session.id, filename: pngName) {
-                assets.screenshot = relPath
-            }
-        }
 
         let step = StepFactory.makeClickStep(
             index: nextIndex,
@@ -341,7 +513,8 @@ public actor RecorderWorkflowEngine {
             action: action,
             location: point,
             context: context,
-            assets: assets
+            assets: media.assets,
+            isRedacted: media.isRedacted ? true : nil
         )
 
         session.steps.append(step)
@@ -349,46 +522,61 @@ public actor RecorderWorkflowEngine {
         try? store.saveSession(session)
         emitSnapshot()
 
-        // 3. Capture animated micro-clip if hybrid or animated
-        if session.mediaMode != .staticOnly, driver.capabilities.microClips {
-            if let clip = await driver.captureMicroClip(around: point, postDuration: config.clickClipPostDuration) {
-                patchAssets(stepID: step.id, gif: clip.gifData, video: clip.videoData)
-            }
-        }
+        return ProducedStep(
+            id: step.id,
+            captureMicroClip: session.mediaMode != .staticOnly && driver.capabilities.microClips
+        )
     }
 
     // MARK: - Typing handling
 
     /// Parity with `handleTyping`: snapshot, build the typing step, append +
     /// persist + emit, then fast-forward GIF patch.
+    ///
+    /// Phase 2: terminal batches resolve the shell's `pwd` through the driver's
+    /// `TerminalContextProviding` facet (T4/T5) and secure fields blackout the
+    /// snapshot (T6).
     private func handleTypingBatch(_ result: TypingBatchResult) async {
-        guard state == .recording, !isFinalizing else { return }
-        guard var session = currentSession else { return }
+        let produced = await withStepGate {
+            await produceTypingStep(result)
+        }
+        guard let produced = produced, produced.captureMicroClip, driver.capabilities.microClips else { return }
+
+        if let clip = await driver.captureMicroClip(around: result.location, postDuration: config.typingClipPostDuration),
+           let gif = clip.gifData {
+            patchAssets(stepID: produced.id, gif: gif, video: nil)
+        }
+    }
+
+    /// Produces the typing step inside the gate. Returns the step id when a
+    /// fast-forward clip should follow.
+    @discardableResult
+    private func produceTypingStep(_ result: TypingBatchResult) async -> ProducedStep? {
+        guard state == .recording, !isFinalizing else { return nil }
+        guard var session = currentSession else { return nil }
 
         let nextIndex = session.steps.count + 1
         let timestamp = time.now
 
-        // 1. Snapshot capture of the editor / terminal
-        let snapshot = await driver.captureSnapshot(highlightAt: result.location, stepIndex: nextIndex)
-
-        guard state == .recording, !isFinalizing, let freshSession = currentSession else { return }
-        session = freshSession
-
-        var assets = MediaAssets()
-        let filenameBase = String(format: "step_%02d", nextIndex)
-
-        if let snapshot = snapshot, driver.capabilities.snapshots {
-            let pngName = "\(filenameBase).png"
-            if let relPath = try? store.saveMedia(data: snapshot.pngData, sessionID: session.id, filename: pngName) {
-                assets.screenshot = relPath
-            }
+        // 1. Terminal `pwd` resolution (never blocks non-terminal batches).
+        var workingDirectory: String?
+        if result.classification == .terminal {
+            workingDirectory = await resolveWorkingDirectory(for: result.context)
         }
+
+        // 2. Snapshot capture of the editor / terminal + privacy passes
+        let media = await captureStepMedia(context: result.context, at: result.location, stepIndex: nextIndex, sessionID: session.id)
+
+        guard state == .recording, !isFinalizing, let freshSession = currentSession else { return nil }
+        session = freshSession
 
         let step = StepFactory.makeTypingStep(
             index: nextIndex,
             timestamp: timestamp,
             result: result,
-            assets: assets
+            assets: media.assets,
+            workingDirectory: workingDirectory,
+            isRedacted: media.isRedacted ? true : nil
         )
 
         session.steps.append(step)
@@ -396,13 +584,196 @@ public actor RecorderWorkflowEngine {
         try? store.saveSession(session)
         emitSnapshot()
 
-        // 2. Generate fast-forward GIF from the rolling buffer
-        if session.mediaMode != .staticOnly, driver.capabilities.microClips {
-            if let clip = await driver.captureMicroClip(around: result.location, postDuration: config.typingClipPostDuration),
-               let gif = clip.gifData {
-                patchAssets(stepID: step.id, gif: gif, video: nil)
+        return ProducedStep(
+            id: step.id,
+            captureMicroClip: session.mediaMode != .staticOnly && driver.capabilities.microClips
+        )
+    }
+
+    // MARK: - Terminal commands (T4/T5)
+
+    private func resolveWorkingDirectory(for context: RawElementContext?) async -> String? {
+        guard let provider = driver as? TerminalContextProviding else { return nil }
+        return await provider.inspectTerminalWorkingDirectory(
+            bundleId: context?.bundleIdentifier,
+            pid: nil,
+            windowTitle: context?.windowTitle
+        )
+    }
+
+    private func handleTerminalCommand(command: String, workingDirectory: String?) async {
+        await withStepGate {
+            await produceTerminalCommandStep(command: command, workingDirectory: workingDirectory)
+        }
+    }
+
+    private func produceTerminalCommandStep(command: String, workingDirectory: String?) async {
+        if aggregator.hasPendingText, let batch = await aggregator.flushPending() {
+            await produceTypingStep(batch)
+        }
+
+        guard state == .recording, !isFinalizing, var session = currentSession else { return }
+
+        let nextIndex = session.steps.count + 1
+        let context = enriched(await driver.inspectFocusedElement() ?? .unknown)
+        var directory = workingDirectory
+        if directory == nil {
+            directory = await resolveWorkingDirectory(for: context)
+        }
+        let media = await captureStepMedia(context: context, at: lastKnownLocation ?? .zero, stepIndex: nextIndex, sessionID: session.id)
+
+        guard state == .recording, !isFinalizing, let freshSession = currentSession else { return }
+        session = freshSession
+
+        let step = StepFactory.makeTerminalCommandStep(
+            index: nextIndex,
+            timestamp: time.now,
+            command: command,
+            workingDirectory: directory,
+            context: context,
+            assets: media.assets,
+            isRedacted: media.isRedacted ? true : nil
+        )
+
+        session.steps.append(step)
+        currentSession = session
+        try? store.saveSession(session)
+        emitSnapshot()
+    }
+
+    // MARK: - Drag & app-switch handling (T8)
+
+    private func handleMouseDrag(start: Point2D, end: Point2D, timestamp: Date) async {
+        await withStepGate {
+            await produceDragStep(start: start, end: end, timestamp: timestamp)
+        }
+    }
+
+    private func produceDragStep(start: Point2D, end: Point2D, timestamp: Date) async {
+        if aggregator.hasPendingText, let batch = await aggregator.flushPending() {
+            await produceTypingStep(batch)
+        }
+
+        guard state == .recording, !isFinalizing, var session = currentSession else { return }
+
+        let nextIndex = session.steps.count + 1
+        let context = enriched(await driver.inspectElement(at: end) ?? .unknown)
+        let media = await captureStepMedia(context: context, at: end, stepIndex: nextIndex, sessionID: session.id)
+
+        guard state == .recording, !isFinalizing, let freshSession = currentSession else { return }
+        session = freshSession
+
+        let step = StepFactory.makeDragStep(
+            index: nextIndex,
+            timestamp: timestamp,
+            start: start,
+            end: end,
+            context: context,
+            assets: media.assets,
+            isRedacted: media.isRedacted ? true : nil
+        )
+
+        session.steps.append(step)
+        currentSession = session
+        try? store.saveSession(session)
+        emitSnapshot()
+    }
+
+    private func handleAppSwitch(bundleId: String?, appName: String, windowTitle: String) async {
+        let previous = lastAppContext
+        lastAppContext = RawElementContext(appName: appName, bundleIdentifier: bundleId, windowTitle: windowTitle)
+
+        guard state == .recording, !isFinalizing, captureSettings.recordAppSwitches else { return }
+        guard appName != previous?.appName else { return }
+        guard var session = currentSession else { return }
+
+        let step = StepFactory.makeAppSwitchStep(
+            index: session.steps.count + 1,
+            timestamp: time.now,
+            bundleId: bundleId,
+            appName: appName,
+            windowTitle: windowTitle
+        )
+
+        session.steps.append(step)
+        currentSession = session
+        try? store.saveSession(session)
+        emitSnapshot()
+    }
+
+    // MARK: - Snapshot privacy pipeline (T6/T7)
+
+    private struct StepMedia {
+        var assets = MediaAssets()
+        var isRedacted = false
+    }
+
+    /// Result of a gated step production — the id lets the post-gate micro-clip
+    /// pass patch assets without holding the gate.
+    private struct ProducedStep {
+        var id: String
+        var captureMicroClip: Bool
+    }
+
+    /// Capture → secure-field blackout → offline OCR redaction → persist.
+    /// Shared by every step kind so privacy runs identically everywhere.
+    private func captureStepMedia(
+        context: RawElementContext?,
+        at location: Point2D,
+        stepIndex: Int,
+        sessionID: String
+    ) async -> StepMedia {
+        var media = StepMedia()
+        guard driver.capabilities.snapshots else { return media }
+        guard var snapshot = await driver.captureSnapshot(highlightAt: location, stepIndex: stepIndex) else {
+            return media
+        }
+
+        // 1. Pre-capture privacy (T6): blackout the secure field before the
+        //    image is ever persisted.
+        if context?.isSecure == true, let region = context?.boundingBox ?? context?.windowBounds,
+           let obscuring = driver as? VisualObscuring {
+            snapshot = await obscuring.obscureSensitiveRegions(in: snapshot, regions: [region], anchor: location)
+        }
+
+        // 2. Post-capture privacy (T7): offline OCR → sensitive regions → blur.
+        if privacySettings.enableOfflineOCRRedaction, let redactor = driver as? VisualRedactionProviding {
+            let preRedaction = snapshot
+            let outcome = await redactor.redactSensitiveContent(in: snapshot, settings: privacySettings)
+            if outcome.isRedacted {
+                snapshot = outcome.snapshot
+                media.isRedacted = true
+                // Non-destructive redaction: keep the unblurred source so the
+                // Review Window can toggle it.
+                let originalName = String(format: "step_%02d.original.png", stepIndex)
+                media.assets.screenshotOriginal = try? store.saveMedia(
+                    data: preRedaction.pngData,
+                    sessionID: sessionID,
+                    filename: originalName
+                )
             }
         }
+
+        // 3. Persist the (possibly redacted) frame.
+        let pngName = String(format: "step_%02d.png", stepIndex)
+        if let relPath = try? store.saveMedia(data: snapshot.pngData, sessionID: sessionID, filename: pngName) {
+            media.assets.screenshot = relPath
+        }
+        return media
+    }
+
+    /// Fills missing app context from the last observed app switch.
+    private func enriched(_ context: RawElementContext) -> RawElementContext {
+        var context = context
+        if context.appName.isEmpty || context.appName == RawElementContext.unknown.appName,
+           let last = lastAppContext {
+            context.appName = last.appName
+            context.bundleIdentifier = context.bundleIdentifier ?? last.bundleIdentifier
+            if context.windowTitle.isEmpty {
+                context.windowTitle = last.windowTitle
+            }
+        }
+        return context
     }
 
     /// Patches a step's assets (by id) once a micro-clip resolves, with the
@@ -595,7 +966,8 @@ public actor RecorderWorkflowEngine {
     // MARK: - Helpers
 
     private func matchesToggleHotkey(_ combo: String) -> Bool {
-        Self.normalizeHotkey(combo) == Self.normalizeHotkey(config.toggleHotkeyCombo)
+        Self.normalizeHotkey(combo) == Self.normalizeHotkey(toggleCombo)
+            || Self.normalizeHotkey(combo) == Self.normalizeHotkey(config.toggleHotkeyCombo)
     }
 
     private static func normalizeHotkey(_ combo: String) -> String {

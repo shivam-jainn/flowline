@@ -55,10 +55,10 @@ check_dir_present() {
   fi
 }
 
-# 1. Core IR layers must stay Foundation-only (no AppKit / Combine / AX / ScreenCaptureKit / WebKit).
+# 1. Core IR layers must stay Foundation-only (no AppKit / Combine / AX / ScreenCaptureKit / WebKit / Vision / CoreImage).
 check_empty \
   "Events/, Engine/, Pipeline/ import Foundation only" \
-  "^import (AppKit|Combine|ApplicationServices|ScreenCaptureKit|SwiftUI|WebKit)" \
+  "^import (AppKit|Combine|ApplicationServices|ScreenCaptureKit|SwiftUI|WebKit|Vision|CoreImage|Carbon)" \
   Sources/StepItCore/Events Sources/StepItCore/Engine Sources/StepItCore/Pipeline
 
 # 2. No legacy coordinator or aggregator anywhere (code or comments).

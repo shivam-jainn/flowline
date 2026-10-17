@@ -157,6 +157,20 @@ public struct ReviewWindow: View {
                                 .background(Color.secondary.opacity(0.12))
                                 .cornerRadius(4)
                         }
+                        if let combo = step.hotkeyCombo {
+                            Label(combo, systemImage: "command")
+                                .font(.system(size: 11, weight: .medium))
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color.accentColor.opacity(0.12))
+                                .cornerRadius(4)
+                        }
+                        if let directory = step.workingDirectory {
+                            Label(directory, systemImage: "folder")
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundColor(.secondary)
+                        }
+                        redactionBadge(index: index)
                     }
                 }
                 
@@ -298,6 +312,68 @@ public struct ReviewWindow: View {
         }
     }
     
+    // MARK: - Phase 2: redaction badge & non-destructive toggle (T9)
+
+    @ViewBuilder
+    private func redactionBadge(index: Int) -> some View {
+        let step = session.steps[index]
+        if step.isRedacted == true {
+            Button(action: { toggleRedaction(at: index) }) {
+                HStack(spacing: 3) {
+                    Image(systemName: "shield.lefthalf.filled")
+                    Text("Redacted")
+                }
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(.orange)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
+                .background(Color.orange.opacity(0.14))
+                .cornerRadius(4)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .help("Offline OCR blurred sensitive regions. Click to show the unredacted original.")
+        } else if step.assets.screenshotOriginal != nil {
+            Button(action: { toggleRedaction(at: index) }) {
+                HStack(spacing: 3) {
+                    Image(systemName: "shield.slash")
+                    Text("Unredacted")
+                }
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
+                .background(Color.secondary.opacity(0.12))
+                .cornerRadius(4)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .help("This step has a blurred version available. Click to re-apply redaction.")
+        }
+    }
+
+    /// Swaps between the blurred screenshot and the preserved original, then
+    /// persists — the redaction state is what exports read.
+    private func toggleRedaction(at index: Int) {
+        var step = session.steps[index]
+
+        if step.isRedacted == true {
+            // Show the original, keep the blurred file for re-application.
+            guard let original = step.assets.screenshotOriginal,
+                  let current = step.assets.screenshot else { return }
+            step.assets.screenshotOriginal = current
+            step.assets.screenshot = original
+            step.isRedacted = false
+        } else {
+            guard let original = step.assets.screenshotOriginal,
+                  let current = step.assets.screenshot else { return }
+            step.assets.screenshotOriginal = current
+            step.assets.screenshot = original
+            step.isRedacted = true
+        }
+
+        session.steps[index] = step
+        try? SessionStore.shared.saveSession(session)
+    }
+
     // MARK: - Right Pane: AI Synthesis & 1-Click Publishing
     
     private var rightActionPane: some View {

@@ -1,6 +1,7 @@
 import Foundation
 import AppKit
 import ApplicationServices
+import Carbon
 
 public struct ElementInspectionResult: Sendable {
     public var appName: String
@@ -82,7 +83,12 @@ public final class AccessibilityInspector: @unchecked Sendable {
             }
             value = copyStringAttribute(element: element, attribute: kAXValueAttribute as CFString)
             roleDescription = copyStringAttribute(element: element, attribute: kAXRoleDescriptionAttribute as CFString)
-            isSecure = Self.isSecureField(role: role, subrole: subrole)
+            isSecure = Self.isSecureField(role: role, subrole: subrole) || IsSecureEventInputEnabled()
+            if isSecure {
+                // Zero-plaintext invariant (T6): never carry a secure field's
+                // value (some AX providers expose it) into the IR.
+                value = nil
+            }
             
             // Element Bounds
             elementBounds = copyRect(element: element)
@@ -172,7 +178,12 @@ public final class AccessibilityInspector: @unchecked Sendable {
             }
             value = copyStringAttribute(element: element, attribute: kAXValueAttribute as CFString)
             roleDescription = copyStringAttribute(element: element, attribute: kAXRoleDescriptionAttribute as CFString)
-            isSecure = Self.isSecureField(role: role, subrole: subrole)
+            isSecure = Self.isSecureField(role: role, subrole: subrole) || IsSecureEventInputEnabled()
+            if isSecure {
+                // Zero-plaintext invariant (T6): never carry a secure field's
+                // value into the IR.
+                value = nil
+            }
             elementBounds = copyRect(element: element)
         }
         

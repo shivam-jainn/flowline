@@ -8,6 +8,12 @@ import AppKit
 /// and normalizes them into IR events. The class is owned by the driver, never
 /// a hidden singleton.
 ///
+/// Phase 2: keyboard events are classified by `HotkeyRecognizer`:
+/// - the recorder toggle combo is consumed as a control event;
+/// - `⌘`/`⌃` workflow chords (once dropped by a blanket guard) and navigation
+///   keys (`Esc`, `Tab`, arrows, F-keys) are emitted as keystrokes;
+/// - system combos (`⌘Tab`, `⌘Space`) and key auto-repeats are consumed.
+///
 /// Callbacks fire on the thread AppKit delivers the event on; the engine
 /// serializes everything through its actor.
 public final class EventMonitor: @unchecked Sendable {
@@ -24,14 +30,17 @@ public final class EventMonitor: @unchecked Sendable {
     public var onMouseDown: ((MouseButton, Int, CGPoint) -> Void)?
     /// Mouse moved or dragged: point.
     public var onMouseMove: ((CGPoint) -> Void)?
-    /// Any mouse button released.
-    public var onMouseUp: (() -> Void)?
+    /// Mouse button released: (button, clickCount, point). Phase 2 defers click
+    /// emission to the release so `MouseDragDetector` can classify the gesture.
+    public var onMouseUp: ((MouseButton?, Int, CGPoint) -> Void)?
     /// Decoded keystroke: (W3C key name, virtual key code, modifiers).
-    /// Only keys the pre-Phase-1 monitor fed into typing aggregation are
-    /// emitted (`Return`, `Backspace`, `Tab`, `Ctrl+C`, printables).
+    /// Emitted for typing, workflow chords (`⌘S`) and navigation keys (`Esc`).
     public var onKeyStroke: ((String, Int?, KeyModifiers) -> Void)?
-    /// Toggle-recording hotkey (`⌥Space`) was pressed.
+    /// Toggle-recording hotkey (`⌥Space`) was pressed — consumed, never recorded.
     public var onHotkeyCombo: ((String) -> Void)?
+    /// Phase 2 policy table shared with the engine. Updated through
+    /// `MacCaptureDriver.updateHotkeySettings` (single-owner routing).
+    public var recognizer = HotkeyRecognizer()
 
     private(set) public var isMonitoring = false
 
@@ -45,7 +54,7 @@ public final class EventMonitor: @unchecked Sendable {
         globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(
             matching: [
                 .leftMouseDown, .rightMouseDown, .otherMouseDown,
-                .leftMouseUp, .rightMouseUp,
+                .leftMouseUp, .rightMouseUp, .otherMouseUp,
                 .mouseMoved, .leftMouseDragged, .rightMouseDragged
             ]
         ) { [weak self] event in
@@ -61,7 +70,11 @@ public final class EventMonitor: @unchecked Sendable {
 
         // Local monitor so keystrokes / clicks within StepIt / Playground are also captured
         localMouseMonitor = NSEvent.addLocalMonitorForEvents(
-            matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown, .keyDown]
+            matching: [
+                .leftMouseDown, .rightMouseDown, .otherMouseDown,
+                .leftMouseUp, .rightMouseUp, .otherMouseUp,
+                .keyDown
+            ]
         ) { [weak self] event in
             if event.type == .keyDown {
                 self?.handleKeyEvent(event)
@@ -90,7 +103,7 @@ public final class EventMonitor: @unchecked Sendable {
         }
     }
 
-    // MARK: - Decoding (parity with pre-Phase-1 semantics)
+    // MARK: - Decoding
 
     private func handleMouseEvent(_ event: NSEvent) {
         // AppKit coordinates: origin is at bottom-left of primary screen
@@ -102,7 +115,7 @@ public final class EventMonitor: @unchecked Sendable {
             onMouseMove?(mouseLocation)
 
         case .leftMouseUp, .rightMouseUp, .otherMouseUp:
-            onMouseUp?()
+            onMouseUp?(MouseButton(buttonNumber: event.buttonNumber), event.clickCount, mouseLocation)
 
         case .otherMouseDown, .leftMouseDown, .rightMouseDown:
             guard let button = MouseButton(buttonNumber: event.buttonNumber) else { return }
@@ -114,28 +127,30 @@ public final class EventMonitor: @unchecked Sendable {
     }
 
     private func handleKeyEvent(_ event: NSEvent) {
-        // Option + Space check:
-        // keyCode 49 is Space in US ANSI keyboard
-        if event.keyCode == 49 && event.modifierFlags.contains(.option) {
-            onHotkeyCombo?(KeyModifiers.option.symbolString + "Space")
-            return
-        }
-
         let modifiers = KeyModifiers(event.modifierFlags)
 
-        // Control + C (Terminal Interrupt SIGINT)
-        if event.modifierFlags.contains(.control) && (event.keyCode == 8 || event.charactersIgnoringModifiers?.lowercased() == "c") {
-            onKeyStroke?("c", 8, modifiers)
+        let decision = recognizer.evaluate(
+            keyCode: event.keyCode,
+            characters: event.characters,
+            charactersIgnoringModifiers: event.charactersIgnoringModifiers,
+            modifiers: modifiers
+        )
+
+        switch decision {
+        case .toggleRecording(let combo):
+            onHotkeyCombo?(combo)
+
+        case .systemConsumed, .ignored:
+            // ⌘Tab / ⌘Space / modifier keys / disabled capture classes.
             return
+
+        case .workflowShortcut(let chord), .navigationKey(let chord):
+            // One step per physical press — never one per auto-repeat frame.
+            guard !event.isARepeat else { return }
+            onKeyStroke?(chord.key, chord.code, chord.modifiers)
+
+        case .textInput(let key, let modifiers):
+            onKeyStroke?(key, Int(event.keyCode), modifiers)
         }
-
-        // Command chords stay out of typing aggregation (Phase 2 owns discrete
-        // hotkey steps — parity: the old monitor dropped them here).
-        guard !event.modifierFlags.contains(.command) else { return }
-
-        // Decode to the W3C `KeyboardEvent.key` vocabulary: Return(36/76),
-        // Backspace(51), Tab(48), Space(49), printable characters.
-        guard let key = KeyCodeMap.w3cKeyName(for: event.keyCode, characters: event.characters) else { return }
-        onKeyStroke?(key, Int(event.keyCode), modifiers)
     }
 }

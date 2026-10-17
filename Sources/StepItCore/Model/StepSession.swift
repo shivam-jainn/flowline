@@ -50,6 +50,11 @@ public struct ElementRect: Codable, Sendable, Equatable {
         self.width = width
         self.height = height
     }
+
+    /// Geometric center in the same (screen-point) coordinate space.
+    public var center: Point2D {
+        Point2D(x: x + width / 2, y: y + height / 2)
+    }
 }
 
 public struct MediaAssets: Codable, Sendable, Equatable {
@@ -57,12 +62,16 @@ public struct MediaAssets: Codable, Sendable, Equatable {
     public var gif: String?
     public var webm: String?
     public var zoomCrop: String?
+    /// Phase 2: the pre-redaction screenshot kept alongside the blurred export
+    /// so the Review Window can toggle redaction off/on non-destructively.
+    public var screenshotOriginal: String?
     
-    public init(screenshot: String? = nil, gif: String? = nil, webm: String? = nil, zoomCrop: String? = nil) {
+    public init(screenshot: String? = nil, gif: String? = nil, webm: String? = nil, zoomCrop: String? = nil, screenshotOriginal: String? = nil) {
         self.screenshot = screenshot
         self.gif = gif
         self.webm = webm
         self.zoomCrop = zoomCrop
+        self.screenshotOriginal = screenshotOriginal
     }
 }
 
@@ -74,6 +83,7 @@ public enum ActionType: String, Codable, Sendable {
     case typing = "typing"
     case writeCode = "write_code"
     case appSwitch = "app_switch"
+    case mouseDrag = "mouse_drag"
     case manual = "manual"
 }
 
@@ -97,6 +107,13 @@ public struct Step: Identifiable, Codable, Sendable, Equatable {
     public var isCode: Bool
     public var codeLanguage: String?
     public var assets: MediaAssets
+    // MARK: - Phase 2 additions (optional → backward compatible with Phase 1 JSON)
+    /// Terminal working directory (`pwd`) when known, e.g. `"~/Code/stepit"`.
+    public var workingDirectory: String?
+    /// Rendered hotkey combo for `.keyPress` steps, e.g. `"⌘S"`, `"⌘⇧P"`.
+    public var hotkeyCombo: String?
+    /// `true` when OCR redaction blurred sensitive regions in this step's media.
+    public var isRedacted: Bool?
     
     public init(
         id: String = UUID().uuidString,
@@ -117,7 +134,10 @@ public struct Step: Identifiable, Codable, Sendable, Equatable {
         textBlob: String? = nil,
         isCode: Bool = false,
         codeLanguage: String? = nil,
-        assets: MediaAssets = MediaAssets()
+        assets: MediaAssets = MediaAssets(),
+        workingDirectory: String? = nil,
+        hotkeyCombo: String? = nil,
+        isRedacted: Bool? = nil
     ) {
         self.id = id
         self.index = index
@@ -137,6 +157,9 @@ public struct Step: Identifiable, Codable, Sendable, Equatable {
         self.isCode = isCode
         self.codeLanguage = codeLanguage
         self.assets = assets
+        self.workingDirectory = workingDirectory
+        self.hotkeyCombo = hotkeyCombo
+        self.isRedacted = isRedacted
         self.actionDescription = actionDescription.isEmpty ? Self.synthesizeDefaultDescription(
             action: action,
             elementTitle: elementTitle,
@@ -197,6 +220,7 @@ public struct Step: Identifiable, Codable, Sendable, Equatable {
         case .typing: actionWord = "Type in"
         case .writeCode: actionWord = "Write code in"
         case .appSwitch: actionWord = "Switch to"
+        case .mouseDrag: actionWord = "Drag in"
         case .manual: actionWord = "Perform step in"
         }
         

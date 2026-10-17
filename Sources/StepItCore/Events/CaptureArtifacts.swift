@@ -40,3 +40,30 @@ public struct ClipBufferConfig: Codable, Sendable, Equatable {
         self.maxBufferSeconds = maxBufferSeconds
     }
 }
+
+/// One text region returned by an offline OCR scan (Phase 2, T7).
+///
+/// `boundingBox` is normalized to the image (`0…1`) with Vision's
+/// bottom-left origin convention, so the CoreImage compositor can map it to
+/// pixels without per-framework translations.
+public struct OCRTextItem: Codable, Sendable, Equatable {
+    public var text: String
+    public var boundingBox: ElementRect
+
+    public init(text: String, boundingBox: ElementRect) {
+        self.text = text
+        self.boundingBox = boundingBox
+    }
+}
+
+/// Outcome of a post-capture redaction pass.
+public struct RedactionOutcome: Sendable, Equatable {
+    /// Snapshot to persist — blurred when `isRedacted` is `true`.
+    public var snapshot: FrameSnapshot
+    public var isRedacted: Bool
+
+    public init(snapshot: FrameSnapshot, isRedacted: Bool) {
+        self.snapshot = snapshot
+        self.isRedacted = isRedacted
+    }
+}

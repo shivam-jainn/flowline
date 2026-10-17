@@ -4,13 +4,15 @@ import AppKit
 /// macOS implementation of the `CaptureDriver` SPI.
 ///
 /// Single owner and single wiring point for `NSEvent` monitors, AX inspection,
-/// screen capture, micro-clips and gestures. Every collaborator is injected —
-/// no hidden `.shared` lookups.
+/// screen capture, micro-clips, gestures, hotkey recognition, drag detection,
+/// app-switch observation, terminal introspection and OCR redaction. Every
+/// collaborator is injected — no hidden `.shared` lookups.
 ///
 /// Lifecycle is app-scoped: `start()` runs once at bootstrap, so the `⌥Space`
 /// toggle hotkey and smart gestures work in **all** recording states (fix F1).
 /// Recording start/stop only toggles the clip ring-buffer.
-public final class MacCaptureDriver: CaptureDriver, GestureSettingsSink, @unchecked Sendable {
+public final class MacCaptureDriver: CaptureDriver, GestureSettingsSink, HotkeySettingsSink,
+    VisualObscuring, VisualRedactionProviding, TerminalContextProviding, @unchecked Sendable {
 
     public struct Configuration: Sendable {
         /// Enables forwarding mouse motion / buttons to the gesture detector.
@@ -26,6 +28,13 @@ public final class MacCaptureDriver: CaptureDriver, GestureSettingsSink, @unchec
         }
     }
 
+    /// Stashed mouse-down so release can classify click vs. drag (T8).
+    private struct PendingClick {
+        var button: MouseButton
+        var clickCount: Int
+        var point: CGPoint
+    }
+
     // MARK: - Collaborators
 
     private let eventMonitor: EventMonitor
@@ -33,6 +42,10 @@ public final class MacCaptureDriver: CaptureDriver, GestureSettingsSink, @unchec
     private let screenRecorder: ScreenRecorder
     private let clipRecorder: MicroClipRecorder
     private let gestureDetector: SmartGestureDetector
+    private let dragDetector: MouseDragDetector
+    private let appSwitchMonitor: AppSwitchMonitor
+    private let terminalInspector: TerminalContextInspector
+    private let ocrScanner: VisionOCRScanner
     private let config: Configuration
 
     // MARK: - Event stream
@@ -44,6 +57,7 @@ public final class MacCaptureDriver: CaptureDriver, GestureSettingsSink, @unchec
 
     private let lock = NSLock()
     private var wantsClipBuffering = false
+    private var pendingClick: PendingClick?
 
     // MARK: - Init
 
@@ -53,6 +67,10 @@ public final class MacCaptureDriver: CaptureDriver, GestureSettingsSink, @unchec
         screenRecorder: ScreenRecorder,
         clipRecorder: MicroClipRecorder,
         gestureDetector: SmartGestureDetector,
+        dragDetector: MouseDragDetector = MouseDragDetector(),
+        appSwitchMonitor: AppSwitchMonitor = AppSwitchMonitor(),
+        terminalInspector: TerminalContextInspector = TerminalContextInspector(),
+        ocrScanner: VisionOCRScanner = VisionOCRScanner(),
         config: Configuration = Configuration()
     ) {
         self.eventMonitor = eventMonitor
@@ -60,6 +78,10 @@ public final class MacCaptureDriver: CaptureDriver, GestureSettingsSink, @unchec
         self.screenRecorder = screenRecorder
         self.clipRecorder = clipRecorder
         self.gestureDetector = gestureDetector
+        self.dragDetector = dragDetector
+        self.appSwitchMonitor = appSwitchMonitor
+        self.terminalInspector = terminalInspector
+        self.ocrScanner = ocrScanner
         self.config = config
 
         var cont: AsyncStream<RawInputEvent>.Continuation!
@@ -93,9 +115,14 @@ public final class MacCaptureDriver: CaptureDriver, GestureSettingsSink, @unchec
             if self.config.enableGestures {
                 self.gestureDetector.handleMouseDown(button: button, at: point)
             }
-            // Parity: only left/right presses become click steps.
+            // Parity: only left/right presses become click/drag steps.
             guard button == .left || button == .right else { return }
-            self.emit(.mouseClick(button: button, clickCount: clickCount), at: point)
+            // Defer the click until release so a drag is not double-recorded
+            // as click + drag (T8).
+            self.lock.withLock {
+                self.pendingClick = PendingClick(button: button, clickCount: clickCount, point: point)
+            }
+            self.dragDetector.handleMouseDown(at: point)
         }
 
         eventMonitor.onMouseMove = { [weak self] point in
@@ -103,9 +130,27 @@ public final class MacCaptureDriver: CaptureDriver, GestureSettingsSink, @unchec
             self.gestureDetector.handleMouseMoved(to: point)
         }
 
-        eventMonitor.onMouseUp = { [weak self] in
-            guard let self = self, self.config.enableGestures else { return }
-            self.gestureDetector.handleMouseUp()
+        eventMonitor.onMouseUp = { [weak self] button, clickCount, point in
+            guard let self = self else { return }
+            if self.config.enableGestures {
+                self.gestureDetector.handleMouseUp()
+            }
+            let pending: PendingClick? = self.lock.withLock {
+                let pending = self.pendingClick
+                self.pendingClick = nil
+                return pending
+            }
+            guard let pending = pending else { return }
+            _ = button
+
+            if let drag = self.dragDetector.handleMouseUp(at: point), drag.isDrag {
+                self.emit(.mouseDrag(start: Point2D(drag.start), end: Point2D(drag.end)), at: drag.end)
+            } else {
+                self.emit(
+                    .mouseClick(button: pending.button, clickCount: max(pending.clickCount, clickCount)),
+                    at: pending.point
+                )
+            }
         }
 
         eventMonitor.onKeyStroke = { [weak self] key, code, modifiers in
@@ -120,17 +165,26 @@ public final class MacCaptureDriver: CaptureDriver, GestureSettingsSink, @unchec
             self?.continuation.yield(.userGesture(notice))
         }
 
+        appSwitchMonitor.onAppActivated = { [weak self] bundleId, appName, _ in
+            self?.continuation.yield(RawInputEvent(
+                kind: .appSwitch(bundleId: bundleId, appName: appName, windowTitle: "")
+            ))
+        }
+
         eventMonitor.start()
+        appSwitchMonitor.start()
     }
 
     public func stop() async {
         eventMonitor.stop()
+        appSwitchMonitor.stop()
         eventMonitor.onMouseDown = nil
         eventMonitor.onMouseMove = nil
         eventMonitor.onMouseUp = nil
         eventMonitor.onKeyStroke = nil
         eventMonitor.onHotkeyCombo = nil
         gestureDetector.onGestureDetected = nil
+        appSwitchMonitor.onAppActivated = nil
         continuation.finish()
     }
 
@@ -203,6 +257,84 @@ public final class MacCaptureDriver: CaptureDriver, GestureSettingsSink, @unchec
     /// (replaces the old competing gesture-detector writers).
     public func updateGestureSettings(_ settings: GestureSettings) async {
         gestureDetector.settings = settings
+    }
+
+    // MARK: - HotkeySettingsSink
+
+    /// The single sanctioned way hotkey-capture policy reaches the monitor's
+    /// recognizer (R3: the toggle combo is centralized in `HotkeyRecognizer`).
+    public func updateHotkeySettings(_ settings: HotkeyCaptureSettings, toggleCombo: String) async {
+        eventMonitor.recognizer.settings = settings
+        eventMonitor.recognizer.toggleCombo = toggleCombo
+    }
+
+    // MARK: - TerminalContextProviding
+
+    public func inspectTerminalWorkingDirectory(bundleId: String?, pid: Int32?, windowTitle: String?) async -> String? {
+        await terminalInspector.inspectCurrentDirectory(forApp: bundleId, pid: pid, windowTitle: windowTitle)
+    }
+
+    // MARK: - VisualObscuring
+
+    /// Solid-blackout over secure-field regions. Coordinates are screen-space
+    /// points (Cocoa, bottom-left origin), matching the captured image's
+    /// bottom-left CoreImage space after subtracting the screen origin.
+    public func obscureSensitiveRegions(
+        in snapshot: FrameSnapshot,
+        regions: [ElementRect],
+        anchor: Point2D?
+    ) async -> FrameSnapshot {
+        guard !regions.isEmpty else { return snapshot }
+
+        let anchorPoint = anchor.map { CGPoint($0) } ?? CGPoint(
+            x: regions[0].x + regions[0].width / 2,
+            y: regions[0].y + regions[0].height / 2
+        )
+        let screenFrame = NSScreen.screens.first(where: { $0.frame.contains(anchorPoint) })?.frame
+            ?? NSScreen.main?.frame
+        guard let screenFrame = screenFrame else { return snapshot }
+
+        let scale = snapshot.scale
+        let pixelRegions = regions.map { region in
+            CGRect(
+                x: (region.x - screenFrame.minX) * scale,
+                y: (region.y - screenFrame.minY) * scale,
+                width: region.width * scale,
+                height: region.height * scale
+            )
+        }
+
+        let compositor = BlurCompositor(configuration: .init(style: .blackout, radius: 0))
+        guard let obscured = compositor.apply(to: snapshot.pngData, pixelRegions: pixelRegions, scale: scale) else {
+            return snapshot
+        }
+        return FrameSnapshot(pngData: obscured, scale: snapshot.scale)
+    }
+
+    // MARK: - VisualRedactionProviding
+
+    /// Offline pipeline: Vision OCR → `SensitiveDataDetector` (core) →
+    /// CoreImage blur. Runs entirely on the scanner's utility queue.
+    public func redactSensitiveContent(in snapshot: FrameSnapshot, settings: PrivacySettings) async -> RedactionOutcome {
+        guard settings.enableOfflineOCRRedaction else {
+            return RedactionOutcome(snapshot: snapshot, isRedacted: false)
+        }
+
+        let items = await ocrScanner.scanText(in: snapshot.pngData)
+        guard !items.isEmpty else {
+            return RedactionOutcome(snapshot: snapshot, isRedacted: false)
+        }
+
+        let plan = PrivacyRedactionEngine(settings: settings).plan(for: items)
+        guard plan.isRedacted else {
+            return RedactionOutcome(snapshot: snapshot, isRedacted: false)
+        }
+
+        let compositor = BlurCompositor(configuration: .init(style: settings.blurStyle, radius: settings.blurRadius))
+        guard let redacted = compositor.apply(to: snapshot.pngData, normalizedRegions: plan.regions, scale: snapshot.scale) else {
+            return RedactionOutcome(snapshot: snapshot, isRedacted: false)
+        }
+        return RedactionOutcome(snapshot: FrameSnapshot(pngData: redacted, scale: snapshot.scale), isRedacted: true)
     }
 
     // MARK: - Helpers

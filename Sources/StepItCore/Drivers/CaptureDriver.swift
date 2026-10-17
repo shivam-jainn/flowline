@@ -88,6 +88,32 @@ public protocol GestureSettingsSink: AnyObject, Sendable {
     func updateGestureSettings(_ settings: GestureSettings) async
 }
 
+/// Optional facet (Phase 2, T2): drivers that route raw key events through a
+/// `HotkeyRecognizer` accept capture-policy updates through this.
+public protocol HotkeySettingsSink: AnyObject, Sendable {
+    func updateHotkeySettings(_ settings: HotkeyCaptureSettings, toggleCombo: String) async
+}
+
+/// Optional facet (Phase 2, T6): paints solid blackouts over secure-field
+/// regions in a snapshot **before** it is persisted — the last line of defense
+/// against storing a password screenshot.
+public protocol VisualObscuring: AnyObject, Sendable {
+    /// Returns the obscured snapshot. Drivers without image processing may
+    /// return the input unchanged (the default engine fallback drops the media).
+    func obscureSensitiveRegions(
+        in snapshot: FrameSnapshot,
+        regions: [ElementRect],
+        anchor: Point2D?
+    ) async -> FrameSnapshot
+}
+
+/// Optional facet (Phase 2, T7): runs the offline OCR + blur pipeline over a
+/// captured frame. Kept on the driver because Vision/CoreImage must never leak
+/// into `Engine/` or `Pipeline/`.
+public protocol VisualRedactionProviding: AnyObject, Sendable {
+    func redactSensitiveContent(in snapshot: FrameSnapshot, settings: PrivacySettings) async -> RedactionOutcome
+}
+
 /// One flag set the engine and controllers can query; keeps feature detection
 /// out of `#if os()` in core.
 public struct CaptureCapabilities: Codable, Sendable, Equatable {

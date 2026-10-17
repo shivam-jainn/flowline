@@ -118,6 +118,12 @@ public final class WorkflowController: ObservableObject {
         await engine.applyGestureSettings(settings)
     }
 
+    /// Phase 2 (T9): full settings snapshot — privacy, hotkey capture and
+    /// gesture policy — applied live so changes affect the next event.
+    public func applySettings(_ settings: StepItSettings) async {
+        await engine.applySettings(settings)
+    }
+
     // MARK: - Engine binding
 
     private func bindEngine() {

@@ -2105,6 +2105,7 @@ public final class WebDocGenerator: @unchecked Sendable {
         case .typing: return "Typing"
         case .writeCode: return "Code"
         case .appSwitch: return "App Switch"
+        case .mouseDrag: return "Drag"
         case .manual: return "Action"
         }
     }

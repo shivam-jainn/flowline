@@ -8,6 +8,9 @@ public struct CaptureSettings: Codable, Sendable, Equatable {
     public var highlightClicks: Bool
     public var highlightColorHex: String
     public var highlightRadius: Double
+    /// Phase 2: emit discrete `.appSwitch` steps when the frontmost app changes
+    /// during a recording (opt-in; context tracking is always updated).
+    public var recordAppSwitches: Bool
     
     public init(
         mediaMode: MediaMode = .hybrid,
@@ -16,7 +19,8 @@ public struct CaptureSettings: Codable, Sendable, Equatable {
         clipDurationPostClickSec: Double = 1.5,
         highlightClicks: Bool = true,
         highlightColorHex: String = "#EF4444",
-        highlightRadius: Double = 28.0
+        highlightRadius: Double = 28.0,
+        recordAppSwitches: Bool = false
     ) {
         self.mediaMode = mediaMode
         self.gifFps = gifFps
@@ -25,6 +29,21 @@ public struct CaptureSettings: Codable, Sendable, Equatable {
         self.highlightClicks = highlightClicks
         self.highlightColorHex = highlightColorHex
         self.highlightRadius = highlightRadius
+        self.recordAppSwitches = recordAppSwitches
+    }
+
+    // Lenient decoding so Settings.json written before Phase 2 (without
+    // `recordAppSwitches`) still loads instead of resetting user settings.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.mediaMode = try container.decodeIfPresent(MediaMode.self, forKey: .mediaMode) ?? .hybrid
+        self.gifFps = try container.decodeIfPresent(Int.self, forKey: .gifFps) ?? 15
+        self.clipDurationPreClickSec = try container.decodeIfPresent(Double.self, forKey: .clipDurationPreClickSec) ?? 0.5
+        self.clipDurationPostClickSec = try container.decodeIfPresent(Double.self, forKey: .clipDurationPostClickSec) ?? 1.5
+        self.highlightClicks = try container.decodeIfPresent(Bool.self, forKey: .highlightClicks) ?? true
+        self.highlightColorHex = try container.decodeIfPresent(String.self, forKey: .highlightColorHex) ?? "#EF4444"
+        self.highlightRadius = try container.decodeIfPresent(Double.self, forKey: .highlightRadius) ?? 28.0
+        self.recordAppSwitches = try container.decodeIfPresent(Bool.self, forKey: .recordAppSwitches) ?? false
     }
 }
 
@@ -122,6 +141,57 @@ public struct HotkeySettings: Codable, Sendable, Equatable {
     public init(toggleRecording: String = "⌥ Space") {
         self.toggleRecording = toggleRecording
     }
+}
+
+// MARK: - Phase 2: Privacy & Shortcut Capture Configuration
+
+/// Visual treatment applied over detected sensitive regions.
+public enum RedactionBlurStyle: String, Codable, CaseIterable, Sendable {
+    case frostedGlass = "frosted_glass"
+    case blackout = "blackout"
+
+    public var displayName: String {
+        switch self {
+        case .frostedGlass: return "Frosted Glass (Gaussian Blur)"
+        case .blackout: return "Solid Blackout"
+        }
+    }
+}
+
+/// Pre-capture (secure field masking) and post-capture (offline OCR redaction)
+/// privacy rules. Everything runs 100% on-device — no network, no cloud.
+public struct PrivacySettings: Codable, Sendable, Equatable {
+    /// Mask keystrokes typed into `isSecure` fields as `••••` instead of
+    /// dropping the batch entirely. Raw characters are never buffered either way.
+    public var maskSecureInputFields: Bool = true
+    /// Run the offline Apple Vision OCR pipeline over captured screenshots and
+    /// blur detected sensitive tokens before they are written to disk.
+    public var enableOfflineOCRRedaction: Bool = true
+    /// OpenAI `sk-…`, AWS `AKIA…`, GitHub `ghp_…`, JWTs and bearer tokens.
+    public var autoRedactAPIKeys: Bool = true
+    public var autoRedactCreditCards: Bool = true
+    public var autoRedactEmails: Bool = false
+    /// Blur radius (in screen points) for `.frostedGlass` redaction.
+    public var blurRadius: Double = 12.0
+    /// Frosted glass blur vs. solid blackout.
+    public var blurStyle: RedactionBlurStyle = .frostedGlass
+    /// Extra user-supplied regex patterns, matched case-insensitively.
+    public var customRegexPatterns: [String] = []
+
+    public init() {}
+}
+
+/// Which keyboard chords become discrete documentation steps.
+public struct HotkeyCaptureSettings: Codable, Sendable, Equatable {
+    /// Record `⌘`/`⌃` chords (`⌘S`, `⌘⇧P`, `⌃A`, …) as `.keyPress` steps.
+    public var captureModifierShortcuts: Bool = true
+    /// Record navigation keys (Esc, Tab, arrows, F-keys) as `.keyPress` steps.
+    public var captureNavigationKeys: Bool = true
+    /// Extra chords the recorder must consume and never record (app-registered
+    /// shortcuts). System combos like `⌘Tab` / `⌘Space` are always consumed.
+    public var ignoredCombos: Set<String> = []
+
+    public init() {}
 }
 
 // MARK: - Smart Gestures Configuration
@@ -240,22 +310,29 @@ public struct StepItSettings: Codable, Sendable, Equatable {
     public var gateway: GatewaySettings
     public var hotkeys: HotkeySettings
     public var gestures: GestureSettings
+    public var privacy: PrivacySettings
+    public var hotkeyCapture: HotkeyCaptureSettings
     
     public init(
         capture: CaptureSettings = CaptureSettings(),
         publishing: PublishingSettings = PublishingSettings(),
         gateway: GatewaySettings = GatewaySettings(),
         hotkeys: HotkeySettings = HotkeySettings(),
-        gestures: GestureSettings = GestureSettings()
+        gestures: GestureSettings = GestureSettings(),
+        privacy: PrivacySettings = PrivacySettings(),
+        hotkeyCapture: HotkeyCaptureSettings = HotkeyCaptureSettings()
     ) {
         self.capture = capture
         self.publishing = publishing
         self.gateway = gateway
         self.hotkeys = hotkeys
         self.gestures = gestures
+        self.privacy = privacy
+        self.hotkeyCapture = hotkeyCapture
     }
     
-    // Custom decoder for backwards compatibility when decoding saved JSON without gestures
+    // Custom decoder for backwards compatibility when decoding saved JSON without
+    // gestures (Phase 1) or privacy/hotkeyCapture (Phase 2).
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.capture = try container.decodeIfPresent(CaptureSettings.self, forKey: .capture) ?? CaptureSettings()
@@ -263,6 +340,8 @@ public struct StepItSettings: Codable, Sendable, Equatable {
         self.gateway = try container.decodeIfPresent(GatewaySettings.self, forKey: .gateway) ?? GatewaySettings()
         self.hotkeys = try container.decodeIfPresent(HotkeySettings.self, forKey: .hotkeys) ?? HotkeySettings()
         self.gestures = try container.decodeIfPresent(GestureSettings.self, forKey: .gestures) ?? GestureSettings()
+        self.privacy = try container.decodeIfPresent(PrivacySettings.self, forKey: .privacy) ?? PrivacySettings()
+        self.hotkeyCapture = try container.decodeIfPresent(HotkeyCaptureSettings.self, forKey: .hotkeyCapture) ?? HotkeyCaptureSettings()
     }
 
     

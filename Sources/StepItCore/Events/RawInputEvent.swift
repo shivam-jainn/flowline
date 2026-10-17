@@ -73,12 +73,12 @@ public struct RawInputEvent: Identifiable, Codable, Sendable, Equatable {
         case hotkeyCombo(combo: String)
         case userGesture(name: String, action: GestureAction)
 
-        // MARK: Declared, reserved for later phases (never emitted in Phase 1)
-        /// Phase 2 — drag selection capture.
+        // MARK: Emitted since Phase 2
+        /// Drag selection capture (distance/duration thresholds applied driver-side).
         case mouseDrag(start: Point2D, end: Point2D)
-        /// Phase 2 — app focus switches as discrete steps.
+        /// App focus switches as intermediate representations.
         case appSwitch(bundleId: String?, appName: String, windowTitle: String)
-        /// Phase 2 — terminal `pwd`/command introspection.
+        /// Terminal `pwd`/command introspection.
         case terminalCommand(command: String, workingDir: String?, exitCode: Int32?)
         /// Phase 4 — web page navigation steps.
         case pageNavigation(url: String, title: String?)
@@ -120,5 +120,48 @@ public struct RawGestureNotice: Codable, Sendable, Equatable {
         self.action = action
         self.location = location
         self.timestamp = timestamp
+    }
+}
+
+/// A decoded keyboard chord in platform-neutral IR terms.
+///
+/// Produced by `HotkeyRecognizer` (macOS driver layer) and consumed by the
+/// engine / `StepFactory` to synthesize `.keyPress` documentation steps.
+/// Living in `Events/` keeps the recognizer's output Foundation-only IR, so
+/// `Pipeline/` never has to see an `NSEvent`.
+public struct HotkeyChord: Codable, Sendable, Equatable {
+    /// W3C `KeyboardEvent.key` name, e.g. `"s"`, `"Escape"`, `"ArrowDown"`.
+    public var key: String
+    /// Human-readable key label used in combo rendering, e.g. `"S"`, `"Space"`.
+    public var displayKey: String
+    /// macOS virtual key code when the platform provided one.
+    public var code: Int?
+    public var modifiers: KeyModifiers
+
+    public init(key: String, displayKey: String? = nil, code: Int? = nil, modifiers: KeyModifiers = []) {
+        self.key = key
+        self.displayKey = displayKey ?? HotkeyChord.defaultDisplayKey(for: key)
+        self.code = code
+        self.modifiers = modifiers
+    }
+
+    /// Rendered combo in canonical macOS order, e.g. `⌘⇧P`, `Escape`, `⌥Space`.
+    public var combo: String {
+        modifiers.symbolString + displayKey
+    }
+
+    /// `true` when the chord involves at least one non-modifier modifier.
+    public var isShortcut: Bool {
+        !modifiers.isEmpty
+    }
+
+    /// `"S"` for letters, `"Space"` for the space key, W3C name otherwise.
+    public static func defaultDisplayKey(for key: String) -> String {
+        if key == " " { return "Space" }
+        if key.count == 1, let scalar = key.unicodeScalars.first,
+           CharacterSet.alphanumerics.contains(scalar) {
+            return key.uppercased()
+        }
+        return key
     }
 }

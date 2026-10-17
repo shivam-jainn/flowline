@@ -17,6 +17,11 @@ final class IRBridgingTests: XCTestCase {
         XCTAssertEqual(KeyCodeMap.w3cKeyName(for: 124, characters: nil), "ArrowRight")
         XCTAssertEqual(KeyCodeMap.w3cKeyName(for: 125, characters: nil), "ArrowDown")
         XCTAssertEqual(KeyCodeMap.w3cKeyName(for: 126, characters: nil), "ArrowUp")
+        // Phase 2 (T2): function keys.
+        XCTAssertEqual(KeyCodeMap.w3cKeyName(for: 122, characters: nil), "F1")
+        XCTAssertEqual(KeyCodeMap.w3cKeyName(for: 120, characters: nil), "F2")
+        XCTAssertEqual(KeyCodeMap.w3cKeyName(for: 111, characters: nil), "F12")
+        XCTAssertEqual(KeyCodeMap.w3cKeyName(for: 117, characters: nil), "Delete")
     }
 
     func testKeyCodeMappingPrintableFallback() {
@@ -25,8 +30,13 @@ final class IRBridgingTests: XCTestCase {
         // Non-printable control characters are not keystrokes.
         XCTAssertNil(KeyCodeMap.w3cKeyName(for: 8, characters: "\u{3}"))
         // Unmapped key codes with no characters yield nothing.
-        XCTAssertNil(KeyCodeMap.w3cKeyName(for: 100, characters: nil))
+        XCTAssertNil(KeyCodeMap.w3cKeyName(for: 71, characters: nil))
         XCTAssertNil(KeyCodeMap.w3cKeyName(for: 5, characters: ""))
+
+        // Modifier-only keys are flagged so the recognizer ignores them.
+        XCTAssertTrue(KeyCodeMap.isModifierKey(55))
+        XCTAssertTrue(KeyCodeMap.isModifierKey(56))
+        XCTAssertFalse(KeyCodeMap.isModifierKey(36))
     }
 
     // MARK: - Modifier bridging
