@@ -400,7 +400,7 @@ public final class PlaygroundPageRenderer: NSObject, WKNavigationDelegate, @unch
             }
         }
         
-        return MicroClipRecorder.shared.createGIF(from: frames, fps: 8) ?? Data()
+        return MicroClipRecorder().createGIF(from: frames, fps: 8) ?? Data()
     }
     
     // MARK: - WKNavigationDelegate
