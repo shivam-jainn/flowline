@@ -25,6 +25,25 @@ IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
     | head -1)"
 
 if [ -z "${IDENTITY}" ]; then
+    # Orphan cert, no private key: Xcode uploaded a CSR and got the cert back,
+    # but the keypair never landed in the keychain (no identity = no signing).
+    # Only fix is revoke + recreate so a fresh keypair is generated.
+    if security find-certificate -c "Apple Development" >/dev/null 2>&1; then
+        cat <<'EOF'
+⚠️  Found an "Apple Development" CERTIFICATE but its PRIVATE KEY is missing
+    from the keychain — so there is no usable signing identity. Fix:
+
+  1. Xcode → Settings… → Accounts → select your Apple ID → your Team →
+     Manage Certificates…
+  2. Select the "Apple Development" entry → – (delete) → confirm.
+     (It was created today and never used — safe to revoke.)
+  3. Click + → Apple Development (fresh keypair + certificate).
+  4. Verify:  security find-identity -v -p codesigning
+     (must show "1 valid identity found", not 0)
+  5. Re-run:  make sign-setup
+EOF
+        exit 1
+    fi
     cat <<'EOF'
 ❌ No Apple-issued development identity. One-time fix (free, ~2 min):
 
