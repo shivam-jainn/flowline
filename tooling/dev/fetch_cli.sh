@@ -1,13 +1,13 @@
 #!/bin/bash
 # ⚡️ fetch_cli.sh — Fetch and install lightweight CLI tools or scripts from GitHub
-# Fulfills user request to fetch CLI apps from GitHub and integrate them into StepIt CLI testing.
+# Fulfills user request to fetch CLI apps from GitHub and integrate them into Flowline CLI testing.
 
 set -e
 
 REPO_URL="${1:-https://github.com/charmbracelet/gum}"
 TARGET_DIR="${2:-.build/external_cli}"
 
-echo "⚡️ [fetch_cli] StepIt CLI Tool Ingestion Utility"
+echo "⚡️ [fetch_cli] Flowline CLI Tool Ingestion Utility"
 echo "──────────────────────────────────────────────"
 echo "Target Source: $REPO_URL"
 echo "Destination:   $TARGET_DIR"

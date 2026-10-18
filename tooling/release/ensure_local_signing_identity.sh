@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-time signing setup for StepIt development.
+# One-time signing setup for Flowline development.
 #
 # WHY THIS EXISTS (read from Apple's own SDK + tools, not forums):
 # - CGWindow.h (CoreGraphics SDK headers): capture access is per-PROCESS,
@@ -25,8 +25,8 @@ IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
     | head -1)"
 
 if [ -z "${IDENTITY}" ]; then
-    if security find-certificate -c "StepIt Development" >/dev/null 2>&1; then
-        IDENTITY="StepIt Development"
+    if security find-certificate -c "Flowline Development" >/dev/null 2>&1; then
+        IDENTITY="Flowline Development"
     fi
 fi
 
@@ -75,7 +75,7 @@ fi
 
 # Prove stability instead of asserting it: sign a scratch copy and read back
 # the TeamIdentifier. (First use may prompt for keychain access — Always Allow.)
-PROBE="$(mktemp -t stepit_sign_probe)"
+PROBE="$(mktemp -t flowline_sign_probe)"
 cp /bin/ls "${PROBE}"
 codesign --force --sign "${IDENTITY}" "${PROBE}" 2>/dev/null || true
 TEAM="$(codesign -dv "${PROBE}" 2>&1 | sed -n 's/^TeamIdentifier=//p' || true)"
@@ -86,8 +86,8 @@ if [ -n "${TEAM}" ] && [ "${TEAM}" != "not set" ]; then
     echo "✅ TeamIdentifier=${TEAM} → STABLE: TCC grants survive rebuilds."
     echo "   Grant once, then never touch Settings again."
     exit 0
-elif [ "${IDENTITY}" = "StepIt Development" ]; then
-    echo "✅ Stable local identity: StepIt Development → STABLE: Certificate-root requirement survives rebuilds."
+elif [ "${IDENTITY}" = "Flowline Development" ]; then
+    echo "✅ Stable local identity: ${IDENTITY} → STABLE: Certificate-root requirement survives rebuilds."
     echo "   Grant once in Settings, then rebuilds keep working."
     exit 0
 else

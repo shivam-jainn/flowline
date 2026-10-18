@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# StepIt Rust parity gate (Phase R, M2).
+# Flowline Rust parity gate (Phase R, M2).
 #
 # Runs the shared fixture suite across the Rust core:
 #   cargo test --workspace + cargo clippy --deny warnings

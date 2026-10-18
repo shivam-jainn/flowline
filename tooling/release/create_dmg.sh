@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ⚡️ StepIt Professional DMG Release Builder
-# Creates a stunning macOS DMG installer with custom Retina background,
-# icon pedestals, drag-to-install flow, and ad-hoc code signing.
+# Flowline DMG Release Builder — Brand Guidelines §06
+# 540x400 window, flat warm canvas + mark watermark, one instruction one gesture.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 VERSION="${1:-1.0.0}"
-APP_NAME="StepIt"
+APP_NAME="Flowline"
 VOL_NAME="${APP_NAME}"
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 DIST_DIR="${ROOT_DIR}/dist"
@@ -23,7 +22,7 @@ echo "=================================================="
 echo "⚡️ Building ${APP_NAME} v${VERSION} Release DMG"
 echo "=================================================="
 
-# 1. Build & Bundle StepIt.app
+# 1. Build & Bundle Flowline.app
 if [ ! -d "${APP_BUNDLE}" ] || [ ! -f "${ICON_FILE}" ]; then
     echo "📦 Building application bundle..."
     "${SCRIPT_DIR}/bundle_app.sh"
@@ -52,20 +51,18 @@ cp -R "${APP_BUNDLE}" "${STAGING_DIR}/"
 if command -v create-dmg >/dev/null 2>&1; then
     echo "🚀 Creating DMG with create-dmg..."
     
-    # create-dmg arguments:
-    # Window width: 660, height: 440
-    # Icon size: 120
-    # StepIt.app position: 180 220
-    # Applications drop position: 480 220
+    # create-dmg arguments (Brand §06 — 540x400, icon size 120):
+    # Flowline.app at (150,210), Applications at (390,210) — matches
+    # generate_dmg_background.py art so Finder icons sit on the wells.
     
     CREATE_DMG_ARGS=(
         --volname "${VOL_NAME}"
         --window-pos 200 120
-        --window-size 660 440
+        --window-size 540 400
         --icon-size 120
-        --icon "${APP_NAME}.app" 180 220
+        --icon "${APP_NAME}.app" 150 210
         --hide-extension "${APP_NAME}.app"
-        --app-drop-link 480 220
+        --app-drop-link 390 210
         --no-internet-enable
     )
     
@@ -120,7 +117,7 @@ if [ "${FALLBACK_NEEDED:-false}" = "true" ]; then
         -fsargs "-c c=64,a=16,e=16" -format UDRW -size "${SIZE_MB}m" "${TMP_DMG}"
         
     # Mount RW disk image
-    MOUNT_DIR=$(mktemp -d -t stepit_mount)
+    MOUNT_DIR=$(mktemp -d -t flowline_mount)
     DEVICE=$(hdiutil attach -readwrite -noverify -noautoopen "${TMP_DMG}" | grep -E '^/dev/' | head -n 1 | awk '{print $1}')
     MOUNT_POINT=$(hdiutil info | grep "${DEVICE}" | awk '{print $NF}')
     
@@ -139,14 +136,14 @@ tell application "Finder"
         set current view of container window to icon view
         set toolbar visible of container window to false
         set statusbar visible of container window to false
-        set the bounds of container window to {200, 120, 860, 560}
+        set the bounds of container window to {200, 120, 740, 520}
         set viewOptions to the icon view options of container window
         set arrangement of viewOptions to not arranged
         set icon size of viewOptions to 120
         set background picture of viewOptions to file ".background:background.png"
         delay 0.5
-        set position of item "${APP_NAME}.app" of container window to {180, 220}
-        set position of item "Applications" of container window to {480, 220}
+        set position of item "${APP_NAME}.app" of container window to {150, 210}
+        set position of item "Applications" of container window to {390, 210}
         update without registering applications
         delay 0.5
     end tell

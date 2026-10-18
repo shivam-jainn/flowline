@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# StepIt architecture & layout gate (docs/PLAN.md, docs/phase1-plan.md §9.2/§11).
+# Flowline architecture & layout gate (docs/PLAN.md, docs/phase1-plan.md §9.2/§11).
 #
 # Monolith map (turborepo-style):
 #   platform/macos     SwiftPM package — ALL Swift lives here
@@ -10,20 +10,21 @@
 #
 # Verifies the repository boundaries are intact (Phase R: modular core):
 #   1. Portable modules (IR/Pipeline/Engine/Storage/CaptureAPI) stay
-#      Foundation-only (only StepIt* cross-imports allowed).
+#      Foundation-only (only Flowline* cross-imports allowed).
 #   2. The legacy coordinator / typing aggregator stay deleted.
 #   3. Named singletons are not referenced outside the composition root + tests.
-#   4. Removed legacy folders stay removed (StepItCore/*, Capture/, Playground/).
-#   5. Fixture-driven tooling lives in platform/macos Sources/StepItFixtures and
+#   4. Removed legacy folders stay removed (FlowlineCore/*, Capture/, Playground/).
+#   5. Fixture-driven tooling lives in platform/macos Sources/FlowlineFixtures and
 #      resolves shared/fixtures/playground-web.
-#   6. WebKit/PDFKit stay confined to StepItPublishing (PDFGenerator only);
-#      AppKit lives only in StepItMacCapture; AIGateway/Publishing may add
+#   6. WebKit/PDFKit stay confined to FlowlinePublishing (PDFGenerator only);
+#      AppKit lives only in FlowlineMacCapture; AIGateway/Publishing may add
 #      CoreGraphics/ImageIO; Permissions impl may add ApplicationServices.
 #   7. No absolute user paths are baked into code, tests, or scripts.
 #   8. Phase 0 conventions (shared/fixtures/ data-only, DataLine PhaseNN*/PhaseRNN*).
 #   9. MiniApps never import core modules.
 #   10. Language separation: no Swift under core/, no Rust under platform/,
-#      no code at all under shared/ (contracts/fixtures/goldens are data).
+#      no code at all under shared/ (contracts/fixtures/goldens are data)
+#      or templates/ (manifests/previews are data).
 #
 # Usage: tooling/ci/check_architecture.sh   (run from the repo root; exits 1 on any violation)
 set -euo pipefail
@@ -74,24 +75,24 @@ check_dir_present() {
 }
 
 # 1. Portable modules must stay Foundation-only (no platform frameworks;
-#    only StepIt* cross-imports allowed).
+#    only Flowline* cross-imports allowed).
 check_empty \
-  "StepIt{IR,Pipeline,Engine,Storage,CaptureAPI} import Foundation only" \
+  "Flowline{IR,Pipeline,Engine,Storage,CaptureAPI,Templates} import Foundation only" \
   "^import (AppKit|Combine|ApplicationServices|ScreenCaptureKit|SwiftUI|WebKit|Vision|CoreImage|Carbon|AVFoundation|CoreGraphics|ImageIO|UniformTypeIdentifiers|PDFKit)" \
-  "${SWIFT_SOURCES}/StepItIR" "${SWIFT_SOURCES}/StepItPipeline" "${SWIFT_SOURCES}/StepItEngine" "${SWIFT_SOURCES}/StepItStorage" "${SWIFT_SOURCES}/StepItCaptureAPI"
+  "${SWIFT_SOURCES}/FlowlineIR" "${SWIFT_SOURCES}/FlowlinePipeline" "${SWIFT_SOURCES}/FlowlineEngine" "${SWIFT_SOURCES}/FlowlineStorage" "${SWIFT_SOURCES}/FlowlineCaptureAPI" "${SWIFT_SOURCES}/FlowlineTemplates"
 
 # 1b. AIGateway/Publishing may add CoreGraphics/ImageIO only (no AppKit/AX/UI).
 check_empty \
-  "StepIt{AIGateway,Publishing} import Foundation (+CoreGraphics/ImageIO) only" \
+  "Flowline{AIGateway,Publishing} import Foundation (+CoreGraphics/ImageIO) only" \
   "^import (AppKit|Combine|ApplicationServices|ScreenCaptureKit|SwiftUI|Vision|CoreImage|Carbon|AVFoundation)" \
-  "${SWIFT_SOURCES}/StepItAIGateway" "${SWIFT_SOURCES}/StepItPublishing"
+  "${SWIFT_SOURCES}/FlowlineAIGateway" "${SWIFT_SOURCES}/FlowlinePublishing"
 
 # 1c. Permissions protocol file stays Foundation-only; the macOS impl may use
 #     ApplicationServices/CoreGraphics for status checks and prompts.
 check_empty \
-  "StepItPermissions free of AppKit/SwiftUI/Combine" \
+  "FlowlinePermissions free of AppKit/SwiftUI/Combine" \
   "^import (AppKit|SwiftUI|Combine)" \
-  "${SWIFT_SOURCES}/StepItPermissions"
+  "${SWIFT_SOURCES}/FlowlinePermissions"
 
 # 2. No legacy coordinator or aggregator anywhere (code or comments).
 check_empty \
@@ -105,20 +106,20 @@ check_empty \
 check_empty \
   "No named singletons outside composition root" \
   "(SessionStore|ScreenRecorder|MicroClipRecorder|PublishingCoordinator|AIGatewayClient|EventMonitor|SmartGestureDetector|AccessibilityInspector)\.shared" \
-  "${SWIFT_SOURCES}/StepIt/UI" "${SWIFT_SOURCES}/StepIt/CLI" "${SWIFT_SOURCES}/StepIt/main.swift" "${SWIFT_SOURCES}/StepItFixtures" "${SWIFT_SOURCES}/StepItIR" "${SWIFT_SOURCES}/StepItPipeline" "${SWIFT_SOURCES}/StepItEngine" "${SWIFT_SOURCES}/StepItStorage" "${SWIFT_SOURCES}/StepItCaptureAPI" "${SWIFT_SOURCES}/StepItMacCapture" "${SWIFT_SOURCES}/StepItPublishing" "${SWIFT_SOURCES}/StepItAIGateway" "${SWIFT_SOURCES}/StepItPermissions"
+  "${SWIFT_SOURCES}/Flowline/UI" "${SWIFT_SOURCES}/Flowline/CLI" "${SWIFT_SOURCES}/Flowline/main.swift" "${SWIFT_SOURCES}/FlowlineFixtures" "${SWIFT_SOURCES}/FlowlineIR" "${SWIFT_SOURCES}/FlowlinePipeline" "${SWIFT_SOURCES}/FlowlineEngine" "${SWIFT_SOURCES}/FlowlineStorage" "${SWIFT_SOURCES}/FlowlineCaptureAPI" "${SWIFT_SOURCES}/FlowlineMacCapture" "${SWIFT_SOURCES}/FlowlinePublishing" "${SWIFT_SOURCES}/FlowlineAIGateway" "${SWIFT_SOURCES}/FlowlinePermissions"
 
 # 4. Removed legacy folders must not come back.
-check_dir_absent "platform/macos/Sources/StepItCore/ removed (R/M1-08 husk deletion)" "platform/macos/Sources/StepItCore"
-check_dir_absent "platform/macos/Sources/StepItCore/Capture/ removed" "platform/macos/Sources/StepItCore/Capture"
-check_dir_absent "platform/macos/Sources/StepItCore/Playground/ removed (fixtures live in StepItFixtures)" "platform/macos/Sources/StepItCore/Playground"
+check_dir_absent "platform/macos/Sources/FlowlineCore/ removed (R/M1-08 husk deletion)" "platform/macos/Sources/FlowlineCore"
+check_dir_absent "platform/macos/Sources/FlowlineCore/Capture/ removed" "platform/macos/Sources/FlowlineCore/Capture"
+check_dir_absent "platform/macos/Sources/FlowlineCore/Playground/ removed (fixtures live in FlowlineFixtures)" "platform/macos/Sources/FlowlineCore/Playground"
 check_dir_absent "Repo-root Sources/ removed (Swift lives in platform/macos/)" "Sources"
 check_dir_absent "Repo-root Tests/ removed (Swift lives in platform/macos/)" "Tests"
 check_dir_absent "Repo-root Rust/ removed (Rust lives in core/)" "Rust"
 check_dir_absent "Repo-root Scripts/ removed (scripts live in tooling/)" "Scripts"
 check_dir_absent "Repo-root Fixtures/ removed (fixtures live in shared/fixtures/)" "Fixtures"
 
-# 5. Fixture-driven tooling lives in the StepItFixtures target and resolves shared/fixtures/playground-web.
-check_dir_present "platform/macos/Sources/StepItFixtures/ exists" "${SWIFT_SOURCES}/StepItFixtures"
+# 5. Fixture-driven tooling lives in the FlowlineFixtures target and resolves shared/fixtures/playground-web.
+check_dir_present "platform/macos/Sources/FlowlineFixtures/ exists" "${SWIFT_SOURCES}/FlowlineFixtures"
 check_empty \
   "No stale Playground/web paths (use shared/fixtures/playground-web)" \
   "Playground/web" \
@@ -133,32 +134,32 @@ else
   echo "✅ No stale Fixtures/ root paths (use shared/fixtures/)"
 fi
 
-# 6. WebKit/PDFKit stay confined to StepItPublishing/PDFGenerator.swift;
-#    AppKit stays confined to StepItMacCapture (the fixture renderer lives in
-#    StepItFixtures and uses WebKit only through its own target).
-webkit_leaks="$(grep -RInE "^import WebKit" "${SWIFT_SOURCES}" --include="*.swift" | grep -v "${SWIFT_SOURCES}/StepItPublishing/PDFGenerator.swift" | grep -v "${SWIFT_SOURCES}/StepItFixtures/" || true)"
+# 6. WebKit/PDFKit stay confined to FlowlinePublishing/PDFGenerator.swift;
+#    AppKit stays confined to FlowlineMacCapture (the fixture renderer lives in
+#    FlowlineFixtures and uses WebKit only through its own target).
+webkit_leaks="$(grep -RInE "^import WebKit" "${SWIFT_SOURCES}" --include="*.swift" | grep -v "${SWIFT_SOURCES}/FlowlinePublishing/PDFGenerator.swift" | grep -v "${SWIFT_SOURCES}/FlowlineFixtures/" || true)"
 if [[ -n "${webkit_leaks}" ]]; then
-  echo "❌ WebKit usage confined to StepItPublishing/PDFGenerator.swift (+ fixtures)"
+  echo "❌ WebKit usage confined to FlowlinePublishing/PDFGenerator.swift (+ fixtures)"
   echo "${webkit_leaks}" | sed 's/^/   /'
   failures=$((failures + 1))
 else
-  echo "✅ WebKit usage confined to StepItPublishing/PDFGenerator.swift (+ fixtures)"
+  echo "✅ WebKit usage confined to FlowlinePublishing/PDFGenerator.swift (+ fixtures)"
 fi
-pdfkit_leaks="$(grep -RInE "^import PDFKit" "${SWIFT_SOURCES}" --include="*.swift" | grep -v "${SWIFT_SOURCES}/StepItPublishing/PDFGenerator.swift" || true)"
+pdfkit_leaks="$(grep -RInE "^import PDFKit" "${SWIFT_SOURCES}" --include="*.swift" | grep -v "${SWIFT_SOURCES}/FlowlinePublishing/PDFGenerator.swift" || true)"
 if [[ -n "${pdfkit_leaks}" ]]; then
-  echo "❌ PDFKit usage confined to StepItPublishing/PDFGenerator.swift"
+  echo "❌ PDFKit usage confined to FlowlinePublishing/PDFGenerator.swift"
   echo "${pdfkit_leaks}" | sed 's/^/   /'
   failures=$((failures + 1))
 else
-  echo "✅ PDFKit usage confined to StepItPublishing/PDFGenerator.swift"
+  echo "✅ PDFKit usage confined to FlowlinePublishing/PDFGenerator.swift"
 fi
-appkit_leaks="$(grep -RInE "^import AppKit" "${SWIFT_SOURCES}/StepItIR" "${SWIFT_SOURCES}/StepItPipeline" "${SWIFT_SOURCES}/StepItEngine" "${SWIFT_SOURCES}/StepItStorage" "${SWIFT_SOURCES}/StepItCaptureAPI" "${SWIFT_SOURCES}/StepItPublishing" "${SWIFT_SOURCES}/StepItAIGateway" "${SWIFT_SOURCES}/StepItPermissions" --include="*.swift" || true)"
+appkit_leaks="$(grep -RInE "^import AppKit" "${SWIFT_SOURCES}/FlowlineIR" "${SWIFT_SOURCES}/FlowlinePipeline" "${SWIFT_SOURCES}/FlowlineEngine" "${SWIFT_SOURCES}/FlowlineStorage" "${SWIFT_SOURCES}/FlowlineCaptureAPI" "${SWIFT_SOURCES}/FlowlinePublishing" "${SWIFT_SOURCES}/FlowlineAIGateway" "${SWIFT_SOURCES}/FlowlinePermissions" --include="*.swift" || true)"
 if [[ -n "${appkit_leaks}" ]]; then
-  echo "❌ AppKit usage confined to StepItMacCapture + surfaces/fixtures"
+  echo "❌ AppKit usage confined to FlowlineMacCapture + surfaces/fixtures"
   echo "${appkit_leaks}" | sed 's/^/   /'
   failures=$((failures + 1))
 else
-  echo "✅ AppKit usage confined to StepItMacCapture + surfaces/fixtures"
+  echo "✅ AppKit usage confined to FlowlineMacCapture + surfaces/fixtures"
 fi
 
 # 7. No absolute user paths baked into code, tests, or scripts.
@@ -177,34 +178,34 @@ else
   echo "✅ shared/ stays data-only (no .swift)"
 fi
 
-if [[ ! -f "${SWIFT_TESTS}/StepItTests/Support/DataLineFixtures.swift" ]]; then
-  echo "❌ platform/macos/Tests/StepItTests/Support/DataLineFixtures.swift is missing (Phase 0 T0.1)"
+if [[ ! -f "${SWIFT_TESTS}/FlowlineTests/Support/DataLineFixtures.swift" ]]; then
+  echo "❌ platform/macos/Tests/FlowlineTests/Support/DataLineFixtures.swift is missing (Phase 0 T0.1)"
   failures=$((failures + 1))
 else
-  echo "✅ platform/macos/Tests/StepItTests/Support/DataLineFixtures.swift exists"
+  echo "✅ platform/macos/Tests/FlowlineTests/Support/DataLineFixtures.swift exists"
 fi
 
-if [[ ! -f "${SWIFT_TESTS}/StepItTests/Support/GoldenAssertions.swift" ]]; then
-  echo "❌ platform/macos/Tests/StepItTests/Support/GoldenAssertions.swift is missing (Phase 0 T0.2)"
+if [[ ! -f "${SWIFT_TESTS}/FlowlineTests/Support/GoldenAssertions.swift" ]]; then
+  echo "❌ platform/macos/Tests/FlowlineTests/Support/GoldenAssertions.swift is missing (Phase 0 T0.2)"
   failures=$((failures + 1))
 else
-  echo "✅ platform/macos/Tests/StepItTests/Support/GoldenAssertions.swift exists"
+  echo "✅ platform/macos/Tests/FlowlineTests/Support/GoldenAssertions.swift exists"
 fi
 
-bad_dataline="$(find "${SWIFT_TESTS}/StepItTests/DataLine" -name "*.swift" -print 2>/dev/null | grep -vE "/Phase(R[0-9]+[A-Za-z0-9_]*|[0-9]+[A-Za-z0-9_]*)\.swift$" || true)"
+bad_dataline="$(find "${SWIFT_TESTS}/FlowlineTests/DataLine" -name "*.swift" -print 2>/dev/null | grep -vE "/Phase(R[0-9]+[A-Za-z0-9_]*|[0-9]+[A-Za-z0-9_]*)\.swift$" || true)"
 if [[ -n "${bad_dataline}" ]]; then
-  echo "❌ Tests/StepItTests/DataLine/ files must be PhaseNN*.swift (Phase 0 T0.4)"
+  echo "❌ Tests/FlowlineTests/DataLine/ files must be PhaseNN*.swift (Phase 0 T0.4)"
   echo "${bad_dataline}" | sed 's/^/   /'
   failures=$((failures + 1))
 else
-  echo "✅ Tests/StepItTests/DataLine/ naming is PhaseNN*"
+  echo "✅ Tests/FlowlineTests/DataLine/ naming is PhaseNN*"
 fi
 
 # 9. MiniApps never import core modules (R/M1-08: reviewer surfaces stay decoupled).
 check_empty \
-  "MiniApps import no StepIt modules" \
-  "^import StepIt" \
-  "${SWIFT_SOURCES}/StepIt/UI/MiniApps"
+  "MiniApps import no Flowline modules" \
+  "^import Flowline" \
+  "${SWIFT_SOURCES}/Flowline/UI/MiniApps"
 
 # 10. Language separation: Swift lives in platform/macos, Rust in core,
 #     shared/ is data (contracts/fixtures/goldens) — no code anywhere else.
@@ -231,6 +232,14 @@ if [[ -n "${code_in_shared}" ]]; then
   failures=$((failures + 1))
 else
   echo "✅ shared/ is data-only (contracts/fixtures/goldens)"
+fi
+code_in_templates="$(find templates -name "*.swift" -o -name "*.rs" -print 2>/dev/null || true)"
+if [[ -n "${code_in_templates}" ]]; then
+  echo "❌ templates/ is data-only (no .swift/.rs under templates/)"
+  echo "${code_in_templates}" | sed 's/^/   /'
+  failures=$((failures + 1))
+else
+  echo "✅ templates/ is data-only (manifests/previews)"
 fi
 
 if [[ "${failures}" -gt 0 ]]; then

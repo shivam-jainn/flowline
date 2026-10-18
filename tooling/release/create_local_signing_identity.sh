@@ -9,7 +9,7 @@
 # remains IDENTICAL across rebuilds, preserving Screen Recording and Accessibility grants!
 set -euo pipefail
 
-CERT_NAME="StepIt Development"
+CERT_NAME="Flowline Development"
 KEYCHAIN="${HOME}/Library/Keychains/login.keychain-db"
 
 if security find-certificate -c "${CERT_NAME}" "${KEYCHAIN}" >/dev/null 2>&1; then
@@ -19,7 +19,7 @@ fi
 
 echo "⚡️ Generating stable local code signing identity: ${CERT_NAME}..."
 
-TMP_DIR="$(mktemp -d -t stepit_cert_XXXXXX)"
+TMP_DIR="$(mktemp -d -t flowline_cert_XXXXXX)"
 trap 'rm -rf "${TMP_DIR}"' EXIT
 
 cat << 'EOF' > "${TMP_DIR}/cert.cnf"
@@ -28,8 +28,8 @@ distinguished_name = req_distinguished_name
 prompt = no
 
 [req_distinguished_name]
-CN = StepIt Development
-O = StepIt Local Dev
+CN = Flowline Development
+O = Flowline Local Dev
 C = US
 
 [codesign]
@@ -52,12 +52,12 @@ openssl pkcs12 -export -legacy \
     -inkey "${TMP_DIR}/dev.key" \
     -in "${TMP_DIR}/dev.crt" \
     -out "${TMP_DIR}/dev.p12" \
-    -passout pass:stepit 2>/dev/null
+    -passout pass:flowline 2>/dev/null
 
 # Import into the user's login keychain with -A (allow codesign without prompting)
 security import "${TMP_DIR}/dev.p12" \
     -k "${KEYCHAIN}" \
-    -P stepit \
+    -P flowline \
     -A \
     -T /usr/bin/codesign \
     -T /usr/bin/security

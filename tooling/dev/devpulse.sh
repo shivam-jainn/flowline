@@ -1,6 +1,6 @@
 #!/bin/bash
 # ⚡️ devpulse — Developer Diagnostics & Workflow Benchmark CLI Tool
-# Used by StepIt for CLI testing, terminal stream capture, and automated documentation.
+# Used by Flowline for CLI testing, terminal stream capture, and automated documentation.
 
 set -e
 

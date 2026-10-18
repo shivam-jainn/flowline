@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ⚡️ taskctl — Lightweight Terminal Task & Sprint CLI App
-Used for terminal workflow automation, fast-forward typing tests, and CLI capture in StepIt.
+Used for terminal workflow automation, fast-forward typing tests, and CLI capture in Flowline.
 """
 
 import sys
@@ -10,7 +10,7 @@ import argparse
 import os
 import time
 
-TASKS_FILE = os.path.expanduser("~/.stepit_tasks.json")
+TASKS_FILE = os.path.expanduser("~/.flowline_tasks.json")
 
 DEFAULT_TASKS = [
     {"id": "TASK-101", "title": "Configure WebKit offscreen renderer for Playground", "status": "done", "priority": "high", "tag": "core"},
@@ -117,7 +117,7 @@ def cmd_batch(args):
     print("⚡️ [taskctl] Dispatching simulated batch operations...")
     stages = [
         "Resolving project dependency lockfiles",
-        "Compiling Swift source targets (StepItCore, StepIt)",
+        "Compiling Swift source targets (Flowline app, Swift modules)",
         "Spawning offscreen WebKit render context",
         "Executing headless playground page inspection",
         "Emitting unified markdown and static HTML report"
@@ -130,7 +130,7 @@ def cmd_batch(args):
 def main():
     parser = argparse.ArgumentParser(
         prog="taskctl",
-        description="⚡️ taskctl — Terminal Task & Sprint CLI for StepIt workflows"
+        description="⚡️ taskctl — Terminal Task & Sprint CLI for Flowline workflows"
     )
     subparsers = parser.add_subparsers(dest="command")
 
