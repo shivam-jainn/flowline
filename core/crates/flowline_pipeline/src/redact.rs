@@ -1,5 +1,5 @@
 //! `SensitiveDataDetector` + `PrivacyRedactionEngine` port
-//! (`Sources/StepItPipeline/SensitiveDataDetector.swift`,
+//! (`Sources/FlowlinePipeline/SensitiveDataDetector.swift`,
 //! `PrivacyRedactionEngine.swift`).
 //!
 //! Every Swift `NSRegularExpression` pattern is mirrored by a hand-rolled char
@@ -12,7 +12,7 @@
 //! match nothing, as Swift's `try?` yields no rule). Offsets are char offsets
 //! (identical to UTF-16 offsets on the ASCII corpus).
 
-use stepit_ir::{ElementRect, OcrTextItem};
+use flowline_ir::{ElementRect, OcrTextItem};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MatchKind {

@@ -1,11 +1,11 @@
-//! `StepFactory` port (`Sources/StepItPipeline/StepFactory.swift`).
+//! `StepFactory` port (`Sources/FlowlinePipeline/StepFactory.swift`).
 //!
 //! All `make*` constructors plus helpers, producing the local IR `Step`
 //! mirror with fixed timestamp strings flowing through verbatim.
 
 use crate::aggregate::TypingBatchResult;
 use crate::classify::InputClassification;
-use stepit_ir::{
+use flowline_ir::{
     ActionType, HotkeyChord, MediaAssets, MouseButton, Point2D, RawElementContext,
     ScreenCoordinates, Step,
 };
@@ -174,7 +174,7 @@ pub fn make_terminal_command_step(
     })
 }
 
-/// `Run "git status" in ~/Code/stepit (Ghostty)` when `pwd` is known;
+/// `Run "git status" in ~/Code/flowline (Ghostty)` when `pwd` is known;
 /// legacy `Run "git status" in Ghostty` otherwise (E2).
 pub fn terminal_command_description(
     command: &str,
@@ -345,7 +345,7 @@ pub fn make_manual_step(index: i32, id: &str, timestamp: &str, title: &str, note
     })
 }
 
-/// `Step.synthesizeDefaultDescription` port (owns: StepItIR in Swift;
+/// `Step.synthesizeDefaultDescription` port (owns: FlowlineIR in Swift;
 /// mirrored here so click steps render byte-identical descriptions).
 pub fn synthesize_default_description(
     action: ActionType,
@@ -479,8 +479,8 @@ mod tests {
         }
     }
 
-    use stepit_ir::HotkeyChord;
-    use stepit_ir::KeyModifiers as Mod;
+    use flowline_ir::HotkeyChord;
+    use flowline_ir::KeyModifiers as Mod;
 
     fn safari_docs() -> RawElementContext {
         let mut c = ctx("Safari");

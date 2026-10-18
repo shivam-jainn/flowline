@@ -1,12 +1,12 @@
 //! `HotkeyRecognizer` + `KeyCodeMap` port
-//! (`Sources/StepItPipeline/HotkeyRecognizer.swift`,
+//! (`Sources/FlowlinePipeline/HotkeyRecognizer.swift`,
 //! `KeyCodeMap.swift`).
 //!
 //! IR-level chord policy plus the macOS virtual-keycode table, verbatim.
 
 use std::collections::HashSet;
 
-use stepit_ir::{HotkeyChord, KeyModifiers};
+use flowline_ir::{HotkeyChord, KeyModifiers};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct HotkeyCaptureSettings {
@@ -233,7 +233,7 @@ impl KeyCodeMap {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use stepit_ir::KeyModifiers as Mod;
+    use flowline_ir::KeyModifiers as Mod;
 
     fn rec() -> HotkeyRecognizer {
         HotkeyRecognizer::default()

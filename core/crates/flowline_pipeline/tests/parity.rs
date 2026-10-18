@@ -1,14 +1,14 @@
 //! Golden parity vs `shared/goldens/` (R/M2-02).
 
-use stepit_pipeline::aggregate::{TypingBatchAggregator, TypingBatchResult};
-use stepit_pipeline::classify::{InputClassification, classify_parts};
-use stepit_pipeline::debounce::EventDebouncer;
-use stepit_pipeline::hotkey::{HotkeyDecision, HotkeyRecognizer};
-use stepit_ir::{
+use flowline_pipeline::aggregate::{TypingBatchAggregator, TypingBatchResult};
+use flowline_pipeline::classify::{InputClassification, classify_parts};
+use flowline_pipeline::debounce::EventDebouncer;
+use flowline_pipeline::hotkey::{HotkeyDecision, HotkeyRecognizer};
+use flowline_ir::{
     ActionType, HotkeyChord, KeyModifiers, MediaAssets, Point2D, RawElementContext,
 };
-use stepit_pipeline::redact::SensitiveDataDetector;
-use stepit_pipeline::step_factory;
+use flowline_pipeline::redact::SensitiveDataDetector;
+use flowline_pipeline::step_factory;
 
 fn ctx(app: &str, bundle: Option<&str>, window: &str) -> RawElementContext {
     RawElementContext {
