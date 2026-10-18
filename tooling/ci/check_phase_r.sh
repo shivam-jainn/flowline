@@ -18,8 +18,8 @@ export PATH="$HOME/.cargo/bin:/opt/homebrew/opt/rustup/bin:$PATH"
 
 echo "===== 1/5 Swift (+ Rust FFI artifacts first) ====="
 tooling/toolchain/build-rust-ffi.sh
-swift build
-swift test
+swift build --package-path platform/macos
+swift test --package-path platform/macos
 
 echo "===== 2/5 Architecture gate ====="
 tooling/ci/check_architecture.sh
