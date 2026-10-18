@@ -1,5 +1,5 @@
 import Foundation
-import StepItIR
+import FlowlineIR
 
 extension WebDocGenerator {
     /// Asset-base-URL prefix used for media `src` attributes (moved verbatim

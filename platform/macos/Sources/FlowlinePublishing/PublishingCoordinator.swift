@@ -1,6 +1,6 @@
 import Foundation
-import StepItIR
-import StepItStorage
+import FlowlineIR
+import FlowlineStorage
 
 /// Multi-format publishing orchestration (R/M1-07: store-injected, narrow
 /// settings).
@@ -9,7 +9,7 @@ import StepItStorage
 ///   fresh `SessionStore`, never the `shared` singleton), so surfaces and
 ///   tests can supply isolated stores.
 /// - Export entry points take the narrow `PublishingSettings` they actually
-///   read — never the full `StepItSettings` aggregate.
+///   read — never the full `FlowlineSettings` aggregate.
 public final class PublishingCoordinator: @unchecked Sendable {
     public static let shared = PublishingCoordinator()
 

@@ -1,5 +1,5 @@
 import Foundation
-import StepItIR
+import FlowlineIR
 
 public final class MarkdownExporter: @unchecked Sendable {
     public static let shared = MarkdownExporter()
@@ -56,7 +56,7 @@ public final class MarkdownExporter: @unchecked Sendable {
                 md += "- **Working Directory**: `\(directory)`\n"
             }
             if step.isRedacted == true {
-                md += "- **Redacted**: 🛡️ sensitive data blurred offline\n"
+                md += "- **Redacted**: sensitive data blurred offline\n"
             }
             if let coords = step.coordinates {
                 md += "- **Coordinates**: (\(Int(coords.x)), \(Int(coords.y)))\n"
@@ -81,12 +81,12 @@ public final class MarkdownExporter: @unchecked Sendable {
                 md += "![\(step.actionDescription)](\(prefix)\(screenshot))\n\n"
             }
             if let zoomCrop = step.assets.zoomCrop {
-                md += "🔍 *[View 2.4× Focused DOM Zoom Crop](\(prefix)\(zoomCrop))*\n\n"
+                md += "*[View 2.4× Focused DOM Zoom Crop](\(prefix)\(zoomCrop))*\n\n"
             }
         }
         
         md += "---\n\n"
-        md += "_Documented with [step·it](https://github.com/stepit/stepit) for macOS._\n"
+        md += "_Documented with [step·it](https://github.com/flowline/flowline) for macOS._\n"
         return md
     }
 }

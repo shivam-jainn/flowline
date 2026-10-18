@@ -2,97 +2,107 @@
 import PackageDescription
 
 let coreModules: [Target.Dependency] = [
-    "StepItIR",
-    "StepItPipeline",
-    "StepItEngine",
-    "StepItStorage",
-    "StepItCaptureAPI",
-    "StepItMacCapture",
-    "StepItPublishing",
-    "StepItAIGateway",
-    "StepItPermissions",
+    "FlowlineIR",
+    "FlowlinePipeline",
+    "FlowlineEngine",
+    "FlowlineStorage",
+    "FlowlineCaptureAPI",
+    "FlowlineMacCapture",
+    "FlowlinePublishing",
+    "FlowlineAIGateway",
+    "FlowlinePermissions",
+    "FlowlineTemplates",
 ]
 
 let package = Package(
-    name: "StepIt",
+    name: "Flowline",
     platforms: [
         .macOS(.v14)
     ],
     products: [
-        .executable(name: "stepit", targets: ["StepIt"]),
+        .executable(name: "flowline", targets: ["Flowline"]),
     ],
     dependencies: [],
     targets: [
         .target(
-            name: "StepItIR",
+            name: "FlowlineIR",
             dependencies: [],
-            path: "Sources/StepItIR"
+            path: "Sources/FlowlineIR"
         ),
         .target(
-            name: "StepItPipeline",
-            dependencies: ["StepItIR"],
-            path: "Sources/StepItPipeline"
+            name: "FlowlinePipeline",
+            dependencies: ["FlowlineIR", "FlowlineFFI"],
+            path: "Sources/FlowlinePipeline"
         ),
         .target(
-            name: "StepItCaptureAPI",
-            dependencies: ["StepItIR", "StepItPipeline"],
-            path: "Sources/StepItCaptureAPI"
+            name: "FlowlineCaptureAPI",
+            dependencies: ["FlowlineIR", "FlowlinePipeline"],
+            path: "Sources/FlowlineCaptureAPI"
         ),
         .target(
-            name: "StepItEngine",
-            dependencies: ["StepItIR", "StepItPipeline", "StepItCaptureAPI", "StepItStorage", "StepItAIGateway", "StepItPublishing"],
-            path: "Sources/StepItEngine"
+            name: "FlowlineEngine",
+            dependencies: ["FlowlineIR", "FlowlinePipeline", "FlowlineCaptureAPI", "FlowlineStorage", "FlowlineAIGateway", "FlowlinePublishing"],
+            path: "Sources/FlowlineEngine"
         ),
         .target(
-            name: "StepItStorage",
-            dependencies: ["StepItIR"],
-            path: "Sources/StepItStorage"
+            name: "FlowlineStorage",
+            dependencies: ["FlowlineIR"],
+            path: "Sources/FlowlineStorage"
         ),
         .target(
-            name: "StepItMacCapture",
-            dependencies: ["StepItIR", "StepItCaptureAPI", "StepItPipeline", "StepItStorage"],
-            path: "Sources/StepItMacCapture"
+            name: "FlowlineMacCapture",
+            dependencies: ["FlowlineIR", "FlowlineCaptureAPI", "FlowlinePipeline", "FlowlineStorage"],
+            path: "Sources/FlowlineMacCapture"
         ),
         .target(
-            name: "StepItPublishing",
-            dependencies: ["StepItIR", "StepItStorage"],
-            path: "Sources/StepItPublishing"
+            name: "FlowlinePublishing",
+            dependencies: ["FlowlineIR", "FlowlineStorage"],
+            path: "Sources/FlowlinePublishing"
         ),
         .target(
-            name: "StepItAIGateway",
-            dependencies: ["StepItIR", "StepItStorage"],
-            path: "Sources/StepItAIGateway"
+            name: "FlowlineAIGateway",
+            dependencies: ["FlowlineIR", "FlowlineStorage"],
+            path: "Sources/FlowlineAIGateway"
         ),
         .target(
-            name: "StepItPermissions",
-            dependencies: ["StepItIR"],
-            path: "Sources/StepItPermissions"
+            name: "FlowlinePermissions",
+            dependencies: ["FlowlineIR"],
+            path: "Sources/FlowlinePermissions"
         ),
         .target(
-            name: "StepItFixtures",
+            name: "FlowlineTemplates",
+            dependencies: ["FlowlineIR"],
+            path: "Sources/FlowlineTemplates"
+        ),
+        .target(
+            name: "FlowlineFixtures",
             dependencies: coreModules,
-            path: "Sources/StepItFixtures"
+            path: "Sources/FlowlineFixtures"
         ),
         // R/M2-07: UniFFI-generated Swift bindings over the Rust core.
         // Rebuilt by Scripts/build-rust-ffi.sh (binary artifact gitignored).
         .binaryTarget(
-            name: "stepit_ffiFFI",
-            path: "Generated/stepit_ffiFFI.xcframework"
+            name: "flowline_ffiFFI",
+            path: "Generated/flowline_ffiFFI.xcframework"
         ),
         .target(
-            name: "StepItFFI",
-            dependencies: ["stepit_ffiFFI"],
-            path: "Generated/StepItFFI"
+            name: "FlowlineFFI",
+            dependencies: ["flowline_ffiFFI"],
+            path: "Generated/FlowlineFFI"
         ),
         .executableTarget(
-            name: "StepIt",
-            dependencies: ["StepItFixtures"] + coreModules,
-            path: "Sources/StepIt"
+            name: "Flowline",
+            dependencies: ["FlowlineFixtures"] + coreModules,
+            path: "Sources/Flowline",
+            exclude: [
+                "UI/Flowline/Diagnostics/INSTRUMENTS_GUTTER.md",
+                "UI/Flowline/Diagnostics/PROVIDER_NOTES.md",
+            ]
         ),
         .testTarget(
-            name: "StepItTests",
-            dependencies: ["StepItFixtures", "StepItFFI"] + coreModules,
-            path: "Tests/StepItTests"
+            name: "FlowlineTests",
+            dependencies: ["FlowlineFixtures", "FlowlineFFI"] + coreModules,
+            path: "Tests/FlowlineTests"
         )
     ]
 )

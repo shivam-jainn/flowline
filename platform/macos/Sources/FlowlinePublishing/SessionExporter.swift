@@ -1,5 +1,5 @@
 import Foundation
-import StepItIR
+import FlowlineIR
 
 /// Exported artifact descriptor. Pure data — rendering happens in Native.
 public struct ExportArtifact: Sendable, Equatable {
@@ -15,7 +15,7 @@ public struct ExportArtifact: Sendable, Equatable {
 
 /// Session exporter plugin contract (Phase R §2).
 /// Uses a type-erased session (`Any`) until m1-02 moves `StepSession` into
-/// StepItIR; m1-06 binds the concrete type without changing call-site shape.
+/// FlowlineIR; m1-06 binds the concrete type without changing call-site shape.
 public protocol SessionExporter: AnyObject, Sendable {
     var exporterID: String { get }
     func export(session: Any, to directory: URL) throws -> ExportArtifact

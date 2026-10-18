@@ -1,5 +1,5 @@
 import Foundation
-import StepItIR
+import FlowlineIR
 
 extension WebDocGenerator {
     func getThemeCSS(for theme: ThemeName) -> String {
@@ -8,27 +8,45 @@ extension WebDocGenerator {
         :root {
             --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Plus Jakarta Sans", "Helvetica Neue", Arial, sans-serif;
             --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+
+            /* Spacing scale — 4pt base, single source of truth */
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 12px;
+            --space-lg: 16px;
+            --space-xl: 20px;
+            --space-xxl: 24px;
+            --space-xxxl: 32px;
+
+            /* Button system — even padding, leading icon + 6px gap */
+            --btn-gap: 6px;
+            --btn-pad-compact: 6px 12px;
+            --btn-pad-regular: 8px 12px;
+            --btn-pad-primary: 10px 20px;
+            --btn-pad-icon: 8px;
             
-            /* Modern Minimalist (Apple / Airbnb Light Canvas) */
-            --bg: #ffffff;
+            /* Modern Minimalist (Apple / Airbnb Light Canvas) — values mirror FlowSemantic light */
+            --bg: #f7f7f5;
             --surface: #ffffff;
-            --surface-secondary: #fbfbfd;
+            --surface-secondary: #f1f1ef;
             --surface-tertiary: #f5f5f7;
             --surface-glass: rgba(255, 255, 255, 0.85);
             
-            --border: #e5e5ea;
-            --border-subtle: #f0f0f2;
-            --border-hover: #d2d2d7;
+            --border: #e5e5e2;
+            --border-subtle: #ededea;
+            --border-hover: #d6d6d2;
             
             --text: #1d1d1f;
             --text-secondary: #6e6e73;
-            --text-muted: #86868b;
+            --text-muted: #a1a1a6;
             
-            --primary: #0071e3;
-            --primary-hover: #0077ed;
+            --primary: #3478f6;
+            --primary-hover: #2869de;
             --primary-gradient: #1d1d1f;
+            --amber: #ffb340;
+            --halo: rgba(255, 179, 64, 0.16);
             
-            --accent-glow: rgba(0, 113, 227, 0.08);
+            --accent-glow: rgba(52, 120, 246, 0.08);
             --success: #34c759;
             --danger: #ff3b30;
             --warning: #ff9500;
@@ -45,13 +63,13 @@ extension WebDocGenerator {
             --ease-apple: cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        /* Developer Dark (Apple Space Titanium / Pro Display) */
+        /* Developer Dark (Apple Space Titanium / Pro Display) — values mirror FlowSemantic dark */
         [data-theme="developer-dark"] {
-            --bg: #000000;
-            --surface: #121214;
-            --surface-secondary: #18181b;
+            --bg: #18181a;
+            --surface: #202023;
+            --surface-secondary: #303035;
             --surface-tertiary: #222226;
-            --surface-glass: rgba(18, 18, 20, 0.85);
+            --surface-glass: rgba(24, 24, 26, 0.85);
             
             --border: rgba(255, 255, 255, 0.1);
             --border-subtle: rgba(255, 255, 255, 0.05);
@@ -61,9 +79,11 @@ extension WebDocGenerator {
             --text-secondary: #a1a1a6;
             --text-muted: #6e6e73;
             
-            --primary: #2997ff;
-            --primary-hover: #47a6ff;
+            --primary: #5e9bff;
+            --primary-hover: #70a8ff;
             --primary-gradient: #f5f5f7;
+            --amber: #ffb84d;
+            --halo: rgba(255, 184, 77, 0.14);
             
             --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.5);
             --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.7);
@@ -226,21 +246,34 @@ extension WebDocGenerator {
         .action-btn {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: var(--btn-gap);
             background: var(--surface);
             border: 1px solid var(--border);
             color: var(--text);
-            padding: 5px 12px;
+            padding: var(--btn-pad-compact);
             border-radius: var(--radius-pill);
             font-family: inherit;
             font-weight: 500;
             font-size: 0.78rem;
             cursor: pointer;
+            min-height: 32px;
             transition: all 0.15s var(--ease-apple);
         }
         .action-btn:hover {
             background: var(--surface-tertiary);
             border-color: var(--border-hover);
+        }
+        .action-btn:focus-visible,
+        .theme-option:focus-visible,
+        .segment-btn:focus-visible,
+        .copy-micro-btn:focus-visible,
+        .copy-code-btn:focus-visible,
+        .primary-btn:focus-visible,
+        .nav-link:focus-visible,
+        .lightbox-btn:focus-visible,
+        .lightbox-close-btn:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
         }
         .action-btn:active {
             transform: scale(0.97);
@@ -319,9 +352,133 @@ extension WebDocGenerator {
             border: 1px solid rgba(0, 0, 0, 0.15);
             flex-shrink: 0;
         }
-        .minimal-dot { background: #0071e3; }
-        .dark-dot { background: #121214; border-color: #555; }
+        .minimal-dot { background: #3478f6; }
+        .dark-dot { background: #18181a; border-color: #555; }
         .sop-dot { background: #8b5a2b; }
+
+        /* Share Dropdown Popover (official brand rows, whole-row click-to-copy) */
+        .share-selector-container {
+            position: relative;
+        }
+        .share-menu-popover {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 280px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-card);
+            border-radius: 12px;
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            z-index: 1001;
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+        }
+        .share-menu-popover.hidden {
+            display: none !important;
+        }
+        .share-menu-header {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding: 8px 10px 4px 10px;
+        }
+        .share-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 7px 10px;
+            min-height: 44px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text);
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.12s var(--ease-apple);
+            font-family: inherit;
+        }
+        .share-option:hover {
+            background: var(--surface-tertiary);
+        }
+        .share-option:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 1px;
+        }
+        .share-option.copied {
+            background: var(--surface-secondary);
+        }
+        .share-icon-tile {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 7px;
+            flex-shrink: 0;
+            background: var(--surface-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        .brand-tile-slack { background: #ffffff; border-color: #e5e5e2; }
+        .brand-tile-teams { background: #ffffff; border-color: #e5e5e2; }
+        .brand-tile-notion { background: #ffffff; border-color: rgba(0, 0, 0, 0.12); color: #000000; }
+        [data-theme="developer-dark"] .brand-tile-notion { background: #000000; border-color: rgba(255, 255, 255, 0.18); color: #ffffff; }
+        .brand-tile-gmail { background: #ffffff; border-color: #e5e5e2; }
+        .brand-tile-link { background: var(--surface-secondary); }
+        .share-text {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            flex: 1;
+        }
+        .share-title {
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .share-sub {
+            font-size: 12px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .share-trailing {
+            display: inline-flex;
+            align-items: center;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+        .share-trailing .icon-check { display: none; color: var(--success); }
+        .share-option.copied .share-trailing .icon-copy { display: none; }
+        .share-option.copied .share-trailing .icon-check { display: block; }
+        .share-separator {
+            height: 1px;
+            background: var(--border);
+            margin: 4px 10px;
+        }
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
 
         /* Print Header (Hidden on Screen) */
         .print-header {
@@ -333,8 +490,8 @@ extension WebDocGenerator {
             display: flex;
             max-width: 1320px;
             margin: 0 auto;
-            padding: 40px 28px 80px 28px;
-            gap: 44px;
+            padding: var(--space-xxxl) 28px 80px 28px;
+            gap: var(--space-xxxl);
         }
 
         /* Minimalist Sticky Left Rail */
@@ -685,11 +842,13 @@ extension WebDocGenerator {
             color: var(--text-muted);
             cursor: pointer;
             font-size: 0.72rem;
-            padding: 0 2px;
+            padding: var(--space-xs) var(--space-sm);
+            min-height: 28px;
             display: inline-flex;
             align-items: center;
-            gap: 3px;
+            gap: var(--btn-gap);
             font-family: inherit;
+            border-radius: var(--radius-sm);
         }
         .copy-micro-btn:hover {
             color: var(--text);
@@ -767,13 +926,14 @@ extension WebDocGenerator {
         .copy-code-btn {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
+            gap: var(--btn-gap);
             background: rgba(255, 255, 255, 0.08);
             border: 1px solid rgba(255, 255, 255, 0.12);
             color: #f0f6fc;
             font-size: 0.72rem;
             font-weight: 500;
-            padding: 3px 8px;
+            padding: 4px 10px;
+            min-height: 28px;
             border-radius: var(--radius-sm);
             cursor: pointer;
             transition: all 0.15s ease;
@@ -832,7 +992,8 @@ extension WebDocGenerator {
             font-family: inherit;
             font-size: 0.72rem;
             font-weight: 600;
-            padding: 3px 9px;
+            padding: 4px 12px;
+            min-height: 28px;
             border-radius: 4px;
             cursor: pointer;
             transition: all 0.12s var(--ease-apple);
@@ -933,11 +1094,11 @@ extension WebDocGenerator {
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
         .lightbox-trigger-btn {
-            background: rgba(255, 255, 255, 0.08) !important;
-            border: 1px solid var(--border) !important;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border);
         }
         .lightbox-trigger-btn:hover {
-            background: var(--surface) !important;
+            background: var(--surface);
         }
 
         /* macOS Terminal Window Styling */
@@ -978,12 +1139,12 @@ extension WebDocGenerator {
             font-weight: 500;
         }
         .copy-cmd-btn {
-            background: rgba(56, 189, 248, 0.15) !important;
-            border: 1px solid rgba(56, 189, 248, 0.35) !important;
-            color: #38bdf8 !important;
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            color: #38bdf8;
         }
         .copy-cmd-btn:hover {
-            background: rgba(56, 189, 248, 0.25) !important;
+            background: rgba(56, 189, 248, 0.25);
         }
 
         /* Fullscreen Lightbox Modal */
@@ -1172,19 +1333,175 @@ extension WebDocGenerator {
             background: var(--text);
             color: var(--bg);
             border: none;
-            padding: 9px 20px;
+            padding: var(--btn-pad-primary);
             border-radius: var(--radius-pill);
             font-weight: 600;
             font-size: 0.85rem;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: var(--btn-gap);
+            min-height: 40px;
             transition: all 0.15s var(--ease-apple);
         }
         .primary-btn:hover {
             opacity: 0.9;
             transform: translateY(-1px);
+        }
+
+        /* Keystroke visualiser — selectable keycap + pointer styles.
+           Surveyed 2026-10: KeyCastr Classic/Svelte, show-keystrokes Modern vs
+           Mechanical, Magic-Keyboard flat, Remocn physical caps.
+           - Mac 2D: flat matte, 1px border, no depth.
+           - Mac 3D: gradient face + top highlight + bottom edge + shadow.
+           - 3D Keys (mech): side wall + raised cap + contact shadow; mods tinted. */
+        .keycombo-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 12px 0 2px 0;
+            flex-wrap: wrap;
+        }
+        .keycombo-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+        .keycombo { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+        .key-plus { color: var(--text-muted); font-weight: 600; font-size: 0.8rem; margin: 0 1px; }
+        .keycap {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+        .keycap-mac2d {
+            background: var(--surface-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-weight: 500;
+            color: var(--text);
+            box-shadow: none;
+        }
+        .keycap-mac3d {
+            background: linear-gradient(to bottom, #ffffff, #e9e9ed);
+            border: 1px solid rgba(0, 0, 0, 0.18);
+            border-bottom-width: 2px;
+            border-radius: 7px;
+            padding: 4px 9px;
+            font-weight: 600;
+            color: #1d1d1f;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        }
+        .keycap-mac3d.is-mod { color: #7a4a00; }
+        .keycap-mech {
+            background: linear-gradient(to bottom, #fefefe, #e6e6e2);
+            border: 1px solid rgba(0, 0, 0, 0.22);
+            border-radius: 8px;
+            padding: 5px 10px;
+            font-weight: 700;
+            color: #1d1d1f;
+            box-shadow: 0 4px 0 rgba(0, 0, 0, 0.28), 0 6px 10px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+            margin-bottom: 4px;
+        }
+        .keycap-mech.is-mod {
+            background: linear-gradient(to bottom, #e3edff, #c4d6fb);
+            border-color: rgba(52, 120, 246, 0.55);
+            color: #1a3fa0;
+        }
+        [data-theme="developer-dark"] .keycap-mac3d {
+            background: linear-gradient(to bottom, #3a3a3c, #1c1c1e);
+            border-color: rgba(255, 255, 255, 0.16);
+            border-bottom-color: rgba(0, 0, 0, 0.7);
+            color: #f5f5f7;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+        }
+        [data-theme="developer-dark"] .keycap-mac3d.is-mod { color: #ffb84d; }
+        [data-theme="developer-dark"] .keycap-mech {
+            background: linear-gradient(to bottom, #3d3d41, #17171a);
+            border-color: rgba(255, 255, 255, 0.14);
+            color: #f5f5f7;
+            box-shadow: 0 4px 0 rgba(0, 0, 0, 0.7), 0 6px 12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+        }
+        [data-theme="developer-dark"] .keycap-mech.is-mod {
+            background: linear-gradient(to bottom, #4a6cf7, #2b3f9e);
+            border-color: rgba(94, 155, 255, 0.6);
+            color: #ffffff;
+        }
+        /* Sidebar kbd hints ride the Mac-3D bezel so J/K/T match the guide. */
+        .sidebar-shortcut-hint kbd, kbd.kbd-hint {
+            font-family: var(--font-mono);
+            font-size: 0.68rem;
+            font-weight: 600;
+            background: linear-gradient(to bottom, #ffffff, #e9e9ed);
+            border: 1px solid rgba(0, 0, 0, 0.18);
+            border-bottom-width: 2px;
+            border-radius: 5px;
+            padding: 1px 5px;
+            color: #1d1d1f;
+            box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+        }
+        [data-theme="developer-dark"] .sidebar-shortcut-hint kbd,
+        [data-theme="developer-dark"] kbd.kbd-hint {
+            background: linear-gradient(to bottom, #3a3a3c, #1c1c1e);
+            border-color: rgba(255, 255, 255, 0.16);
+            color: #f5f5f7;
+        }
+
+        /* Pointer visuals — same depth ramp as caps. */
+        .mouse-row {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin: 10px 0 2px 0;
+            padding: 5px 12px 5px 6px;
+            border-radius: 999px;
+            background: var(--surface-secondary);
+            border: 1px solid var(--border);
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            width: fit-content;
+        }
+        .mouse-ptr {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .mouse-flat .mouse-ptr {
+            border: 1.5px solid #e8a32d;
+            background: rgba(232, 163, 45, 0.16);
+            color: #b87700;
+        }
+        .mouse-mac2d .mouse-ptr {
+            background: #ffffff;
+            border: 1.5px solid rgba(0, 0, 0, 0.22);
+            color: #1d1d1f;
+        }
+        .mouse-mac3d .mouse-ptr {
+            background: linear-gradient(to bottom, #ffffff, #ececf0);
+            border: 1.5px solid #e8a32d;
+            color: #7a4a00;
+            box-shadow: 0 0 0 4px rgba(232, 163, 45, 0.16), 0 2px 5px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        }
+        [data-theme="developer-dark"] .mouse-mac2d .mouse-ptr {
+            background: #2a2a2e;
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #f5f5f7;
+        }
+        [data-theme="developer-dark"] .mouse-mac3d .mouse-ptr {
+            background: linear-gradient(to bottom, #3a3a3c, #1c1c1e);
+            border-color: #ffb84d;
+            color: #ffb84d;
+            box-shadow: 0 0 0 4px rgba(255, 184, 77, 0.16), 0 2px 6px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.14);
         }
 
         /* Responsive Breakpoints */
@@ -1199,6 +1516,7 @@ extension WebDocGenerator {
             .step-card { padding: 20px; }
             .action-btn .btn-text { display: none; }
             .metadata-strip { gap: 14px; }
+            .share-menu-popover { width: 260px; max-width: calc(100vw - 32px); }
         }
 
         /* PDF Export Mode Styling (used during native headless PDF generation) */
@@ -1208,6 +1526,7 @@ extension WebDocGenerator {
         .pdf-export-mode .doc-footer,
         .pdf-export-mode #progress-bar-container,
         .pdf-export-mode .action-btn,
+        .pdf-export-mode .share-menu-popover,
         .pdf-export-mode .copy-micro-btn,
         .pdf-export-mode .copy-code-btn,
         .pdf-export-mode .step-check-label,
@@ -1274,6 +1593,7 @@ extension WebDocGenerator {
             .doc-footer,
             #progress-bar-container,
             .action-btn,
+            .share-menu-popover,
             .copy-micro-btn,
             .copy-code-btn,
             .step-check-label {

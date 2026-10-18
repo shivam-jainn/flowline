@@ -1,5 +1,5 @@
 import Foundation
-import StepItIR
+import FlowlineIR
 
 extension WebDocGenerator {
     func generateSidebarNav(session: StepSession) -> String {
@@ -28,17 +28,25 @@ extension WebDocGenerator {
     func generateHeaderMetadata(session: StepSession, settings: PublishingSettings) -> String {
         let author = settings.authorName.isEmpty ? (settings.companyName.isEmpty ? "macOS User" : settings.companyName) : settings.authorName
         let dateFormatted = session.startedAt.formatted(date: .abbreviated, time: .shortened)
-        
-        return """
+        // includeTimestamp was previously persisted but never read — now wired.
+        var recordedItem = ""
+        if settings.includeTimestamp {
+            recordedItem = """
+                    <div class="meta-strip-item">
+                        <span class="meta-strip-label">RECORDED</span>
+                        <span class="meta-strip-val">\(dateFormatted)</span>
+                    </div>
+            """
+        }
+
+        let head = """
         <div class="metadata-strip">
             <div class="meta-strip-item">
                 <span class="meta-strip-label">AUTHOR</span>
                 <span class="meta-strip-val">\(escapeHTML(author))</span>
             </div>
-            <div class="meta-strip-item">
-                <span class="meta-strip-label">RECORDED</span>
-                <span class="meta-strip-val">\(dateFormatted)</span>
-            </div>
+        """
+        let tail = """
             <div class="meta-strip-item">
                 <span class="meta-strip-label">STEPS</span>
                 <span class="meta-strip-val">\(session.steps.count) verified</span>
@@ -49,9 +57,13 @@ extension WebDocGenerator {
             </div>
         </div>
         """
+        if recordedItem.isEmpty {
+            return head + tail
+        }
+        return head + recordedItem + "\n" + tail
     }
-    
-    func generateStepsHTML(session: StepSession, assetBaseURL: String) -> String {
+
+    func generateStepsHTML(session: StepSession, assetBaseURL: String, settings: PublishingSettings? = nil) -> String {
         var html = ""
         let prefix = assetURLPrefix(assetBaseURL: assetBaseURL)
         
@@ -78,29 +90,66 @@ extension WebDocGenerator {
             let pctX = min(95.0, max(5.0, (coordsX / 1200.0) * 100.0))
             let pctY = min(95.0, max(5.0, (coordsY / 800.0) * 100.0))
             let isTerminalCmd = (step.appName == "Terminal" || step.codeLanguage == "bash" || step.codeLanguage == "zsh") && step.textBlob != nil
-            
-            html += """
-            <article class="step-card" id="step-card-\(step.index)">
-                <!-- Step Header -->
-                <div class="step-header">
-                    <div class="step-header-left">
-                        <label class="step-check-label" title="Mark step \(step.index) completed">
-                            <input type="checkbox" class="step-check" data-step="\(step.index)">
-                            <span class="custom-checkbox">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                            </span>
-                        </label>
-                        <div class="step-header-text">
-                            <div class="step-top-meta">
-                                <span class="step-num-tag">STEP \(formattedIndex)</span>
-                                <span class="chip action-chip">\(actionName)</span>
-                                \(step.appName.isEmpty ? "" : "<span class=\"chip app-chip\">\(escapeHTML(step.appName))</span>")
-                            </div>
-                            <h2 class="step-title">\(escapeHTML(step.actionDescription))</h2>
-                        </div>
+            let keyStyle = settings?.keycapStyle ?? .mac3D
+            let pointerStyle = settings?.mouseStyle ?? .mac3D
+            let keycapsRow: String = {
+                if step.action == .keyPress {
+                    let toks = KeyComboTokens.tokensForStep(combo: step.hotkeyCombo, elementTitle: step.elementTitle)
+                    guard !toks.isEmpty else { return "" }
+                    let caps = KeyComboTokens.webCapsHTML(tokens: toks, style: keyStyle)
+                    let label = (step.hotkeyCombo?.isEmpty == false) ? "Shortcut" : "Key"
+                    return """
+                    <div class="keycombo-row">
+                        <span class="keycombo-label">\(label)</span>
+                        <span class="keycombo">\(caps)</span>
                     </div>
+                    """
+                }
+                if step.action == .typing, let blob = step.textBlob,
+                   let toks = KeyComboTokens.typedTokens(text: blob) {
+                    let caps = KeyComboTokens.webCapsHTML(tokens: toks, style: keyStyle)
+                    return """
+                    <div class="keycombo-row">
+                        <span class="keycombo-label">Typed</span>
+                        <span class="keycombo">\(caps)</span>
+                    </div>
+                    """
+                }
+                return ""
+            }()
+            let mouseRow: String = {
+                guard step.action != .keyPress, step.action != .typing,
+                      let label = KeyComboTokens.mouseLabel(action: step.action.rawValue) else { return "" }
+                return """
+                <div class="mouse-row \(pointerStyle.cssClass)">
+                    <span class="mouse-ptr" aria-hidden="true"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 3.5 6 16.6 10.2 13.4 12.3 17.8 14.4 16.9 12.3 12.5 16.4 12.5 Z"/></svg></span>
+                    <span class="mouse-label">\(label)</span>
                 </div>
-
+                """
+            }()
+            
+            let checklistsEnabled = settings?.enableInteractiveChecklists ?? true
+            var checklistHTML = ""
+            if checklistsEnabled {
+                checklistHTML = "<label class=\"step-check-label\" title=\"Mark step \(step.index) completed\">"
+                    + "<input type=\"checkbox\" class=\"step-check\" data-step=\"\(step.index)\">"
+                    + "<span class=\"custom-checkbox\">"
+                    + "<svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\"><polyline points=\"20 6 9 17 4 12\"></polyline></svg>"
+                    + "</span></label>"
+            }
+            let cardClass = checklistsEnabled ? "step-card" : "step-card no-checklist"
+            html += "<article class=\"\(cardClass)\" id=\"step-card-\(step.index)\">"
+                + "<div class=\"step-header\"><div class=\"step-header-left\">"
+                + checklistHTML
+                + "<div class=\"step-header-text\">"
+                + "<div class=\"step-top-meta\">"
+                + "<span class=\"step-num-tag\">STEP \(formattedIndex)</span>"
+                + "<span class=\"chip action-chip\">\(actionName)</span>"
+                + (step.appName.isEmpty ? "" : "<span class=\"chip app-chip\">\(escapeHTML(step.appName))</span>")
+                + "</div>"
+                + "<h2 class=\"step-title\">\(escapeHTML(step.actionDescription))</h2>"
+                + "</div></div></div>"
+            html += """
                 <!-- Step Inspector Data Bar -->
                 <div class="step-details">
                     <div class="step-info-bar">
@@ -127,6 +176,7 @@ extension WebDocGenerator {
                         </div>
                         """ : "")
                     </div>
+                    \(keycapsRow)\(mouseRow)
 
                     <!-- Apple Style User Note Callout -->
                     \(step.userNotes != nil && !step.userNotes!.isEmpty ? """
@@ -157,7 +207,7 @@ extension WebDocGenerator {
                         </div>
                         \(isTerminalCmd ? """
                         <div class="code-window-body terminal-body">
-                            <div class="terminal-line"><span class="terminal-prompt">shivam@macbook ~ % </span><span class="terminal-cmd">\(escapeHTML(step.textBlob!))</span></div>
+                            <div class="terminal-line"><span class="terminal-prompt">$ </span><span class="terminal-cmd">\(escapeHTML(step.textBlob!))</span></div>
                         </div>
                         """ : """
                         <pre class="code-window-body code-blob-body"><code>\(escapeHTML(step.textBlob!))</code></pre>
@@ -179,13 +229,13 @@ extension WebDocGenerator {
                             <span>\(escapeHTML(winTitle))</span>
                         </div>
                         
-                        <!-- Apple Segmented Media & Clean Zoom Selector -->
+                        <!-- Apple Segmented Media & Clean Zoom Selector — text-only, no emoji -->
                         <div class="apple-segmented-picker">
                             \(hasScreenshot ? "<button class=\"segment-btn \(defaultView == "screenshot" ? "active" : "")\" data-mode=\"screenshot\" onclick=\"switchMediaView(\(step.index), 'screenshot')\">Overview</button>" : "")
-                            \(hasZoom ? "<button class=\"segment-btn \(defaultView == "zoom" ? "active" : "")\" data-mode=\"zoom\" onclick=\"switchMediaView(\(step.index), 'zoom')\">🔍 Zoom (2.4×)</button>" : "")
+                            \(hasZoom ? "<button class=\"segment-btn \(defaultView == "zoom" ? "active" : "")\" data-mode=\"zoom\" onclick=\"switchMediaView(\(step.index), 'zoom')\">Zoom (2.4×)</button>" : "")
                             \(hasGif ? "<button class=\"segment-btn \(defaultView == "gif" ? "active" : "")\" data-mode=\"gif\" onclick=\"switchMediaView(\(step.index), 'gif')\">Animation</button>" : "")
                             \(hasWebm ? "<button class=\"segment-btn\" data-mode=\"webm\" onclick=\"switchMediaView(\(step.index), 'webm')\">Video</button>" : "")
-                            \(hasScreenshot ? "<button class=\"segment-btn lightbox-trigger-btn\" onclick=\"openLightbox('\(prefix)\(step.assets.screenshot!)', '\(escapeJS(step.actionDescription))', \(Int(coordsX)), \(Int(coordsY)))\" title=\"Open Fullscreen Retina Zoom Lightbox\"><span>⤢ Lightbox</span></button>" : "")
+                            \(hasScreenshot ? "<button class=\"segment-btn lightbox-trigger-btn\" onclick=\"openLightbox('\(prefix)\(step.assets.screenshot!)', '\(escapeJS(step.actionDescription))', \(Int(coordsX)), \(Int(coordsY)))\" title=\"Open Fullscreen Retina Zoom Lightbox\"><span>Lightbox</span></button>" : "")
                         </div>
                     </div>
 

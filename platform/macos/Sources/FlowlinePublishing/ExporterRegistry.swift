@@ -1,5 +1,5 @@
 import Foundation
-import StepItIR
+import FlowlineIR
 
 /// Exporter registry — mirrors DriverRegistry shape (Phase R §2).
 public final class ExporterRegistry: @unchecked Sendable {

@@ -1,5 +1,5 @@
 import Foundation
-import StepItIR
+import FlowlineIR
 
 public final class WebDocGenerator: @unchecked Sendable {
     public static let shared = WebDocGenerator()
@@ -13,13 +13,13 @@ public final class WebDocGenerator: @unchecked Sendable {
     ) -> String {
         let theme = session.theme
         let cssTheme = getThemeCSS(for: theme)
-        let stepsHTML = generateStepsHTML(session: session, assetBaseURL: assetBaseURL)
+        let stepsHTML = generateStepsHTML(session: session, assetBaseURL: assetBaseURL, settings: settings)
         let sidebarNavHTML = generateSidebarNav(session: session)
         let headerMetadata = generateHeaderMetadata(session: session, settings: settings)
         
         let html = """
 <!DOCTYPE html>
-<html lang="en" data-theme="\(theme.rawValue)">
+<html lang="en" data-theme="\(theme.rawValue)" data-keycap="\(settings.keycapStyle.htmlValue)" data-mouse="\(settings.mouseStyle.htmlValue)">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -93,11 +93,83 @@ public final class WebDocGenerator: @unchecked Sendable {
                 <span class="btn-text">Checklist</span>
             </button>
 
-            <!-- Share Button -->
-            <button id="copy-link-btn" class="action-btn" title="Copy Link to Clipboard">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                <span class="btn-text">Share</span>
-            </button>
+            <!-- Share Dropdown (copyable link rows, whole-row click-to-copy) -->
+            <div class="share-selector-container">
+                <button id="share-selector-btn" class="action-btn share-btn" title="Share this guide" aria-haspopup="menu" aria-expanded="false" aria-controls="share-dropdown-menu">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"></line><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"></line></svg>
+                    <span class="btn-text">Share</span>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                <div id="share-dropdown-menu" class="share-menu-popover hidden" role="menu" aria-label="Share this guide">
+                    <div class="share-menu-header">Share this guide</div>
+                    <button class="share-option" role="menuitem" data-share="link" aria-label="Copy page link">
+                        <span class="share-icon-tile brand-tile-link" aria-hidden="true">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                        </span>
+                        <span class="share-text">
+                            <span class="share-title">Copy link</span>
+                            <span class="share-sub">Page URL for browser or chat</span>
+                        </span>
+                        <span class="share-trailing" aria-hidden="true">
+                            <svg class="icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
+                            <svg class="icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+                        </span>
+                    </button>
+                    <button class="share-option" role="menuitem" data-share="slack" aria-label="Copy link for Slack">
+                        <span class="share-icon-tile brand-tile-slack" aria-hidden="true">
+                            <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#36C5F0" d="M8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312z"/><path fill="#2EB67D" d="M18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312z"/><path fill="#E01E5A" d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313z"/><path fill="#ECB22E" d="M15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/></svg>
+                        </span>
+                        <span class="share-text">
+                            <span class="share-title">Slack</span>
+                            <span class="share-sub">Copy link for Slack channel</span>
+                        </span>
+                        <span class="share-trailing" aria-hidden="true">
+                            <svg class="icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
+                            <svg class="icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+                        </span>
+                    </button>
+                    <button class="share-option" role="menuitem" data-share="teams" aria-label="Copy link for Microsoft Teams">
+                        <span class="share-icon-tile brand-tile-teams" aria-hidden="true">
+                            <svg width="16" height="16" viewBox="0 0 16 16"><path fill="#7B83EB" d="M9.186 4.797a2.42 2.42 0 1 0-2.86-2.448h1.178c.929 0 1.682.753 1.682 1.682Zm-4.295 7.738h2.613c.929 0 1.682-.753 1.682-1.682V5.58h2.783a.7.7 0 0 1 .682.716v4.294a4.197 4.197 0 0 1-4.093 4.293c-1.618-.04-3-.99-3.667-2.35Zm10.737-9.372a1.674 1.674 0 1 1-3.349 0 1.674 1.674 0 0 1 3.349 0m-2.238 9.488-.12-.002a5.2 5.2 0 0 0 .381-2.07V6.306a1.7 1.7 0 0 0-.15-.725h1.792c.39 0 .707.317.707.707v3.765a2.6 2.6 0 0 1-2.598 2.598z"/><path fill="#464EB8" d="M.682 3.349h6.822c.377 0 .682.305.682.682v6.822a.68.68 0 0 1-.682.682H.682A.68.68 0 0 1 0 10.853V4.03c0-.377.305-.682.682-.682Zm5.206 2.596v-.72h-3.59v.72h1.357V9.66h.87V5.945z"/></svg>
+                        </span>
+                        <span class="share-text">
+                            <span class="share-title">Teams</span>
+                            <span class="share-sub">Copy title + link for Teams</span>
+                        </span>
+                        <span class="share-trailing" aria-hidden="true">
+                            <svg class="icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
+                            <svg class="icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+                        </span>
+                    </button>
+                    <button class="share-option" role="menuitem" data-share="notion" aria-label="Copy Markdown for Notion">
+                        <span class="share-icon-tile brand-tile-notion" aria-hidden="true">
+                            <svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.981-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.935-.56.935-1.167V6.354c0-.606-.233-.933-.748-.887l-15.177.887c-.56.047-.747.327-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.748 0-.935-.234-1.495-.933l-4.577-7.186v6.952L12.21 19s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.139c-.093-.514.28-.887.747-.933zM1.936 1.035l13.31-.98c1.634-.14 2.055-.047 3.082.7l4.249 2.986c.7.513.934.653.934 1.213v16.378c0 1.026-.373 1.634-1.68 1.726l-15.458.934c-.98.047-1.448-.093-1.962-.747l-3.129-4.06c-.56-.747-.793-1.306-.793-1.96V2.667c0-.839.374-1.54 1.447-1.632z"/></svg>
+                        </span>
+                        <span class="share-text">
+                            <span class="share-title">Notion</span>
+                            <span class="share-sub">Copy Markdown for Notion</span>
+                        </span>
+                        <span class="share-trailing" aria-hidden="true">
+                            <svg class="icon-copy" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
+                            <svg class="icon-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+                        </span>
+                    </button>
+                    <div class="share-separator" aria-hidden="true"></div>
+                    <button class="share-option" role="menuitem" data-share="email" aria-label="Share via Gmail">
+                        <span class="share-icon-tile brand-tile-gmail" aria-hidden="true">
+                            <svg width="16" height="16" viewBox="52 42 88 66"><path fill="#4285F4" d="M58 108h14V74L52 59v43c0 3.32 2.69 6 6 6"/><path fill="#34A853" d="M120 108h14c3.32 0 6-2.69 6-6V59l-20 15"/><path fill="#FBBC04" d="M120 48v26l20-15v-8c0-7.42-8.47-11.65-14.4-7.2"/><path fill="#EA4335" d="M72 74V48l24 18 24-18v26L96 92"/><path fill="#C5221F" d="M52 51v8l20 15V48l-5.6-4.2c-5.94-4.45-14.4-.22-14.4 7.2"/></svg>
+                        </span>
+                        <span class="share-text">
+                            <span class="share-title">Email</span>
+                            <span class="share-sub">Open Mail with link</span>
+                        </span>
+                        <span class="share-trailing" aria-hidden="true">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"></path><path d="M7 7h10v10"></path></svg>
+                        </span>
+                    </button>
+                </div>
+            </div>
+            <span id="share-live-region" class="sr-only" role="status" aria-live="polite"></span>
 
             <!-- Print / PDF Button -->
             <button onclick="window.print()" class="action-btn primary-action" title="Print or Save as PDF (⌘P)">
@@ -199,7 +271,7 @@ public final class WebDocGenerator: @unchecked Sendable {
         const allThemes = ['modern-minimal', 'developer-dark', 'enterprise-sop'];
 
         function initTheme() {
-            const savedTheme = localStorage.getItem('stepit_theme');
+            const savedTheme = localStorage.getItem('flowline_theme');
             const docTheme = document.documentElement.getAttribute('data-theme') || 'modern-minimal';
             const active = (savedTheme && allThemes.includes(savedTheme)) ? savedTheme : docTheme;
             setTheme(active);
@@ -208,7 +280,7 @@ public final class WebDocGenerator: @unchecked Sendable {
         function setTheme(themeVal) {
             if (!allThemes.includes(themeVal)) themeVal = 'modern-minimal';
             document.documentElement.setAttribute('data-theme', themeVal);
-            localStorage.setItem('stepit_theme', themeVal);
+            localStorage.setItem('flowline_theme', themeVal);
             
             const label = document.getElementById('theme-btn-label');
             if (label) {
@@ -250,7 +322,7 @@ public final class WebDocGenerator: @unchecked Sendable {
 
         // Checklist State Persistence
         function loadChecklist() {
-            const saved = JSON.parse(localStorage.getItem('stepit_' + sessionId) || '{}');
+            const saved = JSON.parse(localStorage.getItem('flowline_' + sessionId) || '{}');
             checkboxes.forEach(cb => {
                 const stepIdx = cb.dataset.step;
                 if (saved[stepIdx]) {
@@ -290,9 +362,9 @@ public final class WebDocGenerator: @unchecked Sendable {
                     nav?.classList.remove('nav-done');
                 }
                 
-                const saved = JSON.parse(localStorage.getItem('stepit_' + sessionId) || '{}');
+                const saved = JSON.parse(localStorage.getItem('flowline_' + sessionId) || '{}');
                 saved[stepIdx] = cb.checked;
-                localStorage.setItem('stepit_' + sessionId, JSON.stringify(saved));
+                localStorage.setItem('flowline_' + sessionId, JSON.stringify(saved));
                 updateProgress();
             });
         });
@@ -338,10 +410,99 @@ public final class WebDocGenerator: @unchecked Sendable {
             });
         }
 
-        // Share button
-        document.getElementById('copy-link-btn')?.addEventListener('click', function() {
-            copyText(window.location.href, this);
-        });
+        // Share dropdown (official brand rows, whole-row click-to-copy)
+        function sharePayload(kind) {
+            const url = window.location.href;
+            const title = document.title.replace(/ — step·it$/, '');
+            if (kind === 'notion') return `[${title}](${url})`;
+            if (kind === 'teams') return `${title}\n${url}`;
+            return url;
+        }
+
+        async function copyShareText(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                return true;
+            } catch (err) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                ta.style.fontSize = '16px';
+                document.body.appendChild(ta);
+                ta.select();
+                try { ta.setSelectionRange(0, ta.value.length); } catch (e) {}
+                let ok = false;
+                try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+                document.body.removeChild(ta);
+                return ok;
+            }
+        }
+
+        function announceShare(message) {
+            const live = document.getElementById('share-live-region');
+            if (!live) return;
+            live.textContent = '';
+            setTimeout(() => { live.textContent = message; }, 30);
+            setTimeout(() => { if (live.textContent === message) live.textContent = ''; }, 2000);
+        }
+
+        const shareBtn = document.getElementById('share-selector-btn');
+        const shareMenu = document.getElementById('share-dropdown-menu');
+        function setShareOpen(open) {
+            if (!shareBtn || !shareMenu) return;
+            shareMenu.classList.toggle('hidden', !open);
+            shareBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+        if (shareBtn && shareMenu) {
+            shareBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.getElementById('theme-dropdown-menu')?.classList.add('hidden');
+                setShareOpen(shareMenu.classList.contains('hidden'));
+                if (!shareMenu.classList.contains('hidden')) {
+                    shareMenu.querySelector('.share-option')?.focus();
+                }
+            });
+            document.addEventListener('click', (e) => {
+                if (!shareMenu.classList.contains('hidden') && !shareMenu.contains(e.target) && e.target !== shareBtn && !shareBtn.contains(e.target)) {
+                    setShareOpen(false);
+                }
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && !shareMenu.classList.contains('hidden')) {
+                    setShareOpen(false);
+                    shareBtn.focus();
+                }
+            });
+            shareMenu.addEventListener('keydown', (e) => {
+                const options = Array.from(shareMenu.querySelectorAll('.share-option'));
+                const idx = options.indexOf(document.activeElement);
+                if (e.key === 'ArrowDown') { e.preventDefault(); (options[idx + 1] || options[0])?.focus(); }
+                else if (e.key === 'ArrowUp') { e.preventDefault(); (options[idx - 1] || options[options.length - 1])?.focus(); }
+            });
+            shareMenu.querySelectorAll('.share-option').forEach(opt => {
+                opt.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const kind = opt.dataset.share;
+                    if (kind === 'email') {
+                        const url = window.location.href;
+                        const title = document.title.replace(/ — step·it$/, '');
+                        window.location.href = 'mailto:?subject=' + encodeURIComponent(title) + '&body=' + encodeURIComponent(title + '\n' + url);
+                        setShareOpen(false);
+                        return;
+                    }
+                    const ok = await copyShareText(sharePayload(kind));
+                    if (ok) {
+                        opt.classList.add('copied');
+                        announceShare('Copied: ' + (opt.getAttribute('aria-label') || 'share link'));
+                        setTimeout(() => opt.classList.remove('copied'), 2000);
+                    } else {
+                        announceShare('Copy failed — select the address bar to copy manually');
+                    }
+                });
+            });
+        }
 
         // Keyboard Navigation (J / K / T / C)
         document.addEventListener('keydown', (e) => {
@@ -470,7 +631,7 @@ public final class WebDocGenerator: @unchecked Sendable {
                         <button class="lightbox-btn" onclick="adjustLightboxZoom(0.3)">+</button>
                         <button class="lightbox-btn reset-btn" onclick="resetLightboxZoom()">Reset</button>
                     </div>
-                    <button class="lightbox-close-btn" onclick="closeLightbox()" title="Close (Esc)">✕</button>
+                    <button class="lightbox-close-btn" onclick="closeLightbox()" title="Close (Esc)" aria-label="Close"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
                 </div>
             </div>
             <div class="lightbox-canvas" id="lightbox-canvas">
