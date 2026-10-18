@@ -12,7 +12,7 @@
 //!   `hotkeyCombo` / `isRedacted` (all `Optional`, default nil → absent),
 //!   `endedAt` / `summary` / `synthesizedMarkdown`, every `MediaAssets` and
 //!   `ExportPaths` key.
-//! * `Settings.json` leniency (`StepItSettings` section defaults,
+//! * `Settings.json` leniency (`FlowlineSettings` section defaults,
 //!   `CaptureSettings.recordAppSwitches → false` and friends) lives in the
 //!   future Settings port — it is documented, not implemented, here because
 //!   the aggregate types belong to another crate.

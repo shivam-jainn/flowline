@@ -20,7 +20,7 @@
 //! pins the bundle version + identity, the jsonl log records the raw event
 //! stream one canonical object per line.
 
-pub use stepit_ir::ExportPaths;
+pub use flowline_ir::ExportPaths;
 
 /// Bundle manifest version written by this crate.
 pub const BUNDLE_VERSION: &str = "1";

@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use serde::Serialize;
 use thiserror::Error;
 
-use stepit_ir::{RawInputEvent, StepSession};
+use flowline_ir::{RawInputEvent, StepSession};
 use crate::schema::{
     self, Manifest,
 };

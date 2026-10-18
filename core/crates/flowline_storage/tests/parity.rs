@@ -1,10 +1,10 @@
 //! Parity tests vs the Swift-exported corpus (R/M2-04).
 
 use serde_json::Value;
-use stepit_ir::{ExportPaths, MediaMode, RawInputEvent, StepSession};
-use stepit_storage::migrate::{migrate_session_json, migration_needed};
-use stepit_storage::schema;
-use stepit_storage::serialize::{decode_session, MemFs, SessionStore};
+use flowline_ir::{ExportPaths, MediaMode, RawInputEvent, StepSession};
+use flowline_storage::migrate::{migrate_session_json, migration_needed};
+use flowline_storage::schema;
+use flowline_storage::serialize::{decode_session, MemFs, SessionStore};
 
 // (1) session.sample.json decodes into our types and re-encodes to parity.
 #[test]
