@@ -1,0 +1,31 @@
+import Foundation
+import FlowlineStorage
+import FlowlineCaptureAPI
+import FlowlineMacCapture
+import FlowlinePublishing
+import FlowlineAIGateway
+import FlowlinePermissions
+import FlowlineIR
+import FlowlinePipeline
+import FlowlineEngine
+@testable import FlowlineFixtures
+
+/// Thread-safe collector for async callback results (typing batches).
+final class TypingResultBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var collected: [TypingBatchResult] = []
+
+    var results: [TypingBatchResult] {
+        lock.lock()
+        defer { lock.unlock() }
+        return collected
+    }
+
+    var last: TypingBatchResult? { results.last }
+
+    func append(_ result: TypingBatchResult) {
+        lock.lock()
+        collected.append(result)
+        lock.unlock()
+    }
+}
