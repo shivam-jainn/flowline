@@ -25,6 +25,12 @@ IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
     | head -1)"
 
 if [ -z "${IDENTITY}" ]; then
+    if security find-certificate -c "StepIt Development" >/dev/null 2>&1; then
+        IDENTITY="StepIt Development"
+    fi
+fi
+
+if [ -z "${IDENTITY}" ]; then
     # Orphan cert, no private key: Xcode uploaded a CSR and got the cert back,
     # but the keypair never landed in the keychain (no identity = no signing).
     # Only fix is revoke + recreate so a fresh keypair is generated.
@@ -79,6 +85,10 @@ echo "✅ Signing identity: ${IDENTITY}"
 if [ -n "${TEAM}" ] && [ "${TEAM}" != "not set" ]; then
     echo "✅ TeamIdentifier=${TEAM} → STABLE: TCC grants survive rebuilds."
     echo "   Grant once, then never touch Settings again."
+    exit 0
+elif [ "${IDENTITY}" = "StepIt Development" ]; then
+    echo "✅ Stable local identity: StepIt Development → STABLE: Certificate-root requirement survives rebuilds."
+    echo "   Grant once in Settings, then rebuilds keep working."
     exit 0
 else
     echo "⚠️  TeamIdentifier not set — this identity will NOT survive rebuilds."

@@ -105,8 +105,15 @@ if [ -z "${SIGN_IDENTITY}" ]; then
         | head -1)"
 fi
 if [ -z "${SIGN_IDENTITY}" ]; then
+    # Stable local self-signed identity (survives rebuilds without an Apple Developer account)
+    if security find-certificate -c "StepIt Development" >/dev/null 2>&1; then
+        SIGN_IDENTITY="StepIt Development"
+        echo "✅ Using stable local signing identity: StepIt Development"
+    fi
+fi
+if [ -z "${SIGN_IDENTITY}" ]; then
     SIGN_IDENTITY="-"
-    echo "⚠️  Ad-hoc signing: TCC grants will NOT survive rebuilds. Run 'make sign-setup' once (free Apple ID) to fix permanently."
+    echo "⚠️  Ad-hoc signing: TCC grants will NOT survive rebuilds. Run 'tooling/release/create_local_signing_identity.sh' to fix."
 fi
 echo "Signing with identity: ${SIGN_IDENTITY}"
 if command -v codesign >/dev/null 2>&1; then
