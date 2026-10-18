@@ -1,0 +1,263 @@
+import Foundation
+import FlowlineIR
+import FlowlinePipeline
+import AppKit
+import ApplicationServices
+import Carbon
+
+public struct ElementInspectionResult: Sendable {
+    public var appName: String
+    public var bundleIdentifier: String?
+    public var windowTitle: String
+    public var role: String?
+    public var subrole: String?
+    public var title: String?
+    public var value: String?
+    public var roleDescription: String?
+    /// `true` for secure text fields (password inputs).
+    ///
+    /// Phase 1 only carries the flag across the SPI and into the IR;
+    /// suppression logic is Phase 2.
+    public var isSecure: Bool
+    public var elementBounds: ElementRect?
+    public var windowBounds: ElementRect?
+    
+    public init(
+        appName: String = "",
+        bundleIdentifier: String? = nil,
+        windowTitle: String = "",
+        role: String? = nil,
+        subrole: String? = nil,
+        title: String? = nil,
+        value: String? = nil,
+        roleDescription: String? = nil,
+        isSecure: Bool = false,
+        elementBounds: ElementRect? = nil,
+        windowBounds: ElementRect? = nil
+    ) {
+        self.appName = appName
+        self.bundleIdentifier = bundleIdentifier
+        self.windowTitle = windowTitle
+        self.role = role
+        self.subrole = subrole
+        self.title = title
+        self.value = value
+        self.roleDescription = roleDescription
+        self.isSecure = isSecure
+        self.elementBounds = elementBounds
+        self.windowBounds = windowBounds
+    }
+}
+
+/// macOS accessibility-tree inspector.
+///
+/// Phase 1: instantiated and owned by `MacCaptureDriver` (no `.shared`), and
+/// results are bridged to `RawElementContext` via `IRBridging`.
+public final class AccessibilityInspector: @unchecked Sendable {
+    
+    public init() {}
+    
+    public func inspectElement(at screenPoint: CGPoint) -> ElementInspectionResult {
+        let frontmostApp = NSWorkspace.shared.frontmostApplication
+        var appName = frontmostApp?.localizedName ?? "Unknown App"
+        var bundleId = frontmostApp?.bundleIdentifier
+        var windowTitle = ""
+        var role: String?
+        var subrole: String?
+        var title: String?
+        var value: String?
+        var roleDescription: String?
+        var isSecure = false
+        var elementBounds: ElementRect?
+        var windowBounds: ElementRect?
+        
+        let systemWide = AXUIElementCreateSystemWide()
+        var elementRef: AXUIElement?
+        
+        let axError = AXUIElementCopyElementAtPosition(systemWide, Float(screenPoint.x), Float(screenPoint.y), &elementRef)
+        
+        if axError == .success, let element = elementRef {
+            role = copyStringAttribute(element: element, attribute: kAXRoleAttribute as CFString)
+            subrole = copyStringAttribute(element: element, attribute: kAXSubroleAttribute as CFString)
+            title = copyStringAttribute(element: element, attribute: kAXTitleAttribute as CFString)
+            if title == nil || title?.isEmpty == true {
+                title = copyStringAttribute(element: element, attribute: kAXDescriptionAttribute as CFString)
+            }
+            value = copyStringAttribute(element: element, attribute: kAXValueAttribute as CFString)
+            roleDescription = copyStringAttribute(element: element, attribute: kAXRoleDescriptionAttribute as CFString)
+            isSecure = Self.isSecureField(role: role, subrole: subrole) || IsSecureEventInputEnabled()
+            if isSecure {
+                // Zero-plaintext invariant (T6): never carry a secure field's
+                // value (some AX providers expose it) into the IR.
+                value = nil
+            }
+            
+            // Element Bounds
+            elementBounds = copyRect(element: element)
+            
+            // Check containing window
+            var windowRef: CFTypeRef?
+            if AXUIElementCopyAttributeValue(element, kAXWindowAttribute as CFString, &windowRef) == .success,
+               let winElement = windowRef {
+                let win = winElement as! AXUIElement
+                if let winTitle = copyStringAttribute(element: win, attribute: kAXTitleAttribute as CFString), !winTitle.isEmpty {
+                    windowTitle = winTitle
+                }
+                windowBounds = copyRect(element: win)
+            }
+            
+            // Check PID to get exact target application if different from frontmost
+            var pid: pid_t = 0
+            if AXUIElementGetPid(element, &pid) == .success, pid > 0 {
+                if let targetApp = NSRunningApplication(processIdentifier: pid) {
+                    appName = targetApp.localizedName ?? appName
+                    bundleId = targetApp.bundleIdentifier ?? bundleId
+                }
+            }
+
+            // Notification / Banner specialized deep inspection
+            if (bundleId == "com.apple.UserNotificationCenter" || appName.contains("Notification")) && (title == nil || title?.isEmpty == true) {
+                var childrenRef: CFTypeRef?
+                if AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &childrenRef) == .success,
+                   let children = childrenRef as? [AXUIElement] {
+                    for child in children {
+                        if let childTitle = copyStringAttribute(element: child, attribute: kAXTitleAttribute as CFString), !childTitle.isEmpty {
+                            title = childTitle
+                            break
+                        }
+                        if let childValue = copyStringAttribute(element: child, attribute: kAXValueAttribute as CFString), !childValue.isEmpty {
+                            title = childValue
+                            break
+                        }
+                    }
+                }
+            }
+        }
+        
+        return ElementInspectionResult(
+            appName: appName,
+            bundleIdentifier: bundleId,
+            windowTitle: windowTitle,
+            role: role,
+            subrole: subrole,
+            title: title,
+            value: value,
+            roleDescription: roleDescription,
+            isSecure: isSecure,
+            elementBounds: elementBounds,
+            windowBounds: windowBounds
+        )
+    }
+
+    public func inspectFocusedElement() -> ElementInspectionResult {
+        guard let frontmostApp = NSWorkspace.shared.frontmostApplication else {
+            return inspectElement(at: NSEvent.mouseLocation)
+        }
+        
+        let appName = frontmostApp.localizedName ?? "Unknown App"
+        let bundleId = frontmostApp.bundleIdentifier
+        var windowTitle = ""
+        var role: String?
+        var subrole: String?
+        var title: String?
+        var value: String?
+        var roleDescription: String?
+        var isSecure = false
+        var elementBounds: ElementRect?
+        var windowBounds: ElementRect?
+        
+        let appElement = AXUIElementCreateApplication(frontmostApp.processIdentifier)
+        
+        var focusedElementRef: CFTypeRef?
+        if AXUIElementCopyAttributeValue(appElement, kAXFocusedUIElementAttribute as CFString, &focusedElementRef) == .success,
+           let el = focusedElementRef {
+            let element = el as! AXUIElement
+            role = copyStringAttribute(element: element, attribute: kAXRoleAttribute as CFString)
+            subrole = copyStringAttribute(element: element, attribute: kAXSubroleAttribute as CFString)
+            title = copyStringAttribute(element: element, attribute: kAXTitleAttribute as CFString)
+            if title == nil || title?.isEmpty == true {
+                title = copyStringAttribute(element: element, attribute: kAXDescriptionAttribute as CFString)
+            }
+            value = copyStringAttribute(element: element, attribute: kAXValueAttribute as CFString)
+            roleDescription = copyStringAttribute(element: element, attribute: kAXRoleDescriptionAttribute as CFString)
+            isSecure = Self.isSecureField(role: role, subrole: subrole) || IsSecureEventInputEnabled()
+            if isSecure {
+                // Zero-plaintext invariant (T6): never carry a secure field's
+                // value into the IR.
+                value = nil
+            }
+            elementBounds = copyRect(element: element)
+        }
+        
+        var focusedWindowRef: CFTypeRef?
+        if AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &focusedWindowRef) == .success,
+           let win = focusedWindowRef {
+            let winElement = win as! AXUIElement
+            if let winTitle = copyStringAttribute(element: winElement, attribute: kAXTitleAttribute as CFString), !winTitle.isEmpty {
+                windowTitle = winTitle
+            }
+            windowBounds = copyRect(element: winElement)
+        } else if let elBounds = elementBounds {
+            windowBounds = elBounds
+        }
+        
+        return ElementInspectionResult(
+            appName: appName,
+            bundleIdentifier: bundleId,
+            windowTitle: windowTitle,
+            role: role,
+            subrole: subrole,
+            title: title,
+            value: value,
+            roleDescription: roleDescription,
+            isSecure: isSecure,
+            elementBounds: elementBounds,
+            windowBounds: windowBounds
+        )
+    }
+    
+    /// Secure-field detection: `kAXSecureTextFieldRole` / `AXSecureTextField`
+    /// subrole (`"AXSecureTextField"` on macOS).
+    public static func isSecureField(role: String?, subrole: String?) -> Bool {
+        let secureRole = "AXSecureTextField"
+        return role == secureRole || subrole == secureRole
+    }
+    
+    private func copyStringAttribute(element: AXUIElement, attribute: CFString) -> String? {
+        var valueRef: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(element, attribute, &valueRef)
+        if result == .success, let value = valueRef {
+            if CFGetTypeID(value) == CFStringGetTypeID() {
+                return (value as! String)
+            }
+        }
+        return nil
+    }
+    
+    private func copyRect(element: AXUIElement) -> ElementRect? {
+        var posRef: CFTypeRef?
+        var sizeRef: CFTypeRef?
+        
+        var point = CGPoint.zero
+        var size = CGSize.zero
+        
+        if AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &posRef) == .success,
+           let posRef = posRef,
+           CFGetTypeID(posRef) == AXValueGetTypeID() {
+            let posVal = posRef as! AXValue
+            AXValueGetValue(posVal, .cgPoint, &point)
+        }
+        
+        if AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeRef) == .success,
+           let sizeRef = sizeRef,
+           CFGetTypeID(sizeRef) == AXValueGetTypeID() {
+            let sizeVal = sizeRef as! AXValue
+            AXValueGetValue(sizeVal, .cgSize, &size)
+        }
+        
+        if size.width > 0 && size.height > 0 {
+            return ElementRect(x: Double(point.x), y: Double(point.y), width: Double(size.width), height: Double(size.height))
+        }
+        return nil
+    }
+}
