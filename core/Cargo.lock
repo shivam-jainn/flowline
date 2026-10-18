@@ -198,6 +198,115 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aedcfb3409746eddb02b9e19ebda1c3394f759a152e48ee875a0844d1b955484"
 
 [[package]]
+name = "flowline_ai_gateway"
+version = "0.1.0"
+dependencies = [
+ "flowline_ir",
+ "parity_harness",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "flowline_engine"
+version = "0.1.0"
+dependencies = [
+ "flowline_ir",
+ "flowline_pipeline",
+ "parity_harness",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "flowline_ffi"
+version = "0.1.0"
+dependencies = [
+ "flowline_ai_gateway",
+ "flowline_engine",
+ "flowline_ir",
+ "flowline_pipeline",
+ "flowline_projections",
+ "flowline_storage",
+ "parity_harness",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "uniffi",
+ "wasm-bindgen",
+ "wasm-bindgen-test",
+]
+
+[[package]]
+name = "flowline_ir"
+version = "0.1.0"
+dependencies = [
+ "parity_harness",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "flowline_pipeline"
+version = "0.1.0"
+dependencies = [
+ "flowline_ir",
+ "parity_harness",
+ "regex",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "flowline_projections"
+version = "0.1.0"
+dependencies = [
+ "flowline_ir",
+ "parity_harness",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "flowline_storage"
+version = "0.1.0"
+dependencies = [
+ "flowline_ir",
+ "parity_harness",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "flowline_templates"
+version = "0.1.0"
+dependencies = [
+ "flowline_ir",
+ "parity_harness",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "flowline_win_capture"
+version = "0.1.0"
+dependencies = [
+ "flowline_engine",
+ "flowline_ir",
+ "parity_harness",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "fs-err"
 version = "3.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -610,104 +719,6 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
-
-[[package]]
-name = "stepit_ai_gateway"
-version = "0.1.0"
-dependencies = [
- "parity_harness",
- "serde",
- "serde_json",
- "stepit_ir",
- "thiserror",
-]
-
-[[package]]
-name = "stepit_engine"
-version = "0.1.0"
-dependencies = [
- "parity_harness",
- "serde",
- "serde_json",
- "stepit_ir",
- "stepit_pipeline",
- "thiserror",
-]
-
-[[package]]
-name = "stepit_ffi"
-version = "0.1.0"
-dependencies = [
- "parity_harness",
- "serde",
- "serde_json",
- "stepit_ai_gateway",
- "stepit_engine",
- "stepit_ir",
- "stepit_pipeline",
- "stepit_projections",
- "stepit_storage",
- "thiserror",
- "uniffi",
- "wasm-bindgen",
- "wasm-bindgen-test",
-]
-
-[[package]]
-name = "stepit_ir"
-version = "0.1.0"
-dependencies = [
- "parity_harness",
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
-name = "stepit_pipeline"
-version = "0.1.0"
-dependencies = [
- "parity_harness",
- "regex",
- "serde",
- "serde_json",
- "stepit_ir",
- "thiserror",
-]
-
-[[package]]
-name = "stepit_projections"
-version = "0.1.0"
-dependencies = [
- "parity_harness",
- "serde",
- "serde_json",
- "stepit_ir",
- "thiserror",
-]
-
-[[package]]
-name = "stepit_storage"
-version = "0.1.0"
-dependencies = [
- "parity_harness",
- "serde",
- "serde_json",
- "stepit_ir",
- "thiserror",
-]
-
-[[package]]
-name = "stepit_win_capture"
-version = "0.1.0"
-dependencies = [
- "parity_harness",
- "serde",
- "serde_json",
- "stepit_engine",
- "stepit_ir",
- "thiserror",
-]
 
 [[package]]
 name = "syn"
