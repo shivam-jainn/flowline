@@ -1,5 +1,5 @@
 [package]
-name = "stepit_ir"
+name = "flowline_ir"
 version = "0.1.0"
 edition = "2021"
 

@@ -1,7 +1,7 @@
-//! IR parity suite (R/M2-01): Swift goldens <-> `stepit_ir` round-trips.
+//! IR parity suite (R/M2-01): Swift goldens <-> `flowline_ir` round-trips.
 
 use parity_harness::{assert_parity, assert_value_parity, load_golden};
-use stepit_ir::{
+use flowline_ir::{
     ActionType, HotkeyChord, KeyModifiers, PluginManifest, RawInputEvent, Step,
     StepSession,
 };
@@ -251,12 +251,12 @@ fn action_type_raw_values() {
 #[test]
 fn frame_snapshot_data_is_base64_like_swift() {
     // Swift `Data` encodes as a base64 string, not a number array.
-    let snapshot = stepit_ir::FrameSnapshot::new(vec![0x89, 0x50, 0x4E, 0x47], 2.0);
+    let snapshot = flowline_ir::FrameSnapshot::new(vec![0x89, 0x50, 0x4E, 0x47], 2.0);
     let json = serde_json::to_string(&snapshot).unwrap();
     assert!(
         json.contains("\"pngData\":\"iVBORw==\""),
         "unexpected snapshot json: {json}",
     );
-    let decoded: stepit_ir::FrameSnapshot = serde_json::from_str(&json).unwrap();
+    let decoded: flowline_ir::FrameSnapshot = serde_json::from_str(&json).unwrap();
     assert_eq!(decoded, snapshot);
 }

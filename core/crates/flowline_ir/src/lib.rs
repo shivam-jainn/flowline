@@ -1,11 +1,11 @@
-//! `stepit_ir` — Rust port of Swift `Sources/StepItIR/` (R/M2-01).
+//! `flowline_ir` — Rust port of Swift `Sources/FlowlineIR/` (R/M2-01).
 //!
 //! Mirrors every `Codable` type with identical JSON keys/casing so output is
 //! byte-identical (canonical) to Swift `JSONEncoder(sortedKeys:)` goldens.
 //! Dates and UUIDs are plain `String`s (no chrono/uuid dependency).
 //!
 //! Layout follows the Swift twin (`Events/` and `Model/` under
-//! `Sources/StepItIR/`, plus `GestureAction.swift` and `PluginManifest.swift`).
+//! `Sources/FlowlineIR/`, plus `GestureAction.swift` and `PluginManifest.swift`).
 
 pub mod base64_data;
 pub mod events;

@@ -568,7 +568,7 @@ impl OcrTextItem {
 /// Outcome of a post-capture redaction pass.
 ///
 /// (Swift twin is not `Codable`; serde here is a strict superset used for
-/// debugging and future `.stepit` bundle payloads.)
+/// debugging and future `.flowline` bundle payloads.)
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RedactionOutcome {
