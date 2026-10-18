@@ -1,5 +1,5 @@
-//! `stepit_engine` — deterministic synchronous port of Swift
-//! `Sources/StepItEngine/` (R/M2-03).
+//! `flowline_engine` — deterministic synchronous port of Swift
+//! `Sources/FlowlineEngine/` (R/M2-03).
 //!
 //! The Swift engine is an actor consuming `RawInputEvent`s and producing
 //! `StepSession`s. This port is a synchronous state machine over recorded
@@ -12,15 +12,17 @@
 //! - [`reducer`]: `Engine::process_event` dispatch (`EventReducer.swift`).
 //! - [`step_gate`]: gated step production + `ProducedStep` (engine-shaped
 //!   `make_*` builders; pure `StepFactory` logic delegates to
-//!   `stepit_pipeline::step_factory`).
+//!   `flowline_pipeline::step_factory`).
 //! - [`enrichment`]: terminal/pwd + app-context fill + privacy hooks
 //!   (classification, hotkey policy, and batch-context normalization delegate
-//!   to `stepit_pipeline`).
+//!   to `flowline_pipeline`).
 //! - [`clips`]: clip orchestration + media persistence naming.
 
 pub mod clips;
 pub mod enrichment;
+pub mod postpass;
 pub mod reducer;
+pub mod segmentation;
 pub mod state;
 pub mod step_gate;
 pub mod testing;
@@ -41,12 +43,12 @@ pub enum Error {
 }
 
 /// Pull-model accessibility + pixels the engine needs (`CaptureDriver` SPI,
-/// sync port of `StepItCaptureAPI.CaptureDriver`).
+/// sync port of `FlowlineCaptureAPI.CaptureDriver`).
 pub trait CaptureDriver {
     /// Called on click/drag to build the step's target description.
-    fn inspect_element(&mut self, x: f64, y: f64) -> Option<stepit_ir::RawElementContext>;
+    fn inspect_element(&mut self, x: f64, y: f64) -> Option<flowline_ir::RawElementContext>;
     /// Called at typing-batch finalization and for keypress/terminal context.
-    fn inspect_focused(&mut self) -> Option<stepit_ir::RawElementContext>;
+    fn inspect_focused(&mut self) -> Option<flowline_ir::RawElementContext>;
     /// Terminal `pwd` resolution (`TerminalContextProviding` facet).
     fn terminal_working_dir(
         &mut self,
@@ -70,7 +72,7 @@ pub trait CaptureDriver {
 /// Abstract session persistence (sync port of `SessionStoreProtocol`'s
 /// engine-used subset: save session + media).
 pub trait SessionStore {
-    fn save_session(&mut self, session: &stepit_ir::StepSession);
+    fn save_session(&mut self, session: &flowline_ir::StepSession);
     /// Persists media bytes, returning the session-relative path.
     fn save_media(&mut self, session_id: &str, filename: &str, bytes: &[u8]) -> String;
 }

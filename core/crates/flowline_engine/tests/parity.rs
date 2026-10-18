@@ -15,16 +15,16 @@
 //!   drag, typing batches, gesture notices, privacy hooks, clips.
 
 use serde_json::{Value, from_str, to_string, to_value};
-use stepit_engine::enrichment::HotkeyRecognizer;
-use stepit_ir::{
+use flowline_engine::enrichment::HotkeyRecognizer;
+use flowline_ir::{
     ActionType, GestureAction, KeyModifiers, MediaMode, MouseButton, Point2D, RawInputEvent,
     RawInputKind, ThemeName,
 };
-use stepit_engine::reducer::InputEvent;
-use stepit_engine::state::{EngineConfig, EventDebouncer, RecordingState};
-use stepit_engine::step_gate::action_type_for;
-use stepit_engine::testing::{FlagRedactor, InMemoryStore, MockDriver, RecordingClips};
-use stepit_engine::{Engine, format_millis, parse_timestamp_millis};
+use flowline_engine::reducer::InputEvent;
+use flowline_engine::state::{EngineConfig, EventDebouncer, RecordingState};
+use flowline_engine::step_gate::action_type_for;
+use flowline_engine::testing::{FlagRedactor, InMemoryStore, MockDriver, RecordingClips};
+use flowline_engine::{Engine, format_millis, parse_timestamp_millis};
 
 fn ms(ts: &str) -> u64 {
     parse_timestamp_millis(ts).expect("golden timestamp")
@@ -321,11 +321,100 @@ fn click_debounce_drops_rapid_second_click() {
     };
     let t0 = ms(T0);
     engine.process_event(&click(t0), t0);
-    // +100 ms: inside the 200 ms window → dropped, window not moved.
+    // +100 ms: inside the window → dropped, window not moved.
     engine.process_event(&click(t0 + 100), t0 + 100);
-    // +250 ms after the *accepted* click: outside → accepted (strict `>`).
-    engine.process_event(&click(t0 + 250), t0 + 250);
+    // +400 ms after the *accepted* click: outside both the legacy 200 ms
+    // window and the pointer-aware stationary window (~300 ms) → accepted.
+    engine.process_event(&click(t0 + 400), t0 + 400);
     assert_eq!(engine.snapshot().step_count, 2);
+}
+
+#[test]
+fn os_double_click_is_accepted_not_suppressed() {
+    let mut engine = engine_with_safari_click();
+    engine.start_recording("t", ThemeName::ModernMinimal, MediaMode::Hybrid, ms(T0));
+    let at = Some(Point2D::new(1.0, 1.0));
+    let t0 = ms(T0);
+    // First press surfaces as the single …
+    engine.process_event(
+        &InputEvent::new(
+            t0,
+            RawInputKind::MouseClick {
+                button: MouseButton::Left,
+                click_count: 1,
+            },
+            at,
+            None,
+        ),
+        t0,
+    );
+    // … the OS-reported second press lands inside the bounce window but
+    // must still surface as the double (not suppressed, not a 2nd single).
+    engine.process_event(
+        &InputEvent::new(
+            t0 + 250,
+            RawInputKind::MouseClick {
+                button: MouseButton::Left,
+                click_count: 2,
+            },
+            at,
+            None,
+        ),
+        t0 + 250,
+    );
+    let session = engine.session().expect("session").clone();
+    assert_eq!(session.steps.len(), 2);
+    assert_eq!(
+        session.steps.iter().map(|s| s.action).collect::<Vec<_>>(),
+        vec![ActionType::Click, ActionType::DoubleClick]
+    );
+}
+
+#[test]
+fn far_fast_relocation_is_distinct_not_bounce() {
+    let mut engine = engine_with_safari_click();
+    engine.start_recording("t", ThemeName::ModernMinimal, MediaMode::Hybrid, ms(T0));
+    let t0 = ms(T0);
+    let click_at = |millis, x: f64, y: f64| {
+        InputEvent::new(
+            millis,
+            RawInputKind::MouseClick {
+                button: MouseButton::Left,
+                click_count: 1,
+            },
+            Some(Point2D::new(x, y)),
+            None,
+        )
+    };
+    // 100 px in 100 ms: crosses the 6 px bounce radius → distinct click.
+    engine.process_event(&click_at(t0, 0.0, 0.0), t0);
+    engine.process_event(&click_at(t0 + 100, 100.0, 0.0), t0 + 100);
+    assert_eq!(engine.snapshot().step_count, 2);
+}
+
+#[test]
+fn drag_inspects_source_and_target_boundary() {
+    let mut engine = engine_with_safari_click();
+    engine.start_recording("t", ThemeName::ModernMinimal, MediaMode::Hybrid, ms(T0));
+    let t0 = ms(T0);
+    engine.process_event(
+        &InputEvent::new(
+            t0,
+            RawInputKind::MouseDrag {
+                start: Point2D::new(10.0, 10.0),
+                end: Point2D::new(60.0, 40.0),
+            },
+            None,
+            None,
+        ),
+        t0,
+    );
+    // Boundary check: both ends probed (step keeps the target context).
+    assert_eq!(
+        engine.driver_mut().inspect_element_calls,
+        vec![(10.0, 10.0), (60.0, 40.0)]
+    );
+    assert_eq!(engine.snapshot().step_count, 1);
 }
 
 #[test]
@@ -600,4 +689,162 @@ fn timestamp_helpers_round_trip_goldens() {
         assert_eq!(format_millis(ms(ts)), ts);
     }
     assert_eq!(format_millis(ms(T0) + 500), "2026-03-01T10:00:00.500Z");
+}
+
+// MARK: - Smart typing segmentation (hysteresis / focus / Return / paste)
+
+fn textarea_focused() -> flowline_ir::RawElementContext {
+    flowline_ir::RawElementContext {
+        app_name: "Notes".to_string(),
+        bundle_identifier: None,
+        window_title: "Draft".to_string(),
+        role: Some("AXTextArea".to_string()),
+        subrole: None,
+        title: None,
+        value: None,
+        placeholder: None,
+        role_description: None,
+        is_secure: false,
+        bounding_box: None,
+        window_bounds: None,
+        selectors: Vec::new(),
+    }
+}
+
+fn engine_with_focused(focused: flowline_ir::RawElementContext) -> Engine<MockDriver, InMemoryStore> {
+    let mut driver = MockDriver::new();
+    driver.element_at_point = Some(MockDriver::safari_save_button());
+    driver.focused = Some(focused);
+    Engine::new(driver, InMemoryStore::new(), EngineConfig::default())
+}
+
+#[test]
+fn multiline_return_joins_newline_in_engine() {
+    let mut engine = engine_with_focused(textarea_focused());
+    engine.start_recording("t", ThemeName::ModernMinimal, MediaMode::Hybrid, ms(T0));
+    for ch in ["l", "i", "n", "e", "1"] {
+        engine.process_event(&keystroke(ch, KeyModifiers::EMPTY, Point2D::ZERO, T1), ms(T1));
+    }
+    // Plain Return in a multiline field joins; it must not cut.
+    engine.process_event(
+        &keystroke("Return", KeyModifiers::EMPTY, Point2D::ZERO, T1),
+        ms(T1),
+    );
+    for ch in ["l", "i", "n", "e", "2"] {
+        engine.process_event(&keystroke(ch, KeyModifiers::EMPTY, Point2D::ZERO, T1), ms(T1));
+    }
+    let session = engine.stop_recording(ms(T2)).expect("session");
+    assert_eq!(session.steps.len(), 1);
+    assert_eq!(session.steps[0].text_blob.as_deref(), Some("line1\nline2"));
+}
+
+#[test]
+fn cmd_return_cuts_even_in_multiline_engine() {
+    let mut engine = engine_with_focused(textarea_focused());
+    engine.start_recording("t", ThemeName::ModernMinimal, MediaMode::Hybrid, ms(T0));
+    for ch in ["a", "b"] {
+        engine.process_event(&keystroke(ch, KeyModifiers::EMPTY, Point2D::ZERO, T1), ms(T1));
+    }
+    engine.process_event(
+        &keystroke("Return", KeyModifiers::COMMAND, Point2D::ZERO, T1),
+        ms(T1),
+    );
+    let session = engine.session().expect("session").clone();
+    assert_eq!(session.steps.len(), 1);
+    assert_eq!(session.steps[0].text_blob.as_deref(), Some("ab"));
+}
+
+#[test]
+fn focus_change_cuts_typing_in_engine() {
+    let mut engine = engine_with_safari_click();
+    engine.start_recording("t", ThemeName::ModernMinimal, MediaMode::Hybrid, ms(T0));
+    for ch in ["a", "b"] {
+        engine.process_event(&keystroke(ch, KeyModifiers::EMPTY, Point2D::ZERO, T1), ms(T1));
+    }
+    // Window/bundle hop before the next char forces the boundary.
+    engine.driver_mut().focused = Some(MockDriver::terminal_focused());
+    for ch in ["c", "d"] {
+        engine.process_event(&keystroke(ch, KeyModifiers::EMPTY, Point2D::ZERO, T1), ms(T1));
+    }
+    let session = engine.stop_recording(ms(T2)).expect("session");
+    assert_eq!(session.steps.len(), 2);
+    assert_eq!(session.steps[0].text_blob.as_deref(), Some("ab"));
+    assert_eq!(session.steps[1].text_blob.as_deref(), Some("cd"));
+}
+
+#[test]
+fn paste_burst_stays_atomic_in_engine() {
+    let mut engine = engine_with_safari_click();
+    engine.start_recording("t", ThemeName::ModernMinimal, MediaMode::Hybrid, ms(T0));
+    for ch in ["a", "b"] {
+        engine.process_event(&keystroke(ch, KeyModifiers::EMPTY, Point2D::ZERO, T1), ms(T1));
+    }
+    // Menu/long-press paste with the same focus joins the pending batch.
+    engine.handle_paste("XYZ", Point2D::ZERO, ms(T1), Some(99));
+    let session = engine.stop_recording(ms(T2)).expect("session");
+    assert_eq!(session.steps.len(), 1);
+    assert_eq!(session.steps[0].text_blob.as_deref(), Some("abXYZ"));
+
+    // A focus hop forces the boundary BEFORE the paste.
+    let mut engine = engine_with_safari_click();
+    engine.start_recording("t", ThemeName::ModernMinimal, MediaMode::Hybrid, ms(T0));
+    for ch in ["a", "b"] {
+        engine.process_event(&keystroke(ch, KeyModifiers::EMPTY, Point2D::ZERO, T1), ms(T1));
+    }
+    engine.driver_mut().focused = Some(MockDriver::terminal_focused());
+    engine.handle_paste("XYZ", Point2D::ZERO, ms(T1), Some(100));
+    let session = engine.stop_recording(ms(T2)).expect("session");
+    assert_eq!(session.steps.len(), 2);
+    assert_eq!(session.steps[0].text_blob.as_deref(), Some("ab"));
+    assert_eq!(session.steps[1].text_blob.as_deref(), Some("XYZ"));
+}
+
+#[test]
+fn cmd_v_is_consumed_not_a_keypress_in_engine() {
+    let mut engine = engine_with_safari_click();
+    engine.start_recording("t", ThemeName::ModernMinimal, MediaMode::Hybrid, ms(T0));
+    engine.process_event(&keystroke("a", KeyModifiers::EMPTY, Point2D::ZERO, T1), ms(T1));
+    // Cmd+V never becomes a "Press ⌘V" step; the burst follow-ups join it.
+    engine.process_event(
+        &keystroke("v", KeyModifiers::COMMAND, Point2D::ZERO, T1),
+        ms(T1),
+    );
+    engine.process_event(&keystroke("b", KeyModifiers::EMPTY, Point2D::ZERO, T1), ms(T1));
+    let session = engine.stop_recording(ms(T2)).expect("session");
+    assert_eq!(session.steps.len(), 1);
+    assert_eq!(session.steps[0].text_blob.as_deref(), Some("ab"));
+}
+
+#[test]
+fn backspace_word_undo_coalesces_in_engine() {
+    let mut engine = engine_with_safari_click();
+    engine.start_recording("t", ThemeName::ModernMinimal, MediaMode::Hybrid, ms(T0));
+    for ch in ["h", "i", " ", "y", "o"] {
+        engine.process_event(&keystroke(ch, KeyModifiers::EMPTY, Point2D::ZERO, T1), ms(T1));
+    }
+    engine.process_event(
+        &keystroke("Backspace", KeyModifiers::OPTION, Point2D::ZERO, T1),
+        ms(T1),
+    );
+    let session = engine.stop_recording(ms(T2)).expect("session");
+    assert_eq!(session.steps.len(), 1);
+    assert_eq!(session.steps[0].text_blob.as_deref(), Some("hi"));
+}
+
+#[test]
+fn ime_composing_suspends_gap_cut_in_engine() {
+    let mut engine = engine_with_safari_click();
+    engine.start_recording("t", ThemeName::ModernMinimal, MediaMode::Hybrid, ms(T0));
+    let t0 = ms(T0);
+    engine.process_event(&keystroke("a", KeyModifiers::EMPTY, Point2D::ZERO, T0), t0);
+    engine.set_ime_composing(true);
+    // 5 s gap would cut (high 1800) — composition holds it.
+    engine.process_event(
+        &keystroke("b", KeyModifiers::EMPTY, Point2D::ZERO, T1),
+        t0 + 5000,
+    );
+    engine.set_ime_composing(false);
+    let session = engine.stop_recording(ms(T2)).expect("session");
+    assert_eq!(session.steps.len(), 1);
+    assert_eq!(session.steps[0].text_blob.as_deref(), Some("ab"));
 }

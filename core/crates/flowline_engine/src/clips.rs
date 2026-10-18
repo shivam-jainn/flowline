@@ -5,7 +5,7 @@
 //! The sync port keeps the `step_%02d.png` / `.gif` / `.mp4` naming and the
 //! gate-then-clip ordering (micro-clip capture never blocks step production).
 
-use stepit_ir::MediaAssets;
+use flowline_ir::MediaAssets;
 
 /// Micro-clip bytes captured after a step (GIF and/or video).
 #[derive(Debug, Clone, PartialEq, Default)]

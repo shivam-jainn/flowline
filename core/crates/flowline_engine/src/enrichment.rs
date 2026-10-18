@@ -5,7 +5,7 @@
 //! `ClipOrchestrator.captureStepMedia` (image ops stay driver-side).
 //!
 //! Classification, hotkey policy, and batch-context normalization delegate to
-//! `stepit_pipeline` (single implementation; R/M2 hardcoded-dedup close-out).
+//! `flowline_pipeline` (single implementation; R/M2 hardcoded-dedup close-out).
 //! Engine-owned: `enriched` (app-switch fill), `terminal_command_description`
 //! (`StepFactory` rendering), `PrivacyRedactor`, and the millis-domain
 //! `EventDebouncer`/`TypingBuffer` in [`crate::state`] (integer-millis
@@ -13,7 +13,7 @@
 //! timer-driven batching — wrapping them would trade integer exactness for
 //! float rounding at the accept boundary).
 
-use stepit_ir::{HotkeyChord, KeyModifiers, RawElementContext};
+use flowline_ir::{HotkeyChord, KeyModifiers, RawElementContext};
 
 /// What & where the user was typing (`KeystrokeClassifier.InputClassification`).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -23,12 +23,12 @@ pub enum InputClassification {
     Terminal,
 }
 
-impl From<stepit_pipeline::classify::InputClassification> for InputClassification {
-    fn from(other: stepit_pipeline::classify::InputClassification) -> Self {
+impl From<flowline_pipeline::classify::InputClassification> for InputClassification {
+    fn from(other: flowline_pipeline::classify::InputClassification) -> Self {
         match other {
-            stepit_pipeline::classify::InputClassification::Text => Self::Text,
-            stepit_pipeline::classify::InputClassification::Terminal => Self::Terminal,
-            stepit_pipeline::classify::InputClassification::Code(lang) => Self::Code {
+            flowline_pipeline::classify::InputClassification::Text => Self::Text,
+            flowline_pipeline::classify::InputClassification::Terminal => Self::Terminal,
+            flowline_pipeline::classify::InputClassification::Code(lang) => Self::Code {
                 language: Some(lang),
             },
         }
@@ -36,7 +36,7 @@ impl From<stepit_pipeline::classify::InputClassification> for InputClassificatio
 }
 
 /// Pure port of `KeystrokeClassifier` (verbatim app lists / predicates).
-/// Delegates to `stepit_pipeline::classify` — the lists live in one place.
+/// Delegates to `flowline_pipeline::classify` — the lists live in one place.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct KeystrokeClassifier;
 
@@ -47,7 +47,7 @@ impl KeystrokeClassifier {
         bundle_id: Option<&str>,
         window_title: &str,
     ) -> bool {
-        stepit_pipeline::classify::is_terminal(app_name, bundle_id, window_title)
+        flowline_pipeline::classify::is_terminal(app_name, bundle_id, window_title)
     }
 
     pub fn is_code_environment(
@@ -56,26 +56,34 @@ impl KeystrokeClassifier {
         bundle_id: Option<&str>,
         window_title: &str,
     ) -> bool {
-        stepit_pipeline::classify::is_code(app_name, bundle_id, window_title)
+        flowline_pipeline::classify::is_code(app_name, bundle_id, window_title)
     }
 
     /// Port of `detectLanguage`, including the legacy `"text"` fallback.
     pub fn detect_language(&self, app_name: &str, window_title: &str, text: &str) -> String {
-        stepit_pipeline::classify::detect_language(app_name, window_title, text)
+        flowline_pipeline::classify::detect_language(app_name, window_title, text)
     }
 
     pub fn classify(&self, text: &str, context: &RawElementContext) -> InputClassification {
-        stepit_pipeline::classify::classify(text, Some(context)).into()
+        flowline_pipeline::classify::classify(text, Some(context)).into()
     }
 }
 
 /// Fill missing app context from the last observed app switch
 /// (`RecorderWorkflowEngine.enriched`, verbatim semantics).
+///
+/// Swift parity (`PrivacyEnrichment.swift:12-13`): fill when the app name is
+/// empty **or** the `"Unknown App"` placeholder — not only when
+/// [`RawElementContext::is_unknown`] reports true. Both spell the same
+/// predicate today; the explicit form keeps the port drift-proof if the
+/// placeholder ever changes.
 pub fn enriched(
     mut context: RawElementContext,
     last_app: Option<&RawElementContext>,
 ) -> RawElementContext {
-    if context.is_unknown() {
+    let needs_fill =
+        context.app_name.is_empty() || context.app_name == RawElementContext::unknown().app_name;
+    if needs_fill {
         if let Some(last) = last_app {
             context.app_name = last.app_name.clone();
             if context.bundle_identifier.is_none() {
@@ -92,21 +100,21 @@ pub fn enriched(
 /// Apply the typing-batch context fallbacks (`TypingBatchAggregator.makeResult`):
 /// unknown/empty app becomes `"Terminal"`, empty window title becomes the app
 /// name, and secure values never ride along. Delegates to
-/// `stepit_pipeline::aggregate` (single implementation).
+/// `flowline_pipeline::aggregate` (single implementation).
 pub fn normalize_batch_context(context: RawElementContext) -> RawElementContext {
-    stepit_pipeline::aggregate::normalize_batch_context(context)
+    flowline_pipeline::aggregate::normalize_batch_context(context)
 }
 
-/// Render `Run "git status" in ~/Code/stepit (Ghostty)`; legacy
+/// Render `Run "git status" in ~/Code/flowline (Ghostty)`; legacy
 /// `Run "git status" in Ghostty` when the `pwd` is unknown
 /// (`StepFactory.terminalCommandDescription`, verbatim). Delegates to
-/// `stepit_pipeline::step_factory`, preserving this function's trim contract.
+/// `flowline_pipeline::step_factory`, preserving this function's trim contract.
 pub fn terminal_command_description(
     command: &str,
     working_directory: Option<&str>,
     app_name: &str,
 ) -> String {
-    stepit_pipeline::step_factory::terminal_command_description(
+    flowline_pipeline::step_factory::terminal_command_description(
         command.trim(),
         working_directory,
         app_name,
@@ -114,7 +122,7 @@ pub fn terminal_command_description(
 }
 
 /// Decision produced for one keyboard event (`HotkeyRecognizer.HotkeyDecision`).
-/// Same shape as `stepit_pipeline::hotkey::HotkeyDecision`; kept as a distinct
+/// Same shape as `flowline_pipeline::hotkey::HotkeyDecision`; kept as a distinct
 /// type so the reducer never depends on pipeline item paths directly.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HotkeyDecision {
@@ -126,31 +134,31 @@ pub enum HotkeyDecision {
     Ignored,
 }
 
-impl From<stepit_pipeline::hotkey::HotkeyDecision> for HotkeyDecision {
-    fn from(other: stepit_pipeline::hotkey::HotkeyDecision) -> Self {
+impl From<flowline_pipeline::hotkey::HotkeyDecision> for HotkeyDecision {
+    fn from(other: flowline_pipeline::hotkey::HotkeyDecision) -> Self {
         match other {
-            stepit_pipeline::hotkey::HotkeyDecision::ToggleRecording { combo } => {
+            flowline_pipeline::hotkey::HotkeyDecision::ToggleRecording { combo } => {
                 Self::ToggleRecording { combo }
             }
-            stepit_pipeline::hotkey::HotkeyDecision::SystemConsumed { combo } => {
+            flowline_pipeline::hotkey::HotkeyDecision::SystemConsumed { combo } => {
                 Self::SystemConsumed { combo }
             }
-            stepit_pipeline::hotkey::HotkeyDecision::WorkflowShortcut(chord) => {
+            flowline_pipeline::hotkey::HotkeyDecision::WorkflowShortcut(chord) => {
                 Self::WorkflowShortcut(chord)
             }
-            stepit_pipeline::hotkey::HotkeyDecision::NavigationKey(chord) => {
+            flowline_pipeline::hotkey::HotkeyDecision::NavigationKey(chord) => {
                 Self::NavigationKey(chord)
             }
-            stepit_pipeline::hotkey::HotkeyDecision::TextInput { key, modifiers } => {
+            flowline_pipeline::hotkey::HotkeyDecision::TextInput { key, modifiers } => {
                 Self::TextInput { key, modifiers }
             }
-            stepit_pipeline::hotkey::HotkeyDecision::Ignored => Self::Ignored,
+            flowline_pipeline::hotkey::HotkeyDecision::Ignored => Self::Ignored,
         }
     }
 }
 
 /// Centralized hotkey resolution (`HotkeyRecognizer`, IR entry point verbatim).
-/// Delegates to `stepit_pipeline::hotkey` — the toggle/system/shortcut/
+/// Delegates to `flowline_pipeline::hotkey` — the toggle/system/shortcut/
 /// navigation policy lives in one place. (Note: this also drops a deviation
 /// the engine copy had: it normalized `ignored_combos` before comparing,
 /// while Swift compares exactly. Delegation restores verbatim Swift parity.)
@@ -194,18 +202,18 @@ impl HotkeyRecognizer {
     /// Whitespace-insensitive combo comparison (`"⌥ Space"` == `"⌥Space"`).
     /// Toggle matching keeps Swift's normalization (pipeline parity).
     pub fn normalize_combo(combo: &str) -> String {
-        stepit_pipeline::hotkey::HotkeyRecognizer::normalize_combo(combo)
+        flowline_pipeline::hotkey::HotkeyRecognizer::normalize_combo(combo)
     }
 
     /// macOS sets `.function` on arrow / F-key events without a real `fn`
     /// press; it is not a modifier for combo rendering.
     pub fn chord_modifiers(modifiers: KeyModifiers) -> KeyModifiers {
-        stepit_pipeline::hotkey::HotkeyRecognizer::chord_modifiers(modifiers)
+        flowline_pipeline::hotkey::HotkeyRecognizer::chord_modifiers(modifiers)
     }
 
-    fn pipeline_recognizer(&self) -> stepit_pipeline::hotkey::HotkeyRecognizer {
-        stepit_pipeline::hotkey::HotkeyRecognizer::new(
-            stepit_pipeline::hotkey::HotkeyCaptureSettings {
+    fn pipeline_recognizer(&self) -> flowline_pipeline::hotkey::HotkeyRecognizer {
+        flowline_pipeline::hotkey::HotkeyRecognizer::new(
+            flowline_pipeline::hotkey::HotkeyCaptureSettings {
                 capture_modifier_shortcuts: self.capture_modifier_shortcuts,
                 capture_navigation_keys: self.capture_navigation_keys,
                 ignored_combos: self.ignored_combos.iter().cloned().collect(),

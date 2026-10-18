@@ -7,7 +7,7 @@
 //!
 //! Pure `StepFactory` logic (`actionType` mapping, default-description
 //! synthesis, terminal-command rendering) delegates to
-//! `stepit_pipeline::step_factory` (single implementation). The `make_*`
+//! `flowline_pipeline::step_factory` (single implementation). The `make_*`
 //! builders below stay engine-owned: they shape engine-domain inputs
 //! (`String` ids, `i64` indexes, `StepMedia`, engine `InputClassification`)
 //! at reducer call sites, while the pipeline builders shape aggregator-domain
@@ -16,7 +16,7 @@
 
 use crate::clips::StepMedia;
 use crate::enrichment::{InputClassification, enriched, terminal_command_description};
-use stepit_ir::{
+use flowline_ir::{
     ActionType, HotkeyChord, MediaAssets, MouseButton, Point2D, RawElementContext,
     ScreenCoordinates, Step,
 };
@@ -31,14 +31,14 @@ pub struct ProducedStep {
 
 /// Click mapping (`StepFactory.actionType(for:clickCount:)`, verbatim):
 /// right → `.rightClick`, count ≥ 2 → `.doubleClick`, else `.click`.
-/// Delegates to `stepit_pipeline::step_factory` (single implementation).
+/// Delegates to `flowline_pipeline::step_factory` (single implementation).
 pub fn action_type_for(button: MouseButton, click_count: i64) -> ActionType {
-    stepit_pipeline::step_factory::action_type_for(button, click_count as i32)
+    flowline_pipeline::step_factory::action_type_for(button, click_count as i32)
 }
 
 /// `Step.synthesizeDefaultDescription` (click + typing/writeCode branches,
 /// verbatim — including the 40-char preview and command-prefix table).
-/// Delegates to `stepit_pipeline::step_factory` (single implementation).
+/// Delegates to `flowline_pipeline::step_factory` (single implementation).
 pub fn synthesize_default_description(
     action: ActionType,
     element_title: Option<&str>,
@@ -48,7 +48,7 @@ pub fn synthesize_default_description(
     text_blob: Option<&str>,
     is_code: bool,
 ) -> String {
-    stepit_pipeline::step_factory::synthesize_default_description(
+    flowline_pipeline::step_factory::synthesize_default_description(
         action,
         element_title,
         element_role,
@@ -387,11 +387,18 @@ pub fn make_manual_step(id: String, index: i64, timestamp: String, title: &str, 
 // MARK: - Engine producers (gate bodies; sequential by construction)
 
 impl<D: crate::CaptureDriver, S: crate::SessionStore> crate::reducer::Engine<D, S> {
+    /// Click/action production with pointer disambiguation.
+    ///
+    /// `os_click_count` is the platform-reported press count: an OS double
+    /// inside 500 ms is accepted as the double (not suppressed as bounce,
+    /// not split into two singles). Rejected bounces hold the debounce
+    /// window. Non-click actions (manual snapshots) pass `1`.
     pub(crate) fn produce_action(
         &mut self,
         action: ActionType,
         at: Point2D,
         event_millis: u64,
+        os_click_count: i64,
     ) -> Option<ProducedStep> {
         // Flush any pending typed text before the subsequent action (order).
         self.flush_typing_before_step(event_millis);
@@ -399,7 +406,10 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> crate::reducer::Engine<D, 
         if self.state != crate::state::RecordingState::Recording {
             return None;
         }
-        if !self.debouncer.should_accept(event_millis) {
+        if !self
+            .debouncer
+            .should_accept_click(event_millis, Some(at), os_click_count)
+        {
             return None;
         }
         let context = self
@@ -409,6 +419,11 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> crate::reducer::Engine<D, 
         let context = enriched(context, self.last_app.as_ref());
         let index = self.next_step;
         let media = self.capture_step_media(&context, at, index);
+        // Post-await state==recording re-check (sync port of Swift's guard
+        // after snapshot/privacy awaits): drop the step if recording stopped.
+        if self.state != crate::state::RecordingState::Recording {
+            return None;
+        }
         let step = make_click_step(
             self.next_id(),
             index,
@@ -421,9 +436,12 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> crate::reducer::Engine<D, 
         );
         let id = step.id.clone();
         let should_clip = self.session.as_ref().is_some_and(|s| {
-            s.media_mode != stepit_ir::MediaMode::StaticOnly && self.driver.micro_clips_enabled()
+            s.media_mode != flowline_ir::MediaMode::StaticOnly && self.driver.micro_clips_enabled()
         });
         self.push_step(step, None);
+        // Delayed commit: provisional emit immediately (visible above),
+        // confirm at +150 ms for clicks.
+        self.note_provisional(&id, crate::segmentation::CommitKind::Click, event_millis);
         let produced = ProducedStep {
             id,
             capture_micro_clip: should_clip,
@@ -453,8 +471,13 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> crate::reducer::Engine<D, 
         let context = enriched(context, self.last_app.as_ref());
         let index = self.next_step;
         let media = self.capture_step_media(&context, at, index);
+        // Post-await state==recording re-check preserved.
+        if self.state != crate::state::RecordingState::Recording {
+            return;
+        }
+        let step_id = self.next_id();
         let step = make_key_press_step(
-            self.next_id(),
+            step_id.clone(),
             index,
             crate::format_millis(now_millis),
             chord,
@@ -462,14 +485,23 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> crate::reducer::Engine<D, 
             media,
         );
         self.push_step(step, None);
+        self.note_provisional(&step_id, crate::segmentation::CommitKind::Other, now_millis);
     }
 
     pub(crate) fn produce_drag(&mut self, start: Point2D, end: Point2D, event_millis: u64) {
+        // Ordering: flush_typing_before_step preserved.
         self.flush_typing_before_step(event_millis);
 
         if self.state != crate::state::RecordingState::Recording {
             return;
         }
+        // Boundary check: inspect source and target so a drag that crosses
+        // elements is never misattributed to one side. The step keeps the
+        // target (end) context, matching the Swift gate.
+        let _source = self
+            .driver
+            .inspect_element(start.x, start.y)
+            .unwrap_or_else(RawElementContext::unknown);
         let context = self
             .driver
             .inspect_element(end.x, end.y)
@@ -477,8 +509,13 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> crate::reducer::Engine<D, 
         let context = enriched(context, self.last_app.as_ref());
         let index = self.next_step;
         let media = self.capture_step_media(&context, end, index);
+        // Post-await state==recording re-check preserved.
+        if self.state != crate::state::RecordingState::Recording {
+            return;
+        }
+        let step_id = self.next_id();
         let step = make_drag_step(
-            self.next_id(),
+            step_id.clone(),
             index,
             crate::format_millis(event_millis),
             start,
@@ -487,6 +524,7 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> crate::reducer::Engine<D, 
             media,
         );
         self.push_step(step, None);
+        self.note_provisional(&step_id, crate::segmentation::CommitKind::Other, event_millis);
     }
 
     pub(crate) fn produce_terminal_command(
@@ -495,6 +533,7 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> crate::reducer::Engine<D, 
         working_directory: Option<String>,
         now_millis: u64,
     ) {
+        // Ordering: flush_typing_before_step preserved.
         self.flush_typing_before_step(now_millis);
 
         if self.state != crate::state::RecordingState::Recording {
@@ -515,8 +554,13 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> crate::reducer::Engine<D, 
         let at = self.last_location;
         let index = self.next_step;
         let media = self.capture_step_media(&context, at, index);
+        // Post-await state==recording re-check preserved.
+        if self.state != crate::state::RecordingState::Recording {
+            return;
+        }
+        let step_id = self.next_id();
         let step = make_terminal_command_step(
-            self.next_id(),
+            step_id.clone(),
             index,
             crate::format_millis(now_millis),
             &command,
@@ -525,6 +569,7 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> crate::reducer::Engine<D, 
             media,
         );
         self.push_step(step, None);
+        self.note_provisional(&step_id, crate::segmentation::CommitKind::Other, now_millis);
     }
 
     pub(crate) fn produce_app_switch(
@@ -534,8 +579,13 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> crate::reducer::Engine<D, 
         window_title: &str,
         now_millis: u64,
     ) {
+        // Post-await state==recording re-check preserved (app-switch path).
+        if self.state != crate::state::RecordingState::Recording {
+            return;
+        }
+        let step_id = self.next_id();
         let step = make_app_switch_step(
-            self.next_id(),
+            step_id.clone(),
             self.next_step,
             crate::format_millis(now_millis),
             bundle_id,
@@ -543,16 +593,19 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> crate::reducer::Engine<D, 
             window_title,
         );
         self.push_step(step, None);
+        self.note_provisional(&step_id, crate::segmentation::CommitKind::Other, now_millis);
     }
 
     pub(crate) fn produce_manual_step(&mut self, title: &str, notes: Option<&str>, now_millis: u64) {
+        let step_id = self.next_id();
         let step = make_manual_step(
-            self.next_id(),
+            step_id.clone(),
             self.next_step,
             crate::format_millis(now_millis),
             title,
             notes,
         );
         self.push_step(step, None);
+        self.note_provisional(&step_id, crate::segmentation::CommitKind::Other, now_millis);
     }
 }

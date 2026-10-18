@@ -11,7 +11,7 @@ use crate::enrichment::{
     HotkeyDecision, InputClassification, KeystrokeClassifier, PrivacyRedactor, enriched,
     normalize_batch_context,
 };
-use stepit_ir::{
+use flowline_ir::{
     ActionType, ExportPaths, GestureAction, KeyModifiers, MediaMode, Point2D, RawElementContext,
     RawGestureNotice, RawInputKind, StepSession, ThemeName,
 };
@@ -43,6 +43,35 @@ impl InputEvent {
     }
 }
 
+/// `true` when `kind` continues a typing batch (printable char, Backspace,
+/// or Return without command/control chords). Shortcuts, navigation, clicks,
+/// drags, switches, and commands corroborate a boundary instead.
+fn is_typing_continuation(kind: &RawInputKind) -> bool {
+    match kind {
+        RawInputKind::KeyStroke {
+            key,
+            modifiers,
+            ..
+        } => {
+            if modifiers.contains(KeyModifiers::COMMAND)
+                || modifiers.contains(KeyModifiers::CONTROL)
+            {
+                return false;
+            }
+            if key == "Return" || key == "\r" || key == "\n" {
+                return true;
+            }
+            if key == "Backspace" || key == "\u{7f}" {
+                return true;
+            }
+            let mut chars = key.chars();
+            matches!(chars.next(), Some(c) if (c as u32) >= 32 && (c as u32) != 127)
+                && chars.next().is_none()
+        }
+        _ => false,
+    }
+}
+
 /// The engine: deterministic state machine over recorded streams.
 pub struct Engine<D: crate::CaptureDriver, S: crate::SessionStore> {
     pub(crate) config: EngineConfig,
@@ -62,6 +91,14 @@ pub struct Engine<D: crate::CaptureDriver, S: crate::SessionStore> {
     pub(crate) gesture_notice: Option<String>,
     pub(crate) gesture_event: Option<RawGestureNotice>,
     pub(crate) classifier: KeystrokeClassifier,
+    // MARK: - Focus-aware segmentation + delayed commit (over-join/over-cut fix)
+    pub(crate) switch_history: Vec<crate::segmentation::SwitchRecord>,
+    pub(crate) events_since_switch: u64,
+    pub(crate) limbo_switch: Option<crate::segmentation::LimboSwitch>,
+    pub(crate) pending_commits: Vec<crate::segmentation::PendingCommit>,
+    pub(crate) revision_log: Vec<String>,
+    pub(crate) last_event_millis: Option<u64>,
+    pub(crate) recent_event_millis: Vec<u64>,
 }
 
 impl<D: crate::CaptureDriver, S: crate::SessionStore> Engine<D, S> {
@@ -90,6 +127,13 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> Engine<D, S> {
             gesture_notice: None,
             gesture_event: None,
             classifier: KeystrokeClassifier,
+            switch_history: Vec::new(),
+            events_since_switch: 0,
+            limbo_switch: None,
+            pending_commits: Vec::new(),
+            revision_log: Vec::new(),
+            last_event_millis: None,
+            recent_event_millis: Vec::new(),
         }
     }
 
@@ -162,6 +206,25 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> Engine<D, S> {
         self.typing.clear();
         self.next_step = 1;
         self.last_app = self.driver.inspect_focused();
+        // Seed the flap baseline so a fast A→B→A return is revertible even
+        // though the baseline itself never emitted a step.
+        self.switch_history.clear();
+        if let Some(base) = self.last_app.as_ref() {
+            self.switch_history.push(crate::segmentation::SwitchRecord {
+                key: crate::segmentation::app_switch_key(
+                    &base.app_name,
+                    base.bundle_identifier.as_deref(),
+                    &base.window_title,
+                ),
+                millis: now_millis,
+            });
+        }
+        self.events_since_switch = 0;
+        self.limbo_switch = None;
+        self.pending_commits.clear();
+        self.last_event_millis = Some(now_millis);
+        self.recent_event_millis.clear();
+        self.recent_event_millis.push(now_millis);
         if let Some(session) = &self.session {
             self.store.save_session(session);
         }
@@ -188,9 +251,16 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> Engine<D, S> {
         if self.state == RecordingState::Idle {
             return None;
         }
+        // Settle limbo + delayed commits before the final flush so a
+        // settled oscillation still lands and every provisional confirms.
+        self.settle_limbo_switch(now_millis);
         if self.typing.has_pending() {
             self.finalize_typing(now_millis);
         }
+        self.settle_due_commits(now_millis);
+        // Force-confirm anything still pending at stop (revision window ends).
+        self.confirm_all_commits(now_millis);
+        self.limbo_switch = None;
         if let Some(session) = self.session.as_mut() {
             session.ended_at = Some(crate::format_millis(now_millis));
             let snapshot = session.clone();
@@ -257,7 +327,7 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> Engine<D, S> {
 
     pub fn capture_instant_snapshot(&mut self, at: Option<Point2D>, now_millis: u64) {
         let location = at.or(self.last_location()).unwrap_or(Point2D::ZERO);
-        self.produce_action(ActionType::Manual, location, now_millis);
+        self.produce_action(ActionType::Manual, location, now_millis, 1);
     }
 
     fn last_location(&self) -> Option<Point2D> {
@@ -272,14 +342,66 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> Engine<D, S> {
             self.last_location = location;
         }
 
+        // Delayed-commit + limbo settle first: anything whose revision window
+        // elapsed before this event confirms now (provisional already visible).
+        self.settle_limbo_switch(now_millis);
+        self.settle_due_commits(now_millis);
+        self.track_event_time(now_millis);
+
         // Gap-driven typing debounce (sync stand-in for the aggregator timer):
-        // an event landing at/past the inactivity window finalizes the batch
-        // before the event itself is reduced.
-        if self
-            .typing
-            .is_due(event.millis, self.config.typing_debounce_millis())
-        {
-            self.finalize_typing(event.millis);
+        // hysteresis: T_LOW JOIN / T_HIGH CUT, ambiguous holds unless a
+        // competing step (or focus/Return) corroborates. Typing continuations
+        // hold the ambiguous band; competing kinds keep the legacy window so
+        // order guarantees (flush-then-produce) still fire on time.
+        if self.typing.has_pending() {
+            let is_text_cont = is_typing_continuation(&event.kind);
+            // Prefer the event's own context; fall back to the focused element.
+            // (One extra AX probe only while text is pending.)
+            let focus_owned = event
+                .target_context
+                .clone()
+                .or_else(|| self.driver.inspect_focused());
+            if let Some(ref focus) = focus_owned {
+                // AXUnknown popups (and menu/popover chrome) never cut.
+                let popup = crate::segmentation::is_popup_context(focus)
+                    || focus.role.as_deref() == Some("AXUnknown");
+                if !popup && self.typing.focus_changed(focus) {
+                    self.extend_commits_on_contradiction();
+                    // Confidence gates the CUT: JOIN holds the batch
+                    // (over-cut fix), CUT/Provisional finalize. Terminal
+                    // Return still CUTs via handle_text_input; ⌃C bypasses via
+                    // handle_control_c (never reaches scoring).
+                    let focus_score = self.typing.focus_score(focus);
+                    let decision = self.segmentation_decision(focus_score, now_millis);
+                    if decision != crate::segmentation::SegmentDecision::Join {
+                        self.finalize_typing(event.millis);
+                    }
+                } else if is_text_cont {
+                    if self.typing.should_cut(event.millis, Some(focus), false) {
+                        self.finalize_typing(event.millis);
+                    }
+                } else if self
+                    .typing
+                    .is_due(event.millis, self.config.typing_debounce_millis())
+                {
+                    self.finalize_typing(event.millis);
+                }
+            } else if is_text_cont {
+                if self.typing.should_cut(event.millis, None, false) {
+                    self.finalize_typing(event.millis);
+                }
+            } else if self
+                .typing
+                .is_due(event.millis, self.config.typing_debounce_millis())
+            {
+                self.finalize_typing(event.millis);
+            }
+        }
+
+        // Count in-between events for the flap filter (switches reset it).
+        let is_switch = matches!(event.kind, RawInputKind::AppSwitch { .. });
+        if !is_switch {
+            self.events_since_switch = self.events_since_switch.saturating_add(1);
         }
 
         match &event.kind {
@@ -289,7 +411,7 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> Engine<D, S> {
             } => {
                 let action = crate::step_gate::action_type_for(*button, *click_count);
                 let at = event.location.unwrap_or(self.last_location);
-                self.produce_action(action, at, event.millis);
+                self.produce_action(action, at, event.millis, *click_count);
             }
             RawInputKind::KeyStroke {
                 key,
@@ -364,14 +486,45 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> Engine<D, S> {
             return;
         }
 
+        // Cmd+Return is an explicit commit (CUT), never a keypress step.
+        if modifiers.contains(KeyModifiers::COMMAND)
+            && (key == "Return" || key == "\r" || key == "\n")
+        {
+            self.flush_typing_before_step(now_millis);
+            // If text was pending, the CUT above already finalized it; an
+            // empty Return produces no step (whitespace-only invariant).
+            self.handle_text_input(key, modifiers, location, now_millis);
+            return;
+        }
+
+        // Cmd+V is an atomic paste, never a keypress step and never a cut
+        // inside: the boundary (if any) lands BEFORE the paste when focus
+        // changed; the payload joins via burst-rate follow-ups.
+        if flowline_pipeline::classify::is_cmd_paste(key, modifiers.contains(KeyModifiers::COMMAND))
+        {
+            if self.typing.has_pending() {
+                let focus = self.driver.inspect_focused();
+                let changed = focus
+                    .as_ref()
+                    .is_some_and(|f| self.typing.focus_changed(f));
+                if changed {
+                    self.finalize_typing(now_millis);
+                }
+                if let Some(f) = focus {
+                    self.typing.note_focus(f);
+                }
+            }
+            return;
+        }
+
         match decision {
             HotkeyDecision::ToggleRecording { .. } => {}
             HotkeyDecision::SystemConsumed { .. } | HotkeyDecision::Ignored => {}
             HotkeyDecision::WorkflowShortcut(chord) | HotkeyDecision::NavigationKey(chord) => {
                 self.produce_key_press(&chord, location, now_millis);
             }
-            HotkeyDecision::TextInput { key, .. } => {
-                self.handle_text_input(&key, location, now_millis);
+            HotkeyDecision::TextInput { key, modifiers } => {
+                self.handle_text_input(&key, modifiers, location, now_millis);
             }
         }
     }
@@ -379,13 +532,61 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> Engine<D, S> {
     /// Return / Backspace / printable characters feed the typing buffer. Named
     /// keys never reach this path (classified above), closing the pre-Phase-2
     /// hole where `"Escape"` was buffered as text.
-    fn handle_text_input(&mut self, key: &str, at: Point2D, now_millis: u64) {
-        match key {
-            "Return" | "\r" | "\n" => {
+    ///
+    /// Smart segmentation: focus changes cut before the next char, Return
+    /// follows terminal/single-line-CUT vs multiline-JOIN semantics,
+    /// Option/Command+Backspace word-undos coalesce, and secure fields keep
+    /// the zero-plaintext invariant.
+    fn handle_text_input(
+        &mut self,
+        key: &str,
+        modifiers: KeyModifiers,
+        at: Point2D,
+        now_millis: u64,
+    ) {
+        // Per-keystroke focused-element probe (secure verdict + focus cut +
+        // Return profile). One AX probe per keystroke by design.
+        let focused = self.driver.inspect_focused();
+        if let Some(ref ctx) = focused {
+            let popup = crate::segmentation::is_popup_context(ctx)
+                || ctx.role.as_deref() == Some("AXUnknown");
+            if !popup && self.typing.has_pending() && self.typing.focus_changed(ctx) {
+                self.extend_commits_on_contradiction();
                 self.finalize_typing(now_millis);
             }
+        }
+        let command_held = modifiers.contains(KeyModifiers::COMMAND);
+        match key {
+            "Return" | "\r" | "\n" => {
+                let ctx = focused.unwrap_or_else(RawElementContext::unknown);
+                let action = flowline_pipeline::classify::classify_return(&ctx, command_held);
+                match action {
+                    flowline_pipeline::classify::ReturnAction::Cut => {
+                        self.finalize_typing(now_millis);
+                        self.typing.clear_focus();
+                    }
+                    flowline_pipeline::classify::ReturnAction::JoinNewline => {
+                        if ctx.is_secure {
+                            self.finalize_typing(now_millis);
+                            self.typing.clear_focus();
+                        } else {
+                            self.typing.push("\n", at, now_millis);
+                            self.typing.note_focus(ctx);
+                        }
+                    }
+                }
+            }
             "Backspace" | "\u{7f}" => {
-                self.typing.pop(at, now_millis);
+                let word_undo = modifiers.contains(KeyModifiers::OPTION)
+                    || modifiers.contains(KeyModifiers::COMMAND);
+                if word_undo {
+                    self.typing.pop_word(at, now_millis);
+                } else {
+                    self.typing.pop(at, now_millis);
+                }
+                if let Some(ctx) = focused {
+                    self.typing.note_focus(ctx);
+                }
             }
             _ => {
                 let mut chars = key.chars();
@@ -398,7 +599,7 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> Engine<D, S> {
                 }
                 // Per-keystroke secure probe (T6): raw characters never enter
                 // the buffer for secure fields — only masks (or nothing) do.
-                let secure = self.driver.inspect_focused().map(|c| c.is_secure).unwrap_or(false);
+                let secure = focused.as_ref().map(|c| c.is_secure).unwrap_or(false);
                 if secure {
                     if self.config.mask_secure_input {
                         let mask: String = key.chars().map(|_| '•').collect();
@@ -409,8 +610,58 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> Engine<D, S> {
                 } else {
                     self.typing.push(key, at, now_millis);
                 }
+                if let Some(ctx) = focused {
+                    self.typing.note_focus(ctx);
+                }
             }
         }
+    }
+
+    /// Atomic paste entry point (menu/long-press/autofill, not just `Cmd+V`):
+    /// forces the boundary BEFORE the paste when focus changed, then buffers
+    /// the whole payload as one unit. Secure fields mask.
+    pub fn handle_paste(
+        &mut self,
+        text: &str,
+        at: Point2D,
+        now_millis: u64,
+        clipboard_hash: Option<u64>,
+    ) {
+        if self.state != RecordingState::Recording {
+            return;
+        }
+        let focused =
+            self.driver.inspect_focused().unwrap_or_else(RawElementContext::unknown);
+        // Clipboard rotation is the paste *detection* signal, not a cut cue:
+        // the boundary before the paste lands only on a focus change.
+        if self.typing.has_pending() && self.typing.focus_changed(&focused) {
+            self.finalize_typing(now_millis);
+        }
+        if focused.is_secure {
+            if self.config.mask_secure_input {
+                let mask: String = text.chars().map(|_| '•').collect();
+                self.typing.push_paste(&mask, at, now_millis);
+            } else {
+                self.typing.touch(at, now_millis);
+            }
+        } else {
+            self.typing.push_paste(text, at, now_millis);
+        }
+        self.typing.note_focus(focused);
+        if let Some(hash) = clipboard_hash {
+            self.typing.set_clipboard_hash(Some(hash));
+        }
+    }
+
+    /// Clipboard rotation signal: the next paste treats a hash change as an
+    /// atomic-paste boundary cue.
+    pub fn notify_clipboard_hash(&mut self, hash: u64) {
+        self.typing.set_clipboard_hash(Some(hash));
+    }
+
+    /// IME composition gate: suspends the gap timer until commit/cancel.
+    pub fn set_ime_composing(&mut self, composing: bool) {
+        self.typing.set_composing(composing);
     }
 
     /// Control+C appends the `^C` marker and finalizes immediately.
@@ -453,10 +704,250 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> Engine<D, S> {
         if self.state != RecordingState::Recording || !self.config.record_app_switches {
             return;
         }
-        if previous.as_ref().map(|p| p.app_name.as_str()) == Some(app_name.as_str()) {
+        // Dedup on the full window-aware key, not appName alone: same app +
+        // new window/title must still CUT (over-join fix). Respects the
+        // `recordAppSwitches == false` default via the early return above.
+        let prev_key = previous.as_ref().map(|p| {
+            crate::segmentation::app_switch_key(
+                &p.app_name,
+                p.bundle_identifier.as_deref(),
+                &p.window_title,
+            )
+        });
+        let next_key = crate::segmentation::app_switch_key(
+            &app_name,
+            bundle_id.as_deref(),
+            &window_title,
+        );
+        if prev_key.as_deref() == Some(next_key.as_str()) {
             return;
         }
-        self.produce_app_switch(bundle_id, &app_name, &window_title, now_millis);
+        // A focus jump contradicts pending revision windows: extend them
+        // (max 2 × +200 ms) before deciding the switch itself.
+        self.extend_commits_on_contradiction();
+
+        match crate::segmentation::classify_app_switch(
+            &self.switch_history,
+            &next_key,
+            now_millis,
+            self.events_since_switch,
+        ) {
+            crate::segmentation::FlapAction::Emit => {
+                self.switch_history.push(crate::segmentation::SwitchRecord {
+                    key: next_key,
+                    millis: now_millis,
+                });
+                self.events_since_switch = 0;
+                self.produce_app_switch(bundle_id, &app_name, &window_title, now_millis);
+            }
+            crate::segmentation::FlapAction::Revert => {
+                // Flap A→B→A inside 800 ms with <3 middle events: the B CUT
+                // was noise — drop its step and restore the baseline.
+                self.revert_last_app_switch_step();
+                self.switch_history.pop();
+                self.events_since_switch = 0;
+                self.revision_log.push(format!(
+                    "revert app-switch to {app_name} @ {now_millis}"
+                ));
+            }
+            crate::segmentation::FlapAction::HoldLimbo => {
+                // Oscillation A→B→A→B inside 2 s: hold in limbo, confirm on
+                // settle+400 ms instead of emitting a cut per hop.
+                self.limbo_switch = Some(crate::segmentation::LimboSwitch {
+                    bundle_id,
+                    app_name,
+                    window_title,
+                    key: next_key,
+                    first_millis: now_millis,
+                    confirm_at_millis: now_millis
+                        .saturating_add(crate::segmentation::LIMBO_SETTLE_MILLIS),
+                });
+                self.events_since_switch = 0;
+            }
+        }
+    }
+
+    /// Drop the most recent `.appSwitch` step (flap revert).
+    fn revert_last_app_switch_step(&mut self) {
+        if let Some(session) = self.session.as_mut() {
+            if let Some(pos) = session
+                .steps
+                .iter()
+                .rposition(|s| s.action == flowline_ir::ActionType::AppSwitch)
+            {
+                let removed = session.steps.remove(pos);
+                self.revision_log.push(format!(
+                    "revert {} (v1 provisional → dropped)",
+                    removed.id
+                ));
+                for (i, step) in session.steps.iter_mut().enumerate() {
+                    step.index = (i + 1) as i64;
+                }
+                self.next_step = session.steps.len() as i64 + 1;
+                let snapshot = session.clone();
+                self.store.save_session(&snapshot);
+            }
+        }
+    }
+
+    /// Emit a limbo-held oscillation switch once it settles.
+    fn settle_limbo_switch(&mut self, now_millis: u64) {
+        let Some(limbo) = self.limbo_switch.clone() else {
+            return;
+        };
+        if now_millis < limbo.confirm_at_millis {
+            return;
+        }
+        self.limbo_switch = None;
+        if self.state != RecordingState::Recording || !self.config.record_app_switches {
+            return;
+        }
+        // Post-await state==recording re-check (sync port: re-assert after the
+        // settle window, mirroring Swift's post-await guard).
+        if self.state != RecordingState::Recording {
+            return;
+        }
+        self.switch_history.push(crate::segmentation::SwitchRecord {
+            key: limbo.key.clone(),
+            millis: now_millis,
+        });
+        self.last_app = Some(RawElementContext {
+            app_name: limbo.app_name.clone(),
+            bundle_identifier: limbo.bundle_id.clone(),
+            window_title: limbo.window_title.clone(),
+            role: None,
+            subrole: None,
+            title: None,
+            value: None,
+            placeholder: None,
+            role_description: None,
+            is_secure: false,
+            bounding_box: None,
+            window_bounds: None,
+            selectors: Vec::new(),
+        });
+        self.produce_app_switch(
+            limbo.bundle_id,
+            &limbo.app_name,
+            &limbo.window_title,
+            now_millis,
+        );
+    }
+
+    // MARK: - Delayed commit / revision window
+
+    /// Provisional emit bookkeeping: visible immediately, confirmed later.
+    /// Logs `v1 provisional → v2 confirmed` across the revision window.
+    pub(crate) fn note_provisional(
+        &mut self,
+        step_id: &str,
+        kind: crate::segmentation::CommitKind,
+        now_millis: u64,
+    ) {
+        let commit = crate::segmentation::PendingCommit::new(step_id.to_string(), kind, now_millis);
+        self.revision_log.push(format!(
+            "v1 provisional {step_id} @ {now_millis} (confirm @ {})",
+            commit.confirm_at_millis
+        ));
+        self.pending_commits.push(commit);
+    }
+
+    /// Confirm every commit whose window elapsed.
+    pub(crate) fn settle_due_commits(&mut self, now_millis: u64) {
+        for commit in self.pending_commits.iter_mut() {
+            if commit.is_due(now_millis) {
+                commit.confirmed = true;
+                self.revision_log.push(format!(
+                    "v2 confirmed {} @ {now_millis}",
+                    commit.step_id
+                ));
+            }
+        }
+        self.pending_commits.retain(|c| !c.confirmed);
+    }
+
+    /// Contradicting events (focus cuts, app switches) extend pending windows
+    /// by +200 ms, at most twice per commit.
+    pub(crate) fn extend_commits_on_contradiction(&mut self) {
+        for commit in self.pending_commits.iter_mut() {
+            if commit.extend_on_contradiction() {
+                self.revision_log.push(format!(
+                    "extend {} → confirm @ {} (#{})",
+                    commit.step_id, commit.confirm_at_millis, commit.extensions
+                ));
+            }
+        }
+    }
+
+    fn confirm_all_commits(&mut self, now_millis: u64) {
+        for commit in self.pending_commits.iter_mut() {
+            if !commit.confirmed {
+                commit.confirmed = true;
+                self.revision_log.push(format!(
+                    "v2 confirmed {} @ {now_millis} (stop flush)",
+                    commit.step_id
+                ));
+            }
+        }
+        self.pending_commits.clear();
+    }
+
+    fn track_event_time(&mut self, now_millis: u64) {
+        self.recent_event_millis.push(now_millis);
+        let cutoff = now_millis.saturating_sub(5000);
+        self.recent_event_millis.retain(|t| *t >= cutoff);
+        self.last_event_millis = Some(now_millis);
+    }
+
+    fn velocity_estimate(&self) -> f64 {
+        let Some(last) = self.last_event_millis else {
+            return 0.0;
+        };
+        let window_start = last.saturating_sub(1000);
+        self.recent_event_millis
+            .iter()
+            .filter(|t| **t >= window_start)
+            .count() as f64
+    }
+
+    /// Confidence for one boundary: 0.35*focus + 0.25*gap + 0.15*return +
+    /// 0.15*clipboard + 0.10*velocity. Terminal Return always CUTs (handled
+    /// by `finalize_typing` before this is consulted); ⌃C bypasses via
+    /// `handle_control_c` and never reaches scoring.
+    pub(crate) fn segmentation_decision(
+        &self,
+        focus_score: f64,
+        now_millis: u64,
+    ) -> crate::segmentation::SegmentDecision {
+        let gap = self
+            .last_event_millis
+            .map(|last| now_millis.saturating_sub(last))
+            .unwrap_or(u64::MAX / 2);
+        let gap_capped = gap.min(self.config.typing_debounce_millis().saturating_mul(2));
+        let gap_component = crate::segmentation::gap_hysteresis_score(
+            gap_capped,
+            self.config.typing_debounce_millis(),
+        );
+        let velocity_component =
+            crate::segmentation::velocity_score(self.velocity_estimate());
+        let score = crate::segmentation::confidence_score(
+            focus_score,
+            gap_component,
+            0.0,
+            0.5,
+            velocity_component,
+        );
+        crate::segmentation::decide_confidence(score)
+    }
+
+    /// Test hook: pending (unconfirmed) provisional commits.
+    pub fn pending_commit_count(&self) -> usize {
+        self.pending_commits.len()
+    }
+
+    /// Test hook: `v1 provisional → v2 confirmed` history.
+    pub fn revision_log(&self) -> &[String] {
+        &self.revision_log
     }
 
     // MARK: - Gestures (`GestureNotices.swift`)
@@ -562,8 +1053,13 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> Engine<D, S> {
             _ => None,
         };
         let media = self.capture_step_media(&context, effective, self.next_step);
+        // Post-await state==recording re-check preserved (typing path).
+        if self.state != RecordingState::Recording {
+            return;
+        }
+        let step_id = self.next_id();
         let step = crate::step_gate::make_typing_step(
-            self.next_id(),
+            step_id.clone(),
             self.next_step,
             crate::format_millis(now_millis),
             text,
@@ -574,6 +1070,8 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> Engine<D, S> {
             media,
         );
         self.push_step(step, Some((effective, self.config.typing_clip_post_secs)));
+        // Delayed commit: typing confirms at +500 ms (slow path).
+        self.note_provisional(&step_id, crate::segmentation::CommitKind::Typing, now_millis);
     }
 
     // MARK: - Helpers shared with `step_gate`
@@ -582,7 +1080,7 @@ impl<D: crate::CaptureDriver, S: crate::SessionStore> Engine<D, S> {
         format!("step-{:04}", self.next_step)
     }
 
-    pub(crate) fn push_step(&mut self, step: stepit_ir::Step, clip: Option<(Point2D, f64)>) {
+    pub(crate) fn push_step(&mut self, step: flowline_ir::Step, clip: Option<(Point2D, f64)>) {
         let step_id = step.id.clone();
         let step_index = step.index;
         if let Some(session) = self.session.as_mut() {

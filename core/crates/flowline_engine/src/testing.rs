@@ -10,8 +10,8 @@ use crate::{CaptureDriver, SessionStore};
 /// is observable for assertions.
 #[derive(Debug, Clone, Default)]
 pub struct MockDriver {
-    pub element_at_point: Option<stepit_ir::RawElementContext>,
-    pub focused: Option<stepit_ir::RawElementContext>,
+    pub element_at_point: Option<flowline_ir::RawElementContext>,
+    pub focused: Option<flowline_ir::RawElementContext>,
     pub working_dir: Option<String>,
     pub snapshots: bool,
     pub micro_clips: bool,
@@ -27,8 +27,8 @@ impl MockDriver {
     }
 
     /// Safari "Save" button context behind the golden click (100, 200).
-    pub fn safari_save_button() -> stepit_ir::RawElementContext {
-        stepit_ir::RawElementContext {
+    pub fn safari_save_button() -> flowline_ir::RawElementContext {
+        flowline_ir::RawElementContext {
             app_name: "Safari".to_string(),
             bundle_identifier: Some("com.apple.Safari".to_string()),
             window_title: "Docs — Safari".to_string(),
@@ -46,8 +46,8 @@ impl MockDriver {
     }
 
     /// Focused Safari window behind the golden ⌘S keypress.
-    pub fn safari_focused() -> stepit_ir::RawElementContext {
-        stepit_ir::RawElementContext {
+    pub fn safari_focused() -> flowline_ir::RawElementContext {
+        flowline_ir::RawElementContext {
             app_name: "Safari".to_string(),
             bundle_identifier: Some("com.apple.Safari".to_string()),
             window_title: "Docs — Safari".to_string(),
@@ -65,8 +65,8 @@ impl MockDriver {
     }
 
     /// Terminal window behind the golden `git status` steps (center 50, 50).
-    pub fn terminal_focused() -> stepit_ir::RawElementContext {
-        stepit_ir::RawElementContext {
+    pub fn terminal_focused() -> flowline_ir::RawElementContext {
+        flowline_ir::RawElementContext {
             app_name: "Terminal".to_string(),
             bundle_identifier: Some("com.apple.Terminal".to_string()),
             window_title: "zsh".to_string(),
@@ -78,19 +78,19 @@ impl MockDriver {
             role_description: None,
             is_secure: false,
             bounding_box: None,
-            window_bounds: Some(stepit_ir::ElementRect::new(0.0, 0.0, 100.0, 100.0)),
+            window_bounds: Some(flowline_ir::ElementRect::new(0.0, 0.0, 100.0, 100.0)),
             selectors: Vec::new(),
         }
     }
 }
 
 impl CaptureDriver for MockDriver {
-    fn inspect_element(&mut self, x: f64, y: f64) -> Option<stepit_ir::RawElementContext> {
+    fn inspect_element(&mut self, x: f64, y: f64) -> Option<flowline_ir::RawElementContext> {
         self.inspect_element_calls.push((x, y));
         self.element_at_point.clone()
     }
 
-    fn inspect_focused(&mut self) -> Option<stepit_ir::RawElementContext> {
+    fn inspect_focused(&mut self) -> Option<flowline_ir::RawElementContext> {
         self.inspect_focused_calls += 1;
         self.focused.clone()
     }
@@ -123,7 +123,7 @@ impl CaptureDriver for MockDriver {
 /// In-memory session/media store: records every save for assertions.
 #[derive(Debug, Clone, Default)]
 pub struct InMemoryStore {
-    pub sessions: Vec<stepit_ir::StepSession>,
+    pub sessions: Vec<flowline_ir::StepSession>,
     pub media: HashMap<String, Vec<u8>>,
 }
 
@@ -132,13 +132,13 @@ impl InMemoryStore {
         Self::default()
     }
 
-    pub fn last_session(&self) -> Option<&stepit_ir::StepSession> {
+    pub fn last_session(&self) -> Option<&flowline_ir::StepSession> {
         self.sessions.last()
     }
 }
 
 impl SessionStore for InMemoryStore {
-    fn save_session(&mut self, session: &stepit_ir::StepSession) {
+    fn save_session(&mut self, session: &flowline_ir::StepSession) {
         self.sessions.push(session.clone());
     }
 

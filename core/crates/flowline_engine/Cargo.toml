@@ -1,5 +1,5 @@
 [package]
-name = "stepit_engine"
+name = "flowline_engine"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,8 +7,8 @@ edition = "2021"
 workspace = true
 
 [dependencies]
-stepit_ir = { path = "../stepit_ir" }
-stepit_pipeline = { path = "../stepit_pipeline" }
+flowline_ir = { path = "../flowline_ir" }
+flowline_pipeline = { path = "../flowline_pipeline" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
