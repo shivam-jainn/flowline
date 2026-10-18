@@ -6,21 +6,21 @@ All Swift in the monolith lives here. One package, twelve targets.
 platform/macos/
   Package.swift   Manifest. Paths are package-relative (Sources/, Tests/,
                   Generated/ all sit beside it). Binary target
-                  stepit_ffiFFI → Generated/stepit_ffiFFI.xcframework;
-                  StepItFFI → Generated/StepItFFI/ (both rebuilt by `make ffi`).
+                  flowline_ffiFFI → Generated/flowline_ffiFFI.xcframework;
+                  FlowlineFFI → Generated/FlowlineFFI/ (both rebuilt by `make ffi`).
   Sources/
-    StepIt/            App (App/) + CLI (CLI/) + UI (UI/) + main.swift
-    StepItIR/          Session / event / manifest types (Foundation-only)
-    StepItPipeline/    Debounce / classify / aggregate / redact / step factory
-    StepItCaptureAPI/  Driver SPI + registry (Foundation-only)
-    StepItEngine/      RecorderWorkflowEngine + reducer / gates / enrichment
-    StepItStorage/     SessionStore + filesystem gateway
-    StepItMacCapture/  macOS drivers (AppKit/ScreenCaptureKit live here only)
-    StepItPublishing/  Markdown / web-doc / PDF exporters (WebKit/PDFKit confined here)
-    StepItAIGateway/   Multi-provider AI gateway
-    StepItPermissions/ Permissions protocol + macOS impl
-    StepItFixtures/    Fixture-driven demo tooling (resolves shared/fixtures/)
-  Tests/StepItTests/   Unit + integration tests (DataLine/ = PhaseNN*.swift)
+    Flowline/            App (App/) + CLI (CLI/) + UI (UI/) + main.swift
+    FlowlineIR/          Session / event / manifest types (Foundation-only)
+    FlowlinePipeline/    Debounce / classify / aggregate / redact / step factory
+    FlowlineCaptureAPI/  Driver SPI + registry (Foundation-only)
+    FlowlineEngine/      RecorderWorkflowEngine + reducer / gates / enrichment
+    FlowlineStorage/     SessionStore + filesystem gateway
+    FlowlineMacCapture/  macOS drivers (AppKit/ScreenCaptureKit live here only)
+    FlowlinePublishing/  Markdown / web-doc / PDF exporters (WebKit/PDFKit confined here)
+    FlowlineAIGateway/   Multi-provider AI gateway
+    FlowlinePermissions/ Permissions protocol + macOS impl
+    FlowlineFixtures/    Fixture-driven demo tooling (resolves shared/fixtures/)
+  Tests/FlowlineTests/   Unit + integration tests (DataLine/ = PhaseNN*.swift)
   Generated/           UniFFI/XCFramework outputs — gitignored, `make ffi` rebuilds
   Assets/              AppIcon + DMG artwork (used by tooling/release/)
 ```

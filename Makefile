@@ -1,4 +1,4 @@
-# StepIt root task runner (turbo equivalent for this Swift+Rust monolith).
+# Flowline root task runner (turbo equivalent for this Swift+Rust monolith).
 #
 #   platform/macos   SwiftPM package — everything Swift (app, modules, tests)
 #   core/          Cargo workspace — portable Rust core (source of truth)
@@ -6,7 +6,7 @@
 #   tooling/       Builds + gates (ci, toolchain, dev, release)
 #
 # Run `make` for the default target (build).
-.PHONY: all build test ffi check-arch check-rust check-wasm check-phase-r serve demo automate bundle dmg clean test-dev dev run sign-setup doctor reset-tcc
+.PHONY: all build test ffi check-arch check-rust check-wasm check-phase-r check-seg serve demo automate bundle dmg clean test-dev dev dev-debug run sign-setup doctor reset-tcc
 
 SWIFT_PKG := platform/macos
 RUST_MANIFEST := core/Cargo.toml
@@ -37,14 +37,17 @@ check-wasm:
 check-phase-r:
 	tooling/ci/check_phase_r.sh
 
+check-seg:
+	tooling/ci/check_segmentation.sh
+
 serve:
-	swift run --package-path $(SWIFT_PKG) stepit serve
+	swift run --package-path $(SWIFT_PKG) flowline serve
 
 demo:
-	swift run --package-path $(SWIFT_PKG) stepit demo
+	swift run --package-path $(SWIFT_PKG) flowline demo
 
 automate:
-	swift run --package-path $(SWIFT_PKG) stepit automate
+	swift run --package-path $(SWIFT_PKG) flowline automate
 
 bundle:
 	tooling/release/bundle_app.sh
@@ -61,21 +64,21 @@ dmg:
 clean:
 	rm -rf $(SWIFT_PKG)/.build core/target dist
 
-# Stale-proof manual test loop: kills any running StepIt menu-bar instance,
-# forces a fresh release StepIt.app bundle (never reuses the cached .build
+# Stale-proof manual test loop: kills any running Flowline menu-bar instance,
+# forces a fresh release Flowline.app bundle (never reuses the cached .build
 # output), then launches it and prints PID/start time so you can confirm
 # it's fresh. Needs re-granting TCC afterwards unless signed with an
 # Apple-issued identity (see sign-setup).
 test-dev:
-	pkill -x StepIt 2>/dev/null || true
+	pkill -x Flowline 2>/dev/null || true
 	sleep 1
-	rm -rf $(SWIFT_PKG)/.build/StepIt.app
+	rm -rf $(SWIFT_PKG)/.build/Flowline.app
 	tooling/release/bundle_app.sh
-	ls -l $(SWIFT_PKG)/.build/StepIt.app/Contents/MacOS/StepIt
-	shasum $(SWIFT_PKG)/.build/StepIt.app/Contents/MacOS/StepIt
-	open $(SWIFT_PKG)/.build/StepIt.app
+	ls -l $(SWIFT_PKG)/.build/Flowline.app/Contents/MacOS/Flowline
+	shasum $(SWIFT_PKG)/.build/Flowline.app/Contents/MacOS/Flowline
+	open $(SWIFT_PKG)/.build/Flowline.app
 	sleep 1
-	ps -o pid,lstart,command -p $$(pgrep -x StepIt | head -1) || true
+	ps -o pid,lstart,command -p $$(pgrep -x Flowline | head -1) || true
 
 # Fast dev loop — the closest thing to hot reload for a TCC-gated recorder:
 # incremental DEBUG build (seconds after the first one), re-bundle, relaunch.
@@ -83,28 +86,36 @@ test-dev:
 # required anyway (macOS applies Screen Recording only to fresh processes),
 # so edit → make dev → test is the whole cycle.
 dev:
-	pkill -x StepIt 2>/dev/null || true
+	pkill -x Flowline 2>/dev/null || true
 	sleep 1
 	CONFIG=debug tooling/release/bundle_app.sh
-	open $(SWIFT_PKG)/.build/StepIt.app
+	open $(SWIFT_PKG)/.build/Flowline.app
+
+# Perf-capture loop for gutter DnD jitter: you drag, it captures.
+# Builds DEBUG, enables FlowlinePerfLogging, streams the unified log
+# (subsystem com.flowline.app) to docs/traces/<stamp>-gutter.log.
+# Ctrl-C stops + prints begins/flips/drops/nudges + resolve p50/p95/max.
+#   make dev-debug [DURATION=60] [TRACE=1]
+dev-debug:
+	tooling/dev/dev-debug.sh
 
 # Relaunch the EXISTING bundle without rebuilding. Use this after granting
 # permissions: any rebuild re-signs the binary, and without an Apple-issued
 # identity macOS drops Screen Recording / Accessibility grants on re-sign.
 run:
-	pkill -x StepIt 2>/dev/null || true
+	pkill -x Flowline 2>/dev/null || true
 	sleep 1
-	test -d $(SWIFT_PKG)/.build/StepIt.app || tooling/release/bundle_app.sh
-	open $(SWIFT_PKG)/.build/StepIt.app
+	test -d $(SWIFT_PKG)/.build/Flowline.app || tooling/release/bundle_app.sh
+	open $(SWIFT_PKG)/.build/Flowline.app
 	sleep 1
-	ps -o pid,lstart,command -p $$(pgrep -x StepIt | head -1) || true
+	ps -o pid,lstart,command -p $$(pgrep -x Flowline | head -1) || true
 
 # Nuclear option for scrambled TCC state (stale/duplicate entries): wipes both
 # grants for OUR bundle id only, then relaunch and grant once on the current
 # binary. Note this INCREASES Settings trips — it never reduces them.
 reset-tcc:
-	tccutil reset ScreenCapture com.stepit.macos
-	tccutil reset Accessibility com.stepit.macos
+	tccutil reset ScreenCapture com.flowline.macos
+	tccutil reset Accessibility com.flowline.macos
 
 # One-shot diagnosis for "permissions show granted but the app says denied":
 # binary hash vs running process, signing identity, team cert. The classic
@@ -112,11 +123,11 @@ reset-tcc:
 # recognizes (any ad-hoc rebuild), while CGPreflight/AXIsProcessTrusted
 # correctly report denied for the CURRENT binary.
 doctor:
-	@echo "— StepIt doctor —"
-	@echo "binary:  $$(stat -f '%Sm' $(SWIFT_PKG)/.build/StepIt.app/Contents/MacOS/StepIt 2>/dev/null || echo MISSING)  hash=$$(shasum $(SWIFT_PKG)/.build/StepIt.app/Contents/MacOS/StepIt 2>/dev/null | cut -c1-12 || echo none)"
-	@pgrep -x StepIt >/dev/null && ps -o pid,lstart -p $$(pgrep -x StepIt | head -1) || echo "running: no StepIt process"
-	@echo "signing: $$(codesign -dv $(SWIFT_PKG)/.build/StepIt.app 2>&1 | grep -E 'flags|TeamIdentifier' | tr '\n' ' ')"
-	@TEAM=$$(codesign -dv $(SWIFT_PKG)/.build/StepIt.app 2>&1 | sed -n 's/^TeamIdentifier=//p'); if [ "$$TEAM" = "not set" ] || [ -z "$$TEAM" ]; then echo "grant stability: AD-HOC — dies on every rebuild (make sign-setup ends this)"; else echo "grant stability: STABLE ($$TEAM) — rebuilds keep grants"; fi
+	@echo "— Flowline doctor —"
+	@echo "binary:  $$(stat -f '%Sm' $(SWIFT_PKG)/.build/Flowline.app/Contents/MacOS/Flowline 2>/dev/null || echo MISSING)  hash=$$(shasum $(SWIFT_PKG)/.build/Flowline.app/Contents/MacOS/Flowline 2>/dev/null | cut -c1-12 || echo none)"
+	@pgrep -x Flowline >/dev/null && ps -o pid,lstart -p $$(pgrep -x Flowline | head -1) || echo "running: no Flowline process"
+	@echo "signing: $$(codesign -dv $(SWIFT_PKG)/.build/Flowline.app 2>&1 | grep -E 'flags|TeamIdentifier' | tr '\n' ' ')"
+	@TEAM=$$(codesign -dv $(SWIFT_PKG)/.build/Flowline.app 2>&1 | sed -n 's/^TeamIdentifier=//p'); if [ "$$TEAM" = "not set" ] || [ -z "$$TEAM" ]; then echo "grant stability: AD-HOC — dies on every rebuild (make sign-setup ends this)"; else echo "grant stability: STABLE ($$TEAM) — rebuilds keep grants"; fi
 	@security find-identity -v -p codesigning 2>/dev/null | grep -qE "Apple Development|Mac Developer" && echo "team cert: YES (rebuilds keep grants)" || echo "team cert: NONE (every rebuild kills grants — run: make sign-setup)"
 	@echo "rule: grant in Settings must happen for THIS binary hash, then relaunch WITHOUT rebuilding (make run)."
-	@echo "note: 'stepit status' from a terminal reflects the TERMINAL context — the in-app window is the real verdict."
+	@echo "note: 'flowline status' from a terminal reflects the TERMINAL context — the in-app window is the real verdict."

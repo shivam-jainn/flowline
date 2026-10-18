@@ -1,9 +1,9 @@
-# ⚡️ StepIt
+# ⚡️ Flowline
 
 > **Effortless step-by-step workflow capture & AI synthesis for macOS.**
 > Native Swift. Privacy-first. Multi-provider AI Gateway. 1-click publishing to interactive web docs, print-ready PDFs, and Markdown.
 
-StepIt records user workflows across any macOS app and turns them into human documentation
+Flowline records user workflows across any macOS app and turns them into human documentation
 (interactive web site, PDF guide, Markdown) today — and machine-executable automation scripts
 on the roadmap.
 
@@ -12,9 +12,9 @@ on the roadmap.
 ```bash
 make build                       # ffi first, then swift build (use this, not bare `swift build`)
 make test                        # ffi first, then swift test
-swift run --package-path platform/macos stepit app     # menu bar + floating HUD app
-swift run --package-path platform/macos stepit serve   # 10-page fixture web app on :8080
-swift run --package-path platform/macos stepit demo    # demo guide from fixture captures
+swift run --package-path platform/macos flowline app     # menu bar + floating HUD app
+swift run --package-path platform/macos flowline serve   # 10-page fixture web app on :8080
+swift run --package-path platform/macos flowline demo    # demo guide from fixture captures
 make check-arch                  # architecture & layout gate
 make check-rust                  # cargo test + clippy
 make check-phase-r               # full 5-stage gate (swift → arch → rust → windows → wasm)
@@ -36,7 +36,7 @@ platform/
                      Generated/ (FFI outputs, gitignored), Assets/
   windows/           Roadmap signpost (Rust driver already in core/)
 core/                Cargo workspace — ALL Rust lives here.
-                     crates/stepit_{ir,pipeline,engine,storage,ai_gateway,projections,ffi,win_capture}/
+                     crates/flowline_{ir,pipeline,engine,storage,ai_gateway,projections,ffi,win_capture}/
 shared/              Language-agnostic data both toolchains consume (no code).
   contracts/         JSON Schemas = the common types (session, event, manifest)
   fixtures/          Deterministic fixture data (playground-web)
@@ -53,9 +53,9 @@ dist/                Release artifacts (gitignored)
 | Fixtures / goldens | `shared/fixtures/`, `shared/goldens/` | `FixtureLocator`, `parity_harness` |
 | Gates | `tooling/ci/` | `make check-*`, `.github/workflows/ci.yml` |
 
-**Boundary rules:** portable Swift modules (`StepIt{IR,Pipeline,Engine,Storage,CaptureAPI}`)
-stay Foundation-only; AppKit lives only in `StepItMacCapture`; WebKit/PDFKit stay in
-`StepItPublishing/PDFGenerator.swift`; `shared/` is data-only (no `.swift`/`.rs`);
+**Boundary rules:** portable Swift modules (`Flowline{IR,Pipeline,Engine,Storage,CaptureAPI}`)
+stay Foundation-only; AppKit lives only in `FlowlineMacCapture`; WebKit/PDFKit stay in
+`FlowlinePublishing/PDFGenerator.swift`; `shared/` is data-only (no `.swift`/`.rs`);
 no Swift under `core/`, no Rust under `platform/`. `tooling/ci/check_architecture.sh`
 enforces all of this — run `make check-arch` before every commit.
 

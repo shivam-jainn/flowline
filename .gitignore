@@ -1,4 +1,4 @@
-# ── StepIt monolith ignores ──────────────────────────────────────────
+# ── Flowline monolith ignores ──────────────────────────────────────────
 # Layout: platform/macos (SwiftPM) + core (Cargo) + shared (data) + tooling.
 # Generated FFI/WASM outputs are rebuilt via `make ffi`
 # (tooling/toolchain/build-rust-ffi.sh) and never committed.
@@ -20,14 +20,14 @@ DerivedData/
 
 # ── Rust (core) ────────────────────────────────────────────────────
 core/target/
-core/crates/stepit_ffi/pkg-web/
+core/crates/flowline_ffi/pkg-web/
 target/
 
 # ── Generated UniFFI/XCFramework outputs (rebuilt by `make ffi`) ───
-platform/macos/Generated/stepit_ffiFFI.xcframework/
+platform/macos/Generated/flowline_ffiFFI.xcframework/
 platform/macos/Generated/FFIHeaders/
-platform/macos/Generated/StepItFFI/stepit_ffi.swift
-!platform/macos/Generated/StepItFFI/.gitkeep
+platform/macos/Generated/FlowlineFFI/flowline_ffi.swift
+!platform/macos/Generated/FlowlineFFI/.gitkeep
 
 # ── Release artifacts ──────────────────────────────────────────────
 dist/
@@ -43,6 +43,9 @@ pkg/
 !.env.example
 *.pem
 *.key
+
+# ── Local agent config (personal paths, never committed) ──────────
+opencode.json
 
 # ── Product docs (local only, never committed) ───────────────────────
 docs/

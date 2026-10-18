@@ -7,7 +7,7 @@ run from the repo root and resolve their own location
 ```
 tooling/
   toolchain/ Cross-toolchain builds. build-rust-ffi.sh — cargo build
-             (stepit_ffi, release) + uniffi-bindgen Swift bindings +
+             (flowline_ffi, release) + uniffi-bindgen Swift bindings +
              xcodebuild xcframework. Rebuilds everything under
              platform/macos/Generated/ (gitignored). Entry point: `make ffi`.
   ci/       Gates. Every file exits non-zero on violation.

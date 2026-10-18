@@ -1,5 +1,5 @@
 {
-  "name": "stepit",
+  "name": "flowline",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
 
   // ── Security: run as non-root user ────────────────────────────

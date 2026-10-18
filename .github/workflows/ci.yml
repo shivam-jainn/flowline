@@ -40,7 +40,7 @@ jobs:
         run: tooling/ci/check_rust.sh
 
       - name: Windows cross-compile check
-        run: cargo check --manifest-path Rust/Cargo.toml -p stepit_win_capture --target x86_64-pc-windows-msvc
+        run: cargo check --manifest-path Rust/Cargo.toml -p flowline_win_capture --target x86_64-pc-windows-msvc
 
       - name: WASM gate
         run: tooling/ci/check_wasm.sh
