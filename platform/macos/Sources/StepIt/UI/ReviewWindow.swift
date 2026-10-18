@@ -34,15 +34,15 @@ public struct ReviewWindow: View {
 
     public var body: some View {
         HSplitView {
-            // Left Column: Steps Timeline & Inspector
+            // Left Column: Steps Timeline & Inspector (primary workspace)
             ReviewStepsPane(session: $session, store: store, onOpenSettings: onOpenSettings)
-                .frame(minWidth: 360, idealWidth: 440)
+                .frame(minWidth: 460, idealWidth: 640, maxWidth: .infinity)
 
-            // Right Column: AI Synthesis & 1-Click Publishing Pane
+            // Right Column: AI Synthesis & 1-Click Publishing Pane (action sidebar)
             rightActionPane
-                .frame(minWidth: 400, idealWidth: 500)
+                .frame(minWidth: 380, idealWidth: 460, maxWidth: 600)
         }
-        .frame(minWidth: 920, minHeight: 620)
+        .frame(minWidth: 920, maxWidth: .infinity, minHeight: 620, maxHeight: .infinity)
         .preferredColorScheme(session.theme == .developerDark ? .dark : (session.theme == .enterpriseSop ? .light : nil))
         .toolbar {
             ToolbarItem(placement: .navigation) {
@@ -109,7 +109,8 @@ public struct ReviewWindow: View {
                         publisher: publisher
                     )
                 }
-                .padding(16)
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .background(Color(NSColor.controlBackgroundColor).opacity(0.5))

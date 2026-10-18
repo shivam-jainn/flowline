@@ -77,7 +77,7 @@ public struct ReviewStepsPane: View {
 
             // Step Cards List
             ScrollView {
-                LazyVStack(spacing: 12) {
+                LazyVStack(alignment: .leading, spacing: 14) {
                     ForEach(session.steps.indices, id: \.self) { idx in
                         stepCard(index: idx)
                     }
@@ -188,6 +188,8 @@ public struct ReviewStepsPane: View {
                         .foregroundColor(.secondary)
                     AnimatedGIFView(url: gifURL)
                         .frame(maxWidth: .infinity, maxHeight: 180)
+                        .frame(height: 180)
+                        .background(Color.black.opacity(0.15))
                         .clipped()
                         .cornerRadius(8)
                         .overlay(
@@ -316,6 +318,7 @@ public struct ReviewStepsPane: View {
             RoundedRectangle(cornerRadius: 10)
                 .stroke(isSelected ? Color.accentColor : Color.secondary.opacity(0.2), lineWidth: isSelected ? 2 : 1)
         )
+        .clipped()
         .onTapGesture {
             selectedStepIndex = step.index
         }
@@ -407,6 +410,15 @@ public struct ReviewStepsPane: View {
 
 // MARK: - Animated GIF preview
 
+/// Custom NSImageView subclass that sets an explicit 180pt height while yielding
+/// horizontal intrinsic width so that high-resolution GIFs (e.g. 2880x1800 Retina)
+/// fit the card width without collapsing to height 0 or expanding the column.
+final class DynamicSizingImageView: NSImageView {
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: NSView.noIntrinsicMetric, height: 180)
+    }
+}
+
 /// Plays an animated GIF from disk. SwiftUI `Image(nsImage:)` renders only
 /// the first frame, so this wraps `NSImageView` (which animates GIFs when
 /// `animates = true`) via `NSViewRepresentable`.
@@ -414,18 +426,21 @@ struct AnimatedGIFView: NSViewRepresentable {
     let url: URL
 
     func makeNSView(context: Context) -> NSImageView {
-        let view = NSImageView()
+        let view = DynamicSizingImageView()
         view.imageScaling = .scaleProportionallyUpOrDown
         view.animates = true
         view.canDrawSubviewsIntoLayer = true
+        view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        view.setContentCompressionResistancePriority(.required, for: .vertical)
+        view.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        view.setContentHuggingPriority(.defaultHigh, for: .vertical)
         view.image = NSImage(contentsOf: url)
         context.coordinator.loadedURL = url
         return view
     }
 
     func updateNSView(_ nsView: NSImageView, context: Context) {
-        // Reload if the file changed under us (e.g. clip patched in late).
-        if context.coordinator.loadedURL != url {
+        if nsView.image == nil || context.coordinator.loadedURL != url {
             nsView.image = NSImage(contentsOf: url)
             nsView.animates = true
             context.coordinator.loadedURL = url
