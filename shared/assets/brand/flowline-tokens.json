@@ -1,0 +1,120 @@
+{
+  "name": "flowline-brand-tokens",
+  "version": "1.0.0",
+  "source": "brand/index.html — Flowline Brand Guidelines v1.0 (October 2026)",
+  "tagline": "Turn what you do into Guides.",
+  "product": "Flowline for macOS",
+  "colors": {
+    "light": {
+      "canvas": "#F7F7F5",
+      "surface": "#FFFFFF",
+      "surfaceSecondary": "#F1F1EF",
+      "ink": "#1D1D1F",
+      "inkSecondary": "#6E6E73",
+      "border": "#E5E5E2",
+      "borderSoft": "#EDEDEA",
+      "selectionBlue": "#3478F6",
+      "interactionAmber": "#FFB340"
+    },
+    "dark": {
+      "canvas": "#18181A",
+      "surface": "#202023",
+      "surfaceSecondary": "#303035",
+      "ink": "#F5F5F7",
+      "inkSecondary": "#A1A1A6",
+      "border": "rgba(255,255,255,0.10)",
+      "borderSoft": "rgba(255,255,255,0.05)",
+      "selectionBlue": "#5E9BFF",
+      "interactionAmber": "#FFB84D"
+    },
+    "roles": {
+      "amber": "marks where the user acted (Halo ring). Never warnings, errors, or editor state.",
+      "blue": "marks what is selected or focused. Never marks the user's hand."
+    },
+    "contrastFloor": "text 4.5:1, large text and icons 3:1. Accents never swapped. No gradients, no rainbow, no glow."
+  },
+  "typography": {
+    "stacks": {
+      "sans": ["-apple-system", "BlinkMacSystemFont", "SF Pro Display", "SF Pro Text", "sans-serif"],
+      "mono": ["ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace"]
+    },
+    "styles": {
+      "hero": { "size": 44, "lineHeight": 1.1, "weight": 600, "tracking": "-0.03em" },
+      "title": { "size": 26, "lineHeight": 1.25, "weight": 600, "tracking": "-0.02em" },
+      "body": { "size": 15, "lineHeight": 1.55, "weight": 400, "tracking": "0" },
+      "caption": { "size": 12, "lineHeight": 1.4, "weight": 500, "tracking": "+0.01em" },
+      "mono": { "size": 12.5, "lineHeight": 1.5, "weight": 400, "tracking": "0" }
+    },
+    "rules": "body never below 15px, line length 65-75ch, line-height 1.45-1.75. Weights 400/500/600 only."
+  },
+  "radii": { "sm": 8, "md": 12, "lg": 16, "appIcon": "22.4%" },
+  "spacing": { "xs": 4, "sm": 8, "md": 12, "lg": 16, "xl": 20, "xxl": 24, "xxxl": 32 },
+  "motion": {
+    "fast": 0.15,
+    "base": 0.22,
+    "slow": 0.32,
+    "standard": [0.28, 0, 0.22, 1],
+    "easeOut": [0.16, 1, 0.3, 1]
+  },
+  "logo": {
+    "path": "M4 18h5v-5h6V8h5",
+    "grid": 24,
+    "stroke": 2.25,
+    "caps": "round",
+    "wordmark": { "stack": "system", "weight": 600, "tracking": "-0.02em" },
+    "clearSpace": "one step-height (5 units) on all sides",
+    "minSizes": { "mark": 16, "lockupWidth": 96 },
+    "variants": ["ink on canvas", "white on ink", "selection-blue on white", "single-ink"]
+  },
+  "icons": {
+    "source": "Lucide official (ISC) — https://github.com/lucide-icons/lucide — stroke adapted 2 -> 1.75 per brand",
+    "map": {
+      "capture": "lucide:focus",
+      "steps": "lucide:list",
+      "guide": "lucide:file-text",
+      "halo": "lucide:circle-dot",
+      "refine": "lucide:list-checks",
+      "publish": "lucide:upload",
+      "reader": "lucide:book-open",
+      "folder": "lucide:folder",
+      "search": "lucide:search",
+      "check": "lucide:check",
+      "chevron": "lucide:chevron-right",
+      "replay": "lucide:rotate-ccw",
+      "cursor": "lucide:mouse-pointer-2",
+      "mark": "custom Flowline logomark (no official equivalent)"
+    },
+    "grid": 24,
+    "stroke": 1.75,
+    "caps": "round",
+    "joins": "round",
+    "color": "currentColor",
+    "minSize": 16,
+    "set": ["capture", "steps", "guide", "halo", "refine", "publish", "reader", "folder", "search", "check", "chevron", "replay", "cursor"]
+  },
+  "assets": {
+    "appIcon": {
+      "master": 1024,
+      "cornerRadius": "22.4%",
+      "markScale": "56%",
+      "light": { "background": "#F7F7F5", "mark": "#1D1D1F", "edge": "hairline #E5E5E2" },
+      "dark": { "background": "#1D1D1F", "mark": "#FFFFFF" }
+    },
+    "dmg": {
+      "size": [540, 400],
+      "retina": [1080, 800],
+      "format": "PNG",
+      "ground": "flat warm canvas #F7F7F5, no photograph, no gradient",
+      "watermark": "logomark 70cqw at 5% ink, bleeding off the lower-left corner",
+      "layout": "flex column: brandline / drag row (app left, dashed arrow, Applications right) / instruction",
+      "instruction": "Drag Flowline to Applications"
+    },
+    "banners": {
+      "siteHero": [1600, 500],
+      "repo": [1280, 640],
+      "og": [1200, 630],
+      "xCard": [1600, 900]
+    },
+    "avatar": { "size": [400, 400], "default": "ink with white mark", "alt": "canvas with ink mark" }
+  }
+}

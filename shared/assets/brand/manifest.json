@@ -1,0 +1,49 @@
+{
+  "name": "flowline-brand-assets",
+  "version": 1,
+  "description": "Canonical cross-platform brand marks for the Share menu. Single source of truth — Swift WebDoc HTML inlines these verbatim.",
+  "icons": {
+    "slack": {
+      "file": "slack.svg",
+      "colors": ["#36C5F0", "#2EB67D", "#E01E5A", "#ECB22E"],
+      "tile": { "background": "#FFFFFF", "glyphPx": 16 },
+      "source": "https://slack.com/media-kit",
+      "usage": "Full-color on white/black/aubergine #4A154B only. Never recolor. See README."
+    },
+    "teams": {
+      "file": "teams.svg",
+      "colors": ["#464EB8", "#7B83EB"],
+      "tile": { "background": "#464EB8", "glyph": "white knockout" },
+      "source": "Fallback MIT-derived (twbs/icons); official 2025 gradient vector is trademark-gated",
+      "usage": "Replace 1:1 with licensed asset once approved. Wordmark 'Microsoft Teams' in text is allowed."
+    },
+    "notion": {
+      "file": "notion.svg",
+      "colors": ["#000000"],
+      "tile": { "background": "theme-aware #FFFFFF/#000000", "glyph": "currentColor" },
+      "source": "Simple Icons notion (byte-identical to press-kit mark)",
+      "usage": "Monochrome only (#000 on #FFF, #FFF on #000). Never recolor."
+    },
+    "gmail": {
+      "file": "gmail.svg",
+      "colors": ["#4285F4", "#34A853", "#FBBC04", "#EA4335", "#C5221F"],
+      "tile": { "background": "#FFFFFF", "glyphPx": 18 },
+      "source": "Canonical 2020 Gmail SVG (Wikimedia, from Google)",
+      "usage": "Full-color on white only. Never single-color. Keep clear-space."
+    },
+    "github": {
+      "file": "github.svg",
+      "colors": ["#000000"],
+      "tile": { "background": "#FFFFFF", "glyph": "currentColor" },
+      "source": "https://primer.github.io/octicons/icon/mark-github-16 (MIT, trademarked)",
+      "usage": "Black on light / white on dark only. Use at native 16px."
+    },
+    "link": {
+      "file": "link.svg",
+      "colors": ["currentColor"],
+      "tile": { "background": "surface-secondary", "glyph": "Lucide link" },
+      "source": "Lucide link (ISC)",
+      "usage": "Generic copy-URL row. No brand constraints."
+    }
+  }
+}
