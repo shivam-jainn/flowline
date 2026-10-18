@@ -1,13 +1,13 @@
 //! Cross-crate shared suite (R/M2-07): one fixture corpus through the FFI
 //! surface — Swift, Rust crates, and (when the toolchain lands) WASM run the
-//! same goldens. Runs under `cargo test -p stepit_ffi`.
+//! same goldens. Runs under `cargo test -p flowline_ffi`.
 
-use stepit_ffi as ffi;
+use flowline_ffi as ffi;
 
 #[test]
 fn api_version_is_pinned() {
     assert_eq!(ffi::API_VERSION, "r-m2.1");
-    let ptr = ffi::stepit_api_version();
+    let ptr = ffi::flowline_api_version();
     assert!(!ptr.is_null());
 }
 
@@ -40,7 +40,7 @@ fn markdown_end_to_end_matches_golden() {
 #[test]
 fn gateway_end_to_end_matches_golden() {
     // The payload golden was built from a text-only session; rebuild the same
-    // input shape here (mirrors stepit_ai_gateway's parity test).
+    // input shape here (mirrors flowline_ai_gateway's parity test).
     let session = serde_json::json!({
         "id": "sess_00000002",
         "startedAt": "2026-03-01T10:00:00Z",

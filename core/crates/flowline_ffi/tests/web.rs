@@ -1,7 +1,7 @@
 //! WASM headless tests (R/M2-07 item 3): same goldens, Node runtime.
-//! Run with `wasm-pack test --node -p stepit_ffi` (needs Node; no browser).
+//! Run with `wasm-pack test --node -p flowline_ffi` (needs Node; no browser).
 
-use stepit_ffi::web;
+use flowline_ffi::web;
 use wasm_bindgen_test::wasm_bindgen_test;
 
 #[wasm_bindgen_test]
