@@ -1,11 +1,11 @@
 //! Windows driver parity (R/M3-01): recorded Windows fixture session flows
-//! through the UNMODIFIED core (`stepit_engine` + `stepit_ir`) end to end.
+//! through the UNMODIFIED core (`flowline_engine` + `flowline_ir`) end to end.
 
-use stepit_engine::state::EngineConfig;
-use stepit_engine::testing::{InMemoryStore, MockDriver};
-use stepit_engine::{Engine, InputEvent};
-use stepit_ir::{KeyModifiers, MediaMode, MouseButton, Point2D, RawInputKind, ThemeName};
-use stepit_win_capture::{hooks, inspector, register};
+use flowline_engine::state::EngineConfig;
+use flowline_engine::testing::{InMemoryStore, MockDriver};
+use flowline_engine::{Engine, InputEvent};
+use flowline_ir::{KeyModifiers, MediaMode, MouseButton, Point2D, RawInputKind, ThemeName};
+use flowline_win_capture::{hooks, inspector, register};
 
 #[test]
 fn mouse_hook_codes_normalize_to_clicks() {

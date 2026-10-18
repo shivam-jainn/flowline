@@ -7,7 +7,7 @@
 //! so [`super::hooks::modifiers_from_key_state`] maps physical Ctrl to the
 //! logical `COMMAND` bit — `Ctrl+C` classifies exactly like `⌘C`.
 
-use stepit_ir::{ElementRect, RawElementContext};
+use flowline_ir::{ElementRect, RawElementContext};
 
 // ---- UIA control-type ids (UIA_ControlTypeIds) --------------------------------
 

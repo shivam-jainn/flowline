@@ -3,7 +3,7 @@
 //! Pure functions over the raw hook payloads. The live pump lives in
 //! `plugin::win32` (`cfg(windows)`); everything here runs on any host.
 
-use stepit_ir::{KeyModifiers, MouseButton, Point2D, RawInputKind};
+use flowline_ir::{KeyModifiers, MouseButton, Point2D, RawInputKind};
 
 // ---- Win32 message codes (Winuser.h) ---------------------------------------
 

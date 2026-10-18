@@ -1,6 +1,6 @@
 //! Plugin manifest + registration for the `windows` driver (R/M3-01).
 
-use stepit_ir::PluginManifest;
+use flowline_ir::PluginManifest;
 
 /// The versioned manifest the host registry resolves (`windows` alongside
 /// `mac` / `mock` / `noop`).
