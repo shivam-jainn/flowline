@@ -9,6 +9,8 @@
 
 use std::path::{Path, PathBuf};
 
+pub mod segmentation;
+
 /// Workspace `core/` dir, resolved from this crate's manifest location.
 pub fn rust_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
