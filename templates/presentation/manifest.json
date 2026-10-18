@@ -1,0 +1,11 @@
+{
+  "copy": "Large visuals with minimal text.",
+  "id": "presentation",
+  "label": "Presentation",
+  "quirks": [
+    "uppercase-titles"
+  ],
+  "synthesisStyle": "executive_summary",
+  "theme": "developer-dark",
+  "version": "1.0.0"
+}

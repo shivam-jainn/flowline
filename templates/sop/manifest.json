@@ -1,0 +1,11 @@
+{
+  "copy": "Action-oriented structured instructions.",
+  "id": "sop",
+  "label": "SOP",
+  "quirks": [
+    "numbered-steps"
+  ],
+  "synthesisStyle": "sop_guide",
+  "theme": "enterprise-sop",
+  "version": "1.0.0"
+}

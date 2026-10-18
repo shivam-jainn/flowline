@@ -1,0 +1,11 @@
+{
+  "copy": "A tickable list of everything to do.",
+  "id": "checklist",
+  "label": "Checklist",
+  "quirks": [
+    "checklist-markers"
+  ],
+  "synthesisStyle": "sop_guide",
+  "theme": "modern-minimal",
+  "version": "1.0.0"
+}

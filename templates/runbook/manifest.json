@@ -1,0 +1,11 @@
+{
+  "copy": "Step, command, expected result, verification.",
+  "id": "runbook",
+  "label": "Runbook",
+  "quirks": [
+    "code-fence"
+  ],
+  "synthesisStyle": "bug_report",
+  "theme": "enterprise-sop",
+  "version": "1.0.0"
+}
