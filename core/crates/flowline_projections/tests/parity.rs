@@ -1,10 +1,10 @@
 //! Parity tests (R/M2-05): markdown golden byte-parity + redaction contract.
 
-use stepit_projections::{
+use flowline_projections::{
     assert_no_raw_secrets, js, markdown, mcp, python, redact_placeholders, shell, SecretSpan,
     ScriptStep,
 };
-use stepit_ir::StepSession;
+use flowline_ir::StepSession;
 
 fn load_session() -> StepSession {
     let raw = parity_harness::load_golden("session.sample.json");

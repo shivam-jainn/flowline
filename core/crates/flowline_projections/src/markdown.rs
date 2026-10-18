@@ -1,5 +1,5 @@
 //! Markdown projection — byte-identical port of
-//! `Sources/StepItPublishing/MarkdownExporter.swift::exportMarkdown`.
+//! `Sources/FlowlinePublishing/MarkdownExporter.swift::exportMarkdown`.
 
 use crate::StepSession;
 
@@ -132,7 +132,7 @@ pub fn export_markdown(session: &StepSession, relative_asset_prefix: &str) -> St
     }
 
     md.push_str("---\n\n");
-    md.push_str("_Documented with [step·it](https://github.com/stepit/stepit) for macOS._\n");
+    md.push_str("_Documented with [step·it](https://github.com/flowline/flowline) for macOS._\n");
     md
 }
 

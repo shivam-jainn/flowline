@@ -1,10 +1,10 @@
 //! Projections: markdown / python / js / shell / mcp string generators (R/M2-05).
 //!
-//! NOTE: `stepit_ir` does not exist as a Rust crate yet (M2-01 has not
+//! NOTE: `flowline_ir` does not exist as a Rust crate yet (M2-01 has not
 //! landed), so the minimal `Session`/`Step` model needed for projection is
 //! defined locally here (serde-compatible with the Swift `StepSession` JSON).
-//! When `stepit_ir` lands, this model should be replaced with a dependency on
-//! it. Field shapes mirror `Sources/StepItIR/Model/StepSession.swift`.
+//! When `flowline_ir` lands, this model should be replaced with a dependency on
+//! it. Field shapes mirror `Sources/FlowlineIR/Model/StepSession.swift`.
 //!
 //! Redaction contract (shared by all generators): secret values NEVER appear
 //! in output. Callers supply pre-classified char-offset spans
@@ -135,4 +135,4 @@ impl ScriptStep {
     }
 }
 
-pub use stepit_ir::{MediaAssets, ScreenCoordinates, Step, StepSession};
+pub use flowline_ir::{MediaAssets, ScreenCoordinates, Step, StepSession};
