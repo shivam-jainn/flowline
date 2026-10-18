@@ -7,7 +7,7 @@
 //! omitted just like Swift's synthesised `encodeIfPresent`.
 
 use crate::{GatewaySettings, prompts};
-use stepit_ir::StepSession;
+use flowline_ir::StepSession;
 use crate::prompts::DocumentationStyle;
 
 /// Mirror of Swift `ImageURLPayload` (`{"url": ...}`).

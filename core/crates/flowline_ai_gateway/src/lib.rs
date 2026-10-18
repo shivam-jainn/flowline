@@ -1,6 +1,6 @@
-//! StepIt AI gateway — PURE part port (R/M2-06).
+//! Flowline AI gateway — PURE part port (R/M2-06).
 //!
-//! Swift twins: `Sources/StepItAIGateway/PromptTemplates.swift`,
+//! Swift twins: `Sources/FlowlineAIGateway/PromptTemplates.swift`,
 //! `MultimodalPayloadBuilder.swift` (model building only),
 //! `GatewayProvider.swift`, `GatewaySettings.swift`.
 //!
@@ -27,7 +27,7 @@ pub trait Transport {
     fn post_json(&self, url: &str, headers: &[(&str, &str)], body: &str) -> Result<String, Error>;
 }
 
-pub use stepit_ir::{ActionType, ScreenCoordinates, Step, StepSession};
+pub use flowline_ir::{ActionType, ScreenCoordinates, Step, StepSession};
 
 // ---------------------------------------------------------------------------
 // Gateway models (Swift twin: GatewayProvider.swift / GatewaySettings.swift)

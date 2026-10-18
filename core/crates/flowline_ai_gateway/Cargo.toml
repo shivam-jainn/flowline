@@ -1,5 +1,5 @@
 [package]
-name = "stepit_ai_gateway"
+name = "flowline_ai_gateway"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,7 +7,7 @@ edition = "2021"
 workspace = true
 
 [dependencies]
-stepit_ir = { path = "../stepit_ir" }
+flowline_ir = { path = "../flowline_ir" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

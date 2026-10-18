@@ -1,10 +1,10 @@
 //! Parity tests (R/M2-06): golden payload + prompt/provider unit tests.
 
-use stepit_ai_gateway::{
+use flowline_ai_gateway::{
     GatewayProviderType, payload, prompts,
     prompts::DocumentationStyle, settings_for_provider,
 };
-use stepit_ir::{ActionType, MediaAssets, MediaMode, Step, StepSession, ThemeName};
+use flowline_ir::{ActionType, MediaAssets, MediaMode, Step, StepSession, ThemeName};
 
 /// The Swift `Date.formatted()` rendering embedded in the golden payload.
 /// NOTE: the space before `PM` is U+202F NARROW NO-BREAK SPACE (that is what
@@ -190,7 +190,7 @@ fn vision_session() -> StepSession {
         element_role: Some("AXButton".to_owned()),
         element_title: Some("Save".to_owned()),
         element_value: None,
-        coordinates: Some(stepit_ir::ScreenCoordinates { x: 100.7, y: 200.2 }),
+        coordinates: Some(flowline_ir::ScreenCoordinates { x: 100.7, y: 200.2 }),
         window_bounds: None,
         element_bounds: None,
         action_description: "Click \"Save\" in Docs".to_owned(),
@@ -198,7 +198,7 @@ fn vision_session() -> StepSession {
         text_blob: None,
         is_code: false,
         code_language: None,
-        assets: stepit_ir::MediaAssets {
+        assets: flowline_ir::MediaAssets {
             screenshot: None, // no screenshot asset -> image entry must be skipped
             gif: Some("media/anim-2.gif".to_owned()),
             ..Default::default()
