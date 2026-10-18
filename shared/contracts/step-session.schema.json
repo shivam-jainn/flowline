@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://stepit.dev/contracts/step-session.schema.json",
+  "$id": "https://flowline.dev/contracts/step-session.schema.json",
   "title": "StepSession",
-  "description": "Canonical StepIt recording session. Implemented by StepItIR.StepSession (Swift, Codable) and stepit_ir::session (Rust, serde camelCase). Wire timestamps are RFC 3339 strings. See shared/goldens/session.sample.json.",
+  "description": "Canonical Flowline recording session. Implemented by FlowlineIR.StepSession (Swift, Codable) and flowline_ir::session (Rust, serde camelCase). Wire timestamps are RFC 3339 strings. See shared/goldens/session.sample.json.",
   "type": "object",
   "required": ["id", "startedAt", "title", "theme", "mediaMode", "steps", "exports"],
   "properties": {

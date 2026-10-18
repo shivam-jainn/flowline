@@ -27,7 +27,7 @@
 
 - **Application**: `Terminal`
 - **Window**: *zsh*
-- **Working Directory**: `~/Code/stepit`
+- **Working Directory**: `~/Code/flowline`
 
 ```bash
 git status
@@ -41,4 +41,4 @@ git status
 
 ---
 
-_Documented with [step·it](https://github.com/stepit/stepit) for macOS._
+_Documented with [step·it](https://github.com/flowline/flowline) for macOS._

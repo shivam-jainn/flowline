@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://stepit.dev/contracts/plugin-manifest.schema.json",
+  "$id": "https://flowline.dev/contracts/plugin-manifest.schema.json",
   "title": "PluginManifest",
-  "description": "Manifest every capture driver, exporter, and AI provider ships; hosts assert minimum versions at startup. Implemented by StepItIR.PluginManifest (Swift) and stepit_ir::manifest (Rust). See shared/goldens/manifest.sample.json.",
+  "description": "Manifest every capture driver, exporter, and AI provider ships; hosts assert minimum versions at startup. Implemented by FlowlineIR.PluginManifest (Swift) and flowline_ir::manifest (Rust). See shared/goldens/manifest.sample.json.",
   "type": "object",
   "required": ["id", "version", "capabilities", "minimumHostVersion"],
   "properties": {

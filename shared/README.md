@@ -1,7 +1,7 @@
 # shared/ — the shared packages (turborepo `packages/` equivalent)
 
 Language-agnostic data both toolchains consume. No code here — only
-contracts, fixtures, and goldens. The arch gate (`tooling/ci/check_architecture.sh`,
+contracts, fixtures, goldens, and brand assets. The arch gate (`tooling/ci/check_architecture.sh`,
 rule 10) fails the build on any `.swift`/`.rs` under `shared/`.
 
 ```
@@ -11,6 +11,9 @@ shared/
                of these shapes; the schemas are the tiebreaker in any dispute.
   fixtures/    Deterministic fixture data (playground-web). Nothing compiled.
   goldens/     Golden corpus both suites assert against (parity_harness + Swift tests).
+  assets/brand/ Canonical Share-menu brand marks (SVG + manifest.json).
+               Single source of truth for logos inlined by the WebDoc HTML
+               export. See assets/brand/README.md. SVG/data only — no code.
 ```
 
 Rules:

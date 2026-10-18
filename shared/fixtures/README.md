@@ -1,12 +1,12 @@
 # Fixtures
 
-Fixture data for StepIt's tests and fixture-driven demo tooling. **Nothing in this
+Fixture data for Flowline's tests and fixture-driven demo tooling. **Nothing in this
 folder is product code** — it exists so the recorder, the WebKit renderer, and the
 demo generators always have a deterministic, license-free UI to operate on.
 
 ## `playground-web/`
 
-A self-contained, 10-page static web app ("StepIt Playground") covering the UI
+A self-contained, 10-page static web app ("Flowline Playground") covering the UI
 surface the recorder needs to exercise:
 
 | Page | Scenario |
@@ -29,14 +29,14 @@ automation target.
 
 ## How it is consumed
 
-- **`platform/macos/Sources/StepItFixtures/`** — `FixtureLocator` resolves this tree and
+- **`platform/macos/Sources/FlowlineFixtures/`** — `FixtureLocator` resolves this tree and
   `PlaygroundPageRenderer` renders pages offscreen via WebKit for automated
-  captures. Lookup order: `STEPIT_FIXTURES_DIR` env var → walk up from the
+  captures. Lookup order: `FLOWLINE_FIXTURES_DIR` env var → walk up from the
   working directory → walk up from the source file → app bundle resources.
-- **CLI** — `swift run stepit serve [port]` serves `playground-web/` over HTTP;
-  `swift run stepit demo` and `swift run stepit automate` build demo sessions
+- **CLI** — `swift run flowline serve [port]` serves `playground-web/` over HTTP;
+  `swift run flowline demo` and `swift run flowline automate` build demo sessions
   from these pages.
-- **Tests** — `platform/macos/Tests/StepItTests/Fixtures/` and `platform/macos/Tests/StepItTests/StepItTests.swift`
+- **Tests** — `platform/macos/Tests/FlowlineTests/Fixtures/` and `platform/macos/Tests/FlowlineTests/FlowlineTests.swift`
   assert page integrity, DOM interaction, and full end-to-end sessions against
   this tree.
 

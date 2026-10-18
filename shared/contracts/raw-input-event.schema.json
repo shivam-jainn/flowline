@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://stepit.dev/contracts/raw-input-event.schema.json",
+  "$id": "https://flowline.dev/contracts/raw-input-event.schema.json",
   "title": "RawInputEvent",
-  "description": "Single captured input event. Implemented by StepItIR.RawInputEvent (Swift) and stepit_ir::events (Rust). `kind` is a single-key tagged object. See shared/goldens/events.sample.json(.jsonl).",
+  "description": "Single captured input event. Implemented by FlowlineIR.RawInputEvent (Swift) and flowline_ir::events (Rust). `kind` is a single-key tagged object. See shared/goldens/events.sample.json(.jsonl).",
   "type": "object",
   "required": ["id", "timestamp", "kind"],
   "properties": {

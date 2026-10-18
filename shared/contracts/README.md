@@ -5,9 +5,10 @@ boundary. Both implementations exist to satisfy these files:
 
 | Schema | Swift | Rust | Golden |
 | ------ | ----- | ---- | ------ |
-| `step-session.schema.json` | `StepItIR.StepSession` / `Step` | `stepit_ir::session` | `shared/goldens/session.sample.json` |
-| `raw-input-event.schema.json` | `StepItIR.RawInputEvent` | `stepit_ir::events` | `shared/goldens/events.sample.json(.jsonl)` |
-| `plugin-manifest.schema.json` | `StepItIR.PluginManifest` | `stepit_ir::manifest` | `shared/goldens/manifest.sample.json` |
+| `step-session.schema.json` | `FlowlineIR.StepSession` / `Step` | `flowline_ir::session` | `shared/goldens/session.sample.json` |
+| `segmentation-eval.schema.json` | — (Rust-only eval) | `parity_harness::segmentation` | `shared/goldens/segmentation.*.json` |
+| `raw-input-event.schema.json` | `FlowlineIR.RawInputEvent` | `flowline_ir::events` | `shared/goldens/events.sample.json(.jsonl)` |
+| `plugin-manifest.schema.json` | `FlowlineIR.PluginManifest` | `flowline_ir::manifest` | `shared/goldens/manifest.sample.json` |
 
 Wire rules both sides follow: camelCase keys, RFC 3339 date-time strings,
 `kind` as a single-key tagged object, optional fields nullable-or-absent.
