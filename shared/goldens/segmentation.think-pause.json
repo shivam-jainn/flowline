@@ -1,0 +1,48 @@
+{
+  "name": "think-pause",
+  "description": "Think-pause over-cut: one typing burst cut into two steps by the 1s debounce (1.8s pause mid-revision). Same Notes field, high topic overlap. Repair must coalesce via proximity + text similarity (2/3 votes).",
+  "reference": [
+    "Status update: backend migration is complete Status update: backend migration is delayed"
+  ],
+  "before": [
+    "Status update: backend migration is complete",
+    " Status update: backend migration is delayed"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "timestamp": "2026-03-01T10:00:00Z",
+      "action": "typing",
+      "appName": "Notes",
+      "bundleIdentifier": "com.apple.Notes",
+      "windowTitle": "Draft",
+      "elementRole": "AXTextField",
+      "elementTitle": "Draft",
+      "textBlob": "Status update: backend migration is complete"
+    },
+    {
+      "id": "s2",
+      "timestamp": "2026-03-01T10:00:01.800Z",
+      "action": "typing",
+      "appName": "Notes",
+      "bundleIdentifier": "com.apple.Notes",
+      "windowTitle": "Draft",
+      "elementRole": "AXTextField",
+      "elementTitle": "Draft",
+      "textBlob": " Status update: backend migration is delayed"
+    }
+  ],
+  "evidence": [],
+  "expect": {
+    "merges": 1,
+    "splits": 0,
+    "after": [
+      "Status update: backend migration is complete Status update: backend migration is delayed"
+    ]
+  },
+  "baseline": {
+    "falseCutRate": 0.0,
+    "falseJoinRate": 0.0,
+    "f1": 1.0
+  }
+}

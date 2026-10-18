@@ -1,0 +1,61 @@
+{
+  "name": "rapid-clicks",
+  "description": "Rapid distinct clicks: three buttons 150-200ms apart (inside the 200ms debounce window, but distinct targets). Textless steps only earn the proximity vote, so repair must keep all three (merging would be a false join).",
+  "reference": [
+    "<click:Save>",
+    "<click:Cancel>",
+    "<click:Apply>"
+  ],
+  "before": [
+    "<click:Save>",
+    "<click:Cancel>",
+    "<click:Apply>"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "timestamp": "2026-03-01T10:00:00Z",
+      "action": "click",
+      "appName": "Safari",
+      "bundleIdentifier": "com.apple.Safari",
+      "windowTitle": "Docs",
+      "elementRole": "AXButton",
+      "elementTitle": "Save"
+    },
+    {
+      "id": "s2",
+      "timestamp": "2026-03-01T10:00:00.150Z",
+      "action": "click",
+      "appName": "Safari",
+      "bundleIdentifier": "com.apple.Safari",
+      "windowTitle": "Docs",
+      "elementRole": "AXButton",
+      "elementTitle": "Cancel"
+    },
+    {
+      "id": "s3",
+      "timestamp": "2026-03-01T10:00:00.350Z",
+      "action": "click",
+      "appName": "Safari",
+      "bundleIdentifier": "com.apple.Safari",
+      "windowTitle": "Docs",
+      "elementRole": "AXButton",
+      "elementTitle": "Apply"
+    }
+  ],
+  "evidence": [],
+  "expect": {
+    "merges": 0,
+    "splits": 0,
+    "after": [
+      "<click:Save>",
+      "<click:Cancel>",
+      "<click:Apply>"
+    ]
+  },
+  "baseline": {
+    "falseCutRate": 0.0,
+    "falseJoinRate": 0.0,
+    "f1": 1.0
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "name": "cross-field-tab",
+  "description": "Cross-field fast Tab: 300ms gap between typing in Full Name and Email. Typing steps carry no field identity in this IR, so the vote must refuse: dissimilar text earns only the proximity vote (would be a false join).",
+  "reference": [
+    "Ada Lovelace",
+    "ada@example.com"
+  ],
+  "before": [
+    "Ada Lovelace",
+    "ada@example.com"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "timestamp": "2026-03-01T10:00:00Z",
+      "action": "typing",
+      "appName": "Safari",
+      "bundleIdentifier": "com.apple.Safari",
+      "windowTitle": "Checkout",
+      "elementRole": "AXTextField",
+      "elementTitle": "Full Name",
+      "textBlob": "Ada Lovelace"
+    },
+    {
+      "id": "s2",
+      "timestamp": "2026-03-01T10:00:00.300Z",
+      "action": "typing",
+      "appName": "Safari",
+      "bundleIdentifier": "com.apple.Safari",
+      "windowTitle": "Checkout",
+      "elementRole": "AXTextField",
+      "elementTitle": "Email",
+      "textBlob": "ada@example.com"
+    }
+  ],
+  "evidence": [],
+  "expect": {
+    "merges": 0,
+    "splits": 0,
+    "after": [
+      "Ada Lovelace",
+      "ada@example.com"
+    ]
+  },
+  "baseline": {
+    "falseCutRate": 0.0,
+    "falseJoinRate": 0.0,
+    "f1": 1.0
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "name": "paste-burst",
+  "description": "Paste burst over-cut: a short typed note plus a pasted expansion 600ms later in the same field. Clipboard chain (paste marker + 14-char containment) plus proximity reach 2/3 votes; the superset blob wins the merge.",
+  "reference": [
+    "Report figures Q3 final pasted"
+  ],
+  "before": [
+    "Report figures",
+    "Report figures Q3 final pasted"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "timestamp": "2026-03-01T10:00:00Z",
+      "action": "typing",
+      "appName": "Notes",
+      "bundleIdentifier": "com.apple.Notes",
+      "windowTitle": "Draft",
+      "elementRole": "AXTextField",
+      "elementTitle": "Draft",
+      "textBlob": "Report figures"
+    },
+    {
+      "id": "s2",
+      "timestamp": "2026-03-01T10:00:00.600Z",
+      "action": "typing",
+      "appName": "Notes",
+      "bundleIdentifier": "com.apple.Notes",
+      "windowTitle": "Draft",
+      "elementRole": "AXTextField",
+      "elementTitle": "Draft",
+      "textBlob": "Report figures Q3 final pasted",
+      "userNotes": "pasted from Sheets"
+    }
+  ],
+  "evidence": [],
+  "expect": {
+    "merges": 1,
+    "splits": 0,
+    "after": [
+      "Report figures Q3 final pasted"
+    ]
+  },
+  "baseline": {
+    "falseCutRate": 0.0,
+    "falseJoinRate": 0.0,
+    "f1": 1.0
+  }
+}

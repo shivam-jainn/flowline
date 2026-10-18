@@ -1,0 +1,45 @@
+{
+  "name": "terminal-multi",
+  "description": "Terminal multi-command over-join: three Return-submitted commands (606 chars) recorded as one write_code step. Raw log shows 3 terminal prompts plus Return submits, so the split pass must cut on newlines into three commands.",
+  "reference": [
+    "git log --oneline --graph --decorate --all --max-count=50 --date=short --pretty=format:commit-summary --mergetool pipeline engine harness parity --since=2026-01-01 --until=2026-03-01 --author=release-team",
+    "npm run test:workspace -- --coverage --reporter=spec --timeout=120000 --bail=false --verbose packages/core packages/engine packages/harness fixtures --max-workers=8 --report-dir=dist/coverage",
+    "docker build --platform=linux/amd64 --build-arg RUST_PROFILE=release --tag flowline/ci:2026-03-01 --file tooling/docker/Dockerfile --pull --progress=plain --no-cache --secret id=ci_token,src=/run/secrets/token ."
+  ],
+  "before": [
+    "git log --oneline --graph --decorate --all --max-count=50 --date=short --pretty=format:commit-summary --mergetool pipeline engine harness parity --since=2026-01-01 --until=2026-03-01 --author=release-team\nnpm run test:workspace -- --coverage --reporter=spec --timeout=120000 --bail=false --verbose packages/core packages/engine packages/harness fixtures --max-workers=8 --report-dir=dist/coverage\ndocker build --platform=linux/amd64 --build-arg RUST_PROFILE=release --tag flowline/ci:2026-03-01 --file tooling/docker/Dockerfile --pull --progress=plain --no-cache --secret id=ci_token,src=/run/secrets/token ."
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "timestamp": "2026-03-01T10:00:00Z",
+      "action": "write_code",
+      "appName": "Ghostty",
+      "bundleIdentifier": "com.mitchellh.ghostty",
+      "windowTitle": "zsh",
+      "elementRole": "AXTerminal",
+      "elementTitle": "(bash)",
+      "textBlob": "git log --oneline --graph --decorate --all --max-count=50 --date=short --pretty=format:commit-summary --mergetool pipeline engine harness parity --since=2026-01-01 --until=2026-03-01 --author=release-team\nnpm run test:workspace -- --coverage --reporter=spec --timeout=120000 --bail=false --verbose packages/core packages/engine packages/harness fixtures --max-workers=8 --report-dir=dist/coverage\ndocker build --platform=linux/amd64 --build-arg RUST_PROFILE=release --tag flowline/ci:2026-03-01 --file tooling/docker/Dockerfile --pull --progress=plain --no-cache --secret id=ci_token,src=/run/secrets/token ."
+    }
+  ],
+  "evidence": [
+    {
+      "terminalPrompts": 3,
+      "returnSubmit": true
+    }
+  ],
+  "expect": {
+    "merges": 0,
+    "splits": 2,
+    "after": [
+      "git log --oneline --graph --decorate --all --max-count=50 --date=short --pretty=format:commit-summary --mergetool pipeline engine harness parity --since=2026-01-01 --until=2026-03-01 --author=release-team",
+      "npm run test:workspace -- --coverage --reporter=spec --timeout=120000 --bail=false --verbose packages/core packages/engine packages/harness fixtures --max-workers=8 --report-dir=dist/coverage",
+      "docker build --platform=linux/amd64 --build-arg RUST_PROFILE=release --tag flowline/ci:2026-03-01 --file tooling/docker/Dockerfile --pull --progress=plain --no-cache --secret id=ci_token,src=/run/secrets/token ."
+    ]
+  },
+  "baseline": {
+    "falseCutRate": 0.0,
+    "falseJoinRate": 0.0,
+    "f1": 1.0
+  }
+}

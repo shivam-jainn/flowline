@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://flowline.dev/contracts/segmentation-eval.schema.json",
+  "title": "SegmentationEvalCase",
+  "description": "One post-hoc repair eval case (false cuts / false joins). Consumed by flowline_pipeline tests (repair_segments), flowline_engine tests (repair_session), and parity_harness::segmentation (metrics + CI gate). Cases live in shared/goldens/segmentation.*.json.",
+  "type": "object",
+  "required": ["name", "description", "reference", "before", "steps", "expect", "baseline"],
+  "properties": {
+    "name": { "type": "string", "description": "Case id (golden stem suffix, e.g. think-pause)" },
+    "description": { "type": "string" },
+    "reference": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Reference segmentation as ordered segment strings. Non-text steps render as <action:element> units (see flowline_pipeline::postpass::segment_text)."
+    },
+    "before": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Pre-repair segmentation (over-cut or over-joined), same unit encoding"
+    },
+    "steps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/StepSpec" },
+      "description": "Input steps fed to the repair pass, time order"
+    },
+    "evidence": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/EvidenceSpec" },
+      "description": "Per-step raw-log evidence for the split pass. Aligns with steps; missing entries mean no evidence."
+    },
+    "expect": { "$ref": "#/$defs/ExpectSpec" },
+    "baseline": { "$ref": "#/$defs/Baseline" }
+  },
+  "$defs": {
+    "StepSpec": {
+      "type": "object",
+      "required": ["id", "timestamp", "action", "appName"],
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "action": {
+          "type": "string",
+          "enum": ["typing", "write_code", "click", "mouse_drag", "app_switch", "key_press", "manual"]
+        },
+        "appName": { "type": "string" },
+        "bundleIdentifier": { "type": ["string", "null"] },
+        "windowTitle": { "type": "string" },
+        "elementRole": { "type": ["string", "null"] },
+        "elementTitle": { "type": ["string", "null"] },
+        "textBlob": { "type": ["string", "null"] },
+        "userNotes": { "type": ["string", "null"] }
+      }
+    },
+    "EvidenceSpec": {
+      "type": "object",
+      "description": "High-confidence raw-log triggers only. Any one arms the split pass for an oversized segment.",
+      "properties": {
+        "missedFocus": { "type": "boolean" },
+        "pasteWithAppChange": { "type": "boolean" },
+        "returnSubmit": { "type": "boolean" },
+        "urlDomainChange": { "type": "boolean" },
+        "terminalPrompts": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "ExpectSpec": {
+      "type": "object",
+      "required": ["merges", "splits", "after"],
+      "properties": {
+        "merges": { "type": "integer", "minimum": 0 },
+        "splits": { "type": "integer", "minimum": 0 },
+        "after": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Expected post-repair segmentation, same unit encoding"
+        }
+      }
+    },
+    "Baseline": {
+      "type": "object",
+      "required": ["falseCutRate", "falseJoinRate", "f1"],
+      "description": "Pinned post-repair scores. CI gate (check_segmentation.sh): falseCutRate/falseJoinRate must not exceed baseline + 0.02, f1 must not drop below baseline - 0.02.",
+      "properties": {
+        "falseCutRate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "falseJoinRate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "f1": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "Scores": {
+      "type": "object",
+      "description": "Metric report emitted by parity_harness::segmentation::evaluate (after-repair runs print one line per case).",
+      "properties": {
+        "units": { "type": "integer" },
+        "window": { "type": "integer" },
+        "trueBoundaries": { "type": "integer" },
+        "predBoundaries": { "type": "integer" },
+        "truePositives": { "type": "integer" },
+        "falsePositives": { "type": "integer" },
+        "falseNegatives": { "type": "integer" },
+        "trueNegatives": { "type": "integer" },
+        "precision": { "type": "number" },
+        "recall": { "type": "number" },
+        "f1": { "type": "number" },
+        "falseCutRate": { "type": "number" },
+        "falseJoinRate": { "type": "number" },
+        "pk": { "type": "number" },
+        "windowDiff": { "type": "number" }
+      }
+    }
+  }
+}

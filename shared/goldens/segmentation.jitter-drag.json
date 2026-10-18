@@ -1,0 +1,48 @@
+{
+  "name": "jitter-drag",
+  "description": "Jitter-drag: two small drags on the same Volume slider 400ms apart (pointer jitter, not one gesture). Same context and proximity vote, but textless drags score 0 on similarity/continuation, so repair must keep both.",
+  "reference": [
+    "<mouse_drag:Volume>",
+    "<mouse_drag:Volume>"
+  ],
+  "before": [
+    "<mouse_drag:Volume>",
+    "<mouse_drag:Volume>"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "timestamp": "2026-03-01T10:00:00Z",
+      "action": "mouse_drag",
+      "appName": "Music",
+      "bundleIdentifier": "com.apple.Music",
+      "windowTitle": "MiniPlayer",
+      "elementRole": "AXSlider",
+      "elementTitle": "Volume"
+    },
+    {
+      "id": "s2",
+      "timestamp": "2026-03-01T10:00:00.400Z",
+      "action": "mouse_drag",
+      "appName": "Music",
+      "bundleIdentifier": "com.apple.Music",
+      "windowTitle": "MiniPlayer",
+      "elementRole": "AXSlider",
+      "elementTitle": "Volume"
+    }
+  ],
+  "evidence": [],
+  "expect": {
+    "merges": 0,
+    "splits": 0,
+    "after": [
+      "<mouse_drag:Volume>",
+      "<mouse_drag:Volume>"
+    ]
+  },
+  "baseline": {
+    "falseCutRate": 0.0,
+    "falseJoinRate": 0.0,
+    "f1": 1.0
+  }
+}

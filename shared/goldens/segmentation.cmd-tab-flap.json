@@ -1,0 +1,55 @@
+{
+  "name": "cmd-tab-flap",
+  "description": "Cmd-Tab flap: Safari -> Terminal -> Safari app switches 800-900ms apart (system-consumed, never merged). Cross-bundle pairs fail the context gate, so repair must keep all three (merging would be a false join).",
+  "reference": [
+    "<app_switch:Safari>",
+    "<app_switch:Terminal>",
+    "<app_switch:Safari>"
+  ],
+  "before": [
+    "<app_switch:Safari>",
+    "<app_switch:Terminal>",
+    "<app_switch:Safari>"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "timestamp": "2026-03-01T10:00:00Z",
+      "action": "app_switch",
+      "appName": "Safari",
+      "bundleIdentifier": "com.apple.Safari",
+      "windowTitle": "Docs"
+    },
+    {
+      "id": "s2",
+      "timestamp": "2026-03-01T10:00:00.800Z",
+      "action": "app_switch",
+      "appName": "Terminal",
+      "bundleIdentifier": "com.apple.Terminal",
+      "windowTitle": "zsh"
+    },
+    {
+      "id": "s3",
+      "timestamp": "2026-03-01T10:00:01.700Z",
+      "action": "app_switch",
+      "appName": "Safari",
+      "bundleIdentifier": "com.apple.Safari",
+      "windowTitle": "Docs"
+    }
+  ],
+  "evidence": [],
+  "expect": {
+    "merges": 0,
+    "splits": 0,
+    "after": [
+      "<app_switch:Safari>",
+      "<app_switch:Terminal>",
+      "<app_switch:Safari>"
+    ]
+  },
+  "baseline": {
+    "falseCutRate": 0.0,
+    "falseJoinRate": 0.0,
+    "f1": 1.0
+  }
+}
