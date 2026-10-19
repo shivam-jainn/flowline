@@ -348,8 +348,14 @@ public enum FlowMotion {
     public static let slow: Double = 0.32
     public static var standard: Animation { .timingCurve(0.28, 0, 0.22, 1, duration: base) }
     public static var standardFast: Animation { .timingCurve(0.28, 0, 0.22, 1, duration: fast) }
+    /// Standard curve at the slow duration — agent-island expand/collapse
+    /// (UI1.md §4.1: expand `slow` + `standard`; mirrors proto `0.32`).
+    public static var standardSlow: Animation { .timingCurve(0.28, 0, 0.22, 1, duration: slow) }
     public static var easeOut: Animation { .timingCurve(0.16, 1, 0.3, 1, duration: base) }
     public static var easeOutFast: Animation { .timingCurve(0.16, 1, 0.3, 1, duration: fast) }
+    /// Ease-out at the slow duration — agent-island entrance
+    /// (proto `ai-island` enters over `0.32`).
+    public static var easeOutSlow: Animation { .timingCurve(0.16, 1, 0.3, 1, duration: slow) }
     public static var spring: Animation { .spring(response: 0.32, dampingFraction: 0.82) }
     /// Sibling-shift spring — snappier than `spring` so cards glide aside
     /// during a drag without lagging the pointer. Drag-driven layout motion
