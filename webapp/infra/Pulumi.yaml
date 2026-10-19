@@ -1,0 +1,16 @@
+name: flowline-webapp
+description: Flowline waitlist Neon infra
+runtime:
+  name: nodejs
+  options:
+    packagemanager: npm
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: typescript
+packages:
+  neon:
+    source: terraform-provider
+    version: 1.5.0
+    parameters:
+      - kislerdm/neon

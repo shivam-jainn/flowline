@@ -81,6 +81,19 @@ public struct FlowlineGutter: View {
                     Spacer(minLength: 12)
                 }
                 .padding(12)
+                .background(alignment: .topLeading) {
+                    // Pointer blob: follows the pointer continuously (not
+                    // gap-snapped), painted UNDER the cards, clipped to the
+                    // gutter viewport by the ScrollView. Tracks lastMouseX
+                    // 1:1 with no position animation; only the appear/disappear
+                    // fade animates. Hidden on leave and during drags.
+                    if let x = lastMouseX, draggingID == nil {
+                        PointerBlob()
+                            .offset(x: x - PointerBlob.width / 2, y: 12)
+                            .transition(reduceMotion ? .opacity : .opacity)
+                    }
+                }
+                .animation(FlowMotion.standardFast, value: lastMouseX == nil || draggingID != nil)
                 .coordinateSpace(name: "gutter")
                 .background(
                     GutterMouseTracker(
@@ -305,7 +318,7 @@ public struct FlowlineGutter: View {
     }
 
     private func insertSlot(at index: Int) -> some View {
-        ProximityInsert(index: index, zone: nearInsert == index, armed: armedInsert == index) {
+        ProximityInsert(index: index, armed: armedInsert == index) {
             onInsert(index)
         }
         .background(InsertMidReader(index: index))
@@ -651,14 +664,13 @@ private struct GutterMouseTracker: NSViewRepresentable {
 }
 
 /// Proximity insert (`gut-insert` + `insert-btn`), two-stage:
-/// the blue grain wash appears the instant the pointer enters the gap
-/// (zone — "something can happen here"), the 24px circle `+` expands
+/// a pointer blob glows BEHIND the cards while the pointer is in the gutter
+/// (see the `PointerBlob` behind-layer above), the 24px circle `+` expands
 /// 0→30px only after the dwell (armed — deliberate pause). Leaving the
-/// zone clears both immediately. The wash is a fixed-frame background so
-/// it never takes layout space; only the armed expansion shifts siblings.
+/// gutter clears both immediately. Only the armed expansion takes layout
+/// space; the blob never does.
 private struct ProximityInsert: View {
     var index: Int
-    var zone: Bool
     var armed: Bool
     var action: () -> Void
     @State private var hovering = false
@@ -682,8 +694,7 @@ private struct ProximityInsert: View {
         .buttonStyle(FlowPressStyle())
         .opacity(armed ? 1 : 0)
         .scaleEffect(armed && !reduceMotion ? 1.0 : 0.9)
-        .frame(width: armed ? 30 : 0, height: 64)
-        .background(InsertHint(visible: zone))
+        .frame(width: armed ? 30 : 0, height: 88)
         .animation(FlowMotion.easeOut, value: armed)
         .onHover { hovering = $0 }
         .allowsHitTesting(armed)
@@ -692,40 +703,34 @@ private struct ProximityInsert: View {
     }
 }
 
-/// Clean insertion hint shown the instant the pointer enters a gap zone.
-/// A 4px lateral gradient bar reaching ~40% into each neighboring card
-/// toward its center (spec §11: thin, clean, understated).
-/// Lateral color blend (accent → hover) + transparent tips so the overhang
-/// melts into the cards. Painted as an overlay so the overhang
-/// never takes layout space; only the armed `+` expansion shifts siblings.
-/// Opacity + scaleX only; Reduce-Motion safe via the parent's gating.
-private struct InsertHint: View {
-    var visible: Bool
-    @Environment(\.colorScheme) private var scheme
+/// Pointer blob, rendered in the behind-layer UNDER the cards: a soft
+/// radial accent glow that tracks the pointer's continuous X (not
+/// gap-snapped). One cheap gradient fill, no blur/shadow/grain, so it
+/// stays at a cache lookup + frame fill during hover. Fixed 88pt height
+/// matching the card row; the ScrollView clips it to the gutter.
+private struct PointerBlob: View {
+    static let width: CGFloat = 180
+    static let height: CGFloat = 88
 
-    /// Slot (30) + 40% of one card width on each side.
-    private static var lineWidth: CGFloat { 30 + FlowComponent.cardWidth * 0.8 }
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let sem = FlowSemantic.for(scheme)
-        Capsule()
+        Ellipse()
             .fill(
-                LinearGradient(
+                RadialGradient(
                     stops: [
-                        .init(color: sem.accentDefault.opacity(0), location: 0),
-                        .init(color: sem.accentDefault, location: 0.22),
-                        .init(color: sem.aiFg, location: 0.78),
-                        .init(color: sem.aiFg.opacity(0), location: 1),
+                        .init(color: sem.accentDefault.opacity(0.32), location: 0),
+                        .init(color: sem.accentDefault.opacity(0.18), location: 0.45),
+                        .init(color: sem.aiFg.opacity(0.12), location: 0.7),
+                        .init(color: .clear, location: 1),
                     ],
-                    startPoint: .leading,
-                    endPoint: .trailing
+                    center: .center,
+                    startRadius: 0,
+                    endRadius: 90
                 )
             )
-            .frame(width: Self.lineWidth, height: 6)
-            .shadow(color: sem.stepInsertion.opacity(0.35), radius: 4, y: 0)
-            .opacity(visible ? 1 : 0)
-            .scaleEffect(visible ? 1 : 0.7, anchor: .center)
-            .animation(FlowMotion.standardFast, value: visible)
+            .frame(width: Self.width, height: Self.height)
     }
 }
 

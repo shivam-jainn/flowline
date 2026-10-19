@@ -49,3 +49,7 @@ opencode.json
 
 # ── Product docs (local only, never committed) ───────────────────────
 docs/
+
+# ── Waitlist webapp (local file backend, never commit signups) ─────────
+webapp/data/
+webapp/.next/

@@ -1,0 +1,7 @@
+/bin/
+/node_modules/
+.pulumi/
+*.log
+# Local env files must never be committed (sync-env.sh writes them 600).
+.env*
+!.env.example

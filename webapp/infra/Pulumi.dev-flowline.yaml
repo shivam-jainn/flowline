@@ -1,0 +1,10 @@
+encryptionsalt: v1:fRcqSQac4zg=:v1:wlHzOhaXFcNrR/1k:hloIW9uLzoF53k1FduxcK145SOJxwg==
+config:
+  flowline-webapp:regionId: aws-us-east-1
+  flowline-webapp:pgVersion: "17"
+  flowline-webapp:projectName: flowline-waitlist
+  flowline-webapp:databaseName: flowline
+  flowline-webapp:roleName: flowline_app
+  flowline-webapp:branchName: dev-flowline
+  flowline-webapp:orgId:
+    secure: v1:Pn6qUN2ZWW5uGpmx:kfLfMO1nauz1q7Z469I5r7OSasxnfA5V8cX8xxOa7gad9d99W5o=

@@ -105,10 +105,17 @@ if [ -d "${ROOT_DIR}/shared/fixtures/playground-web" ]; then
     cp -R "${ROOT_DIR}/shared/fixtures/playground-web" "${RESOURCES_DIR}/Fixtures/"
 fi
 
-# 6. Code signing. TCC (Screen Recording / Accessibility) survives rebuilds
-# ONLY under an Apple-issued identity (TeamIdentifier set): ad-hoc and
-# self-signed certs are hash-keyed, so every rebuild looks like a new app
-# and macOS drops the grants.
+# 6. Code signing. TCC stability is 3-tier:
+#   1. Apple-issued (TeamIdentifier set): GUARANTEED stable — TCC keys on
+#      (TeamID, BundleID), rebuilds keep grants. The only fix that ends
+#      Settings trips. Free via Xcode + Apple ID.
+#   2. Stable local self-signed ("Flowline Development"): DR-stable —
+#      designated requirement (identifier + certificate root) is identical
+#      across rebuilds, strictly better than ad-hoc (no cdhash-only DR).
+#      In practice macOS still keys Screen Recording / Accessibility
+#      largely on binary hash when TeamIdentifier is unset, so treat this
+#      as BEST-EFFORT, not guaranteed.
+#   3. Ad-hoc (`-`): worst — DR is cdhash-only, every rebuild is a new app.
 # Override with: CODESIGN_IDENTITY="Apple Development: you@x.com" make bundle
 SIGN_IDENTITY="${CODESIGN_IDENTITY:-}"
 if [ -z "${SIGN_IDENTITY}" ]; then
@@ -121,10 +128,11 @@ if [ -z "${SIGN_IDENTITY}" ]; then
         | head -1)"
 fi
 if [ -z "${SIGN_IDENTITY}" ]; then
-    # Stable local self-signed identity (survives rebuilds without an Apple Developer account).
+    # Stable local self-signed identity (DR-stable fallback when no Apple
+    # identity exists — better than ad-hoc, not a TCC guarantee).
     if security find-certificate -c "Flowline Development" >/dev/null 2>&1; then
         SIGN_IDENTITY="Flowline Development"
-        echo "✅ Using stable local signing identity: Flowline Development"
+        echo "✅ Using stable local signing identity: Flowline Development (DR-stable, not TeamID-stable — 'make sign-setup' explains the difference)"
     fi
 fi
 if [ -z "${SIGN_IDENTITY}" ]; then

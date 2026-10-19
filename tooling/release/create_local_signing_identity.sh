@@ -1,12 +1,21 @@
 #!/usr/bin/env bash
-# Creates a persistent, stable local code signing identity in the user's login keychain.
+# Creates a DR-stable local code signing identity in the user's login keychain.
 #
-# WHY THIS WORKS:
-# Ad-hoc signing (`-s -`) keys macOS TCC permissions to the binary hash (cdhash),
+# WHAT THIS DOES:
+# Ad-hoc signing (`-s -`) produces a cdhash-only designated requirement,
 # which changes on every single rebuild.
-# A stable local self-signed identity embeds a persistent certificate authority
-# requirement (`certificate root = H"..."`), so the designated requirement
-# remains IDENTICAL across rebuilds, preserving Screen Recording and Accessibility grants!
+# Signing with this self-signed identity produces a STABLE designated
+# requirement (`identifier + certificate root = H"..."`), identical across
+# rebuilds — strictly better than ad-hoc and verifiable with:
+#   codesign -dr - platform/macos/.build/Flowline.app
+#
+# HONEST LIMIT:
+# Only an Apple-issued identity (TeamIdentifier set) GUARANTEES TCC
+# (Screen Recording / Accessibility) survival across rebuilds — macOS keys
+# those grants on (TeamID, BundleID). With TeamIdentifier=not set, macOS
+# still largely keys on binary hash, so treat this as best-effort.
+# For zero Settings trips: Xcode + free Apple ID → Apple Development cert
+# → `make sign-setup` reports STABLE.
 set -euo pipefail
 
 CERT_NAME="Flowline Development"

@@ -1,0 +1,15 @@
+{
+    "name": "flowline-webapp",
+    "main": "index.ts",
+    "devDependencies": {
+        "@types/node": "^18",
+        "typescript": "^5.0.0"
+    },
+    "dependencies": {
+        "@pulumi/neon": "file:sdks/neon",
+        "@pulumi/pulumi": "^3.113.0"
+    },
+    "allowScripts": {
+        "file:sdks/neon": true
+    }
+}

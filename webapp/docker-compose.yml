@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: flowline-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-flowline}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-flowline-dev}
+      POSTGRES_DB: ${POSTGRES_DB:-flowline}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - flowline-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-flowline} -d ${POSTGRES_DB:-flowline}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Full-stack / prod-like run: `docker compose --profile app up --build`
+  # For day-to-day dev, run only `db` and use `npm run dev` for hot reload.
+  web:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: flowline-web
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-flowline}:${POSTGRES_PASSWORD:-flowline-dev}@db:5432/${POSTGRES_DB:-flowline}?sslmode=disable
+      WAITLIST_TABLE: ${WAITLIST_TABLE:-waitlist_flowline}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+      NEXT_PUBLIC_WAITLIST_ENDPOINT: ${NEXT_PUBLIC_WAITLIST_ENDPOINT:-/api/waitlist}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+
+volumes:
+  flowline-pgdata:

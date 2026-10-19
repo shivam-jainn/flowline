@@ -13,9 +13,12 @@
 #
 # WHAT MAKES THAT "ONCE" STICK: an Apple-issued identity embeds a
 # TeamIdentifier, and TCC keys those grants on (TeamID, BundleID) — rebuilds
-# keep working. Ad-hoc (`-`) and self-signed carry TeamIdentifier=not set, so
-# TCC keys them on the binary hash and EVERY rebuild looks like a new app.
-# This script proves which case you're in by test-signing a scratch binary.
+# keep working. Ad-hoc (`-`) is cdhash-only, so EVERY rebuild looks like a
+# new app. A local self-signed cert ("Flowline Development") is in-between:
+# DR-stable (identifier + cert root identical across rebuilds, better than
+# ad-hoc) but TeamIdentifier is still unset, so TCC survival is best-effort,
+# not guaranteed. This script proves which tier you're in by test-signing
+# a scratch binary.
 set -euo pipefail
 
 IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
@@ -87,8 +90,11 @@ if [ -n "${TEAM}" ] && [ "${TEAM}" != "not set" ]; then
     echo "   Grant once, then never touch Settings again."
     exit 0
 elif [ "${IDENTITY}" = "Flowline Development" ]; then
-    echo "✅ Stable local identity: ${IDENTITY} → STABLE: Certificate-root requirement survives rebuilds."
-    echo "   Grant once in Settings, then rebuilds keep working."
+    echo "✅ Stable local identity: ${IDENTITY} → DR-STABLE (better than ad-hoc, not TeamID-stable)."
+    echo "   Designated requirement is identical across rebuilds (certificate root pinned),"
+    echo "   but TeamIdentifier is unset so Screen Recording / Accessibility survival is best-effort."
+    echo "   For guaranteed stability: Xcode + free Apple ID → Apple Development cert → re-run make sign-setup."
+    echo "   Grant once in Settings, rebuild with bundle_app.sh, verify with: codesign -dr - <app>"
     exit 0
 else
     echo "⚠️  TeamIdentifier not set — this identity will NOT survive rebuilds."
