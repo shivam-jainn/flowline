@@ -16,8 +16,17 @@ SUBDOMAIN="flowline"
 # Fallback: cname.vercel-dns.com.
 TARGET="${GODADDY_TARGET:-7dd8acd18b97be7a.vercel-dns-017.com.}"
 
-: "${GODADDY_API_KEY:?set GODADDY_API_KEY (developer.godaddy.com/keys)}"
-: "${GODADDY_API_SECRET:?set GODADDY_API_SECRET (developer.godaddy.com/keys)}"
+# Vault-first: pull keys from Vaultwarden when env vars are unset.
+# Expected items: folder `flowline-prod`, `godaddy-api-key` + `godaddy-api-secret`.
+if [[ -z "${GODADDY_API_KEY:-}" && -n "${BW_SESSION:-}" ]]; then
+  GODADDY_API_KEY="$(bw get password godaddy-api-key --session "$BW_SESSION" 2>/dev/null || true)"
+fi
+if [[ -z "${GODADDY_API_SECRET:-}" && -n "${BW_SESSION:-}" ]]; then
+  GODADDY_API_SECRET="$(bw get password godaddy-api-secret --session "$BW_SESSION" 2>/dev/null || true)"
+fi
+
+: "${GODADDY_API_KEY:?set GODADDY_API_KEY or vault item godaddy-api-key + BW_SESSION}"
+: "${GODADDY_API_SECRET:?set GODADDY_API_SECRET or vault item godaddy-api-secret + BW_SESSION}"
 
 echo "setting CNAME $SUBDOMAIN.$DOMAIN -> $TARGET"
 curl -sS -X PUT "https://api.godaddy.com/v1/domains/$DOMAIN/records/CNAME/$SUBDOMAIN" \
