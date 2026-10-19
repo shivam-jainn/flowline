@@ -11,8 +11,8 @@
 //! `en_US_POSIX`; Rust `to_uppercase` is locale-independent), and render
 //! parity is pinned by `shared/goldens/templates.sample.json`.
 
-use serde::{Deserialize, Serialize};
 use flowline_ir::session::{ActionType, Step, StepSession};
+use serde::{Deserialize, Serialize};
 
 /// One guide-mode template. Field shapes mirror Swift
 /// `FlowlineTemplates.GuideTemplate` (serde camelCase, like the IR).
@@ -148,6 +148,125 @@ impl GuideTemplate {
     pub fn make(id: &str) -> Option<GuideTemplate> {
         Self::all().into_iter().find(|t| t.id == id)
     }
+}
+
+/// Error parsing or validating a `templates/<id>/manifest.json` file.
+///
+/// Minimal validation mirror of `shared/contracts/template.schema.json`:
+/// required `id` / `version` / `label` / `copy` / `theme` /
+/// `synthesisStyle` (all non-empty strings), `theme` / `synthesisStyle`
+/// restricted to their schema enums, and `quirks` (when present) a string
+/// array. Pure `&str` in, no file I/O, no unsafe.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum ManifestError {
+    /// The input was not valid JSON (or not a JSON object).
+    #[error("invalid JSON: {0}")]
+    InvalidJson(String),
+    /// A required field is absent.
+    #[error("missing required field `{0}`")]
+    MissingField(&'static str),
+    /// A field is present but has the wrong type/value.
+    #[error("invalid field `{field}`: {reason}")]
+    InvalidField { field: &'static str, reason: String },
+}
+
+/// Allowed `theme` values (`$defs/ThemeName` in the schema).
+const KNOWN_THEMES: &[&str] = &["modern-minimal", "developer-dark", "enterprise-sop"];
+
+/// Allowed `synthesisStyle` values (`$defs/DocumentationStyle`).
+const KNOWN_SYNTHESIS_STYLES: &[&str] = &[
+    "sop_guide",
+    "bug_report",
+    "automation_script",
+    "executive_summary",
+];
+
+fn required_string<'a>(
+    obj: &'a serde_json::Map<String, serde_json::Value>,
+    field: &'static str,
+) -> Result<&'a str, ManifestError> {
+    let value = obj.get(field).ok_or(ManifestError::MissingField(field))?;
+    let s = value.as_str().ok_or_else(|| ManifestError::InvalidField {
+        field,
+        reason: "expected a string".to_string(),
+    })?;
+    if s.is_empty() {
+        return Err(ManifestError::InvalidField {
+            field,
+            reason: "must not be empty".to_string(),
+        });
+    }
+    Ok(s)
+}
+
+/// Validate a `manifest.json` document (as a string) against the minimal
+/// schema subset. Returns `Ok(())` when the document has all required
+/// string fields plus valid `theme` / `synthesisStyle` enums.
+///
+/// Takes `&str` only — callers do the file I/O (e.g. via `include_str!` or
+/// `CARGO_MANIFEST_DIR`-relative reads).
+pub fn validate_manifest(json: &str) -> Result<(), ManifestError> {
+    let value: serde_json::Value =
+        serde_json::from_str(json).map_err(|e| ManifestError::InvalidJson(e.to_string()))?;
+    let obj = value
+        .as_object()
+        .ok_or_else(|| ManifestError::InvalidJson("expected a JSON object".to_string()))?;
+    let _ = required_string(obj, "id")?;
+    let _ = required_string(obj, "version")?;
+    let _ = required_string(obj, "label")?;
+    let _ = required_string(obj, "copy")?;
+    let theme = required_string(obj, "theme")?;
+    if !KNOWN_THEMES.contains(&theme) {
+        return Err(ManifestError::InvalidField {
+            field: "theme",
+            reason: format!("unknown theme `{theme}`"),
+        });
+    }
+    let style = required_string(obj, "synthesisStyle")?;
+    if !KNOWN_SYNTHESIS_STYLES.contains(&style) {
+        return Err(ManifestError::InvalidField {
+            field: "synthesisStyle",
+            reason: format!("unknown synthesisStyle `{style}`"),
+        });
+    }
+    if let Some(quirks) = obj.get("quirks") {
+        let arr = quirks
+            .as_array()
+            .ok_or_else(|| ManifestError::InvalidField {
+                field: "quirks",
+                reason: "expected an array of strings".to_string(),
+            })?;
+        for entry in arr {
+            if entry.as_str().is_none() {
+                return Err(ManifestError::InvalidField {
+                    field: "quirks",
+                    reason: "expected an array of strings".to_string(),
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Parse a `manifest.json` document (as a string) into a [`GuideTemplate`],
+/// validating per [`validate_manifest`] first.
+///
+/// Capability flags are derived from `quirks` so file-loaded templates
+/// equal the [`GuideTemplate::all`] catalogue entries (`checklist-markers`
+/// → `supports_checklist`, `code-fence` → `shows_code`, `target-line` →
+/// `shows_target_line`, `uppercase-titles` → `large_titles`).
+///
+/// Takes `&str` only — callers do the file I/O (e.g. via `include_str!` or
+/// `CARGO_MANIFEST_DIR`-relative reads).
+pub fn load_manifest_json(json: &str) -> Result<GuideTemplate, ManifestError> {
+    validate_manifest(json)?;
+    let mut template: GuideTemplate =
+        serde_json::from_str(json).map_err(|e| ManifestError::InvalidJson(e.to_string()))?;
+    template.supports_checklist = template.quirks.iter().any(|q| q == "checklist-markers");
+    template.shows_code = template.quirks.iter().any(|q| q == "code-fence");
+    template.shows_target_line = template.quirks.iter().any(|q| q == "target-line");
+    template.large_titles = template.quirks.iter().any(|q| q == "uppercase-titles");
+    Ok(template)
 }
 
 /// Action verb for the reference target line. Mirrors Swift
