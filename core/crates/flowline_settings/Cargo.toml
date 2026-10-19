@@ -1,0 +1,16 @@
+[package]
+name = "flowline_settings"
+version = "0.1.0"
+edition = "2021"
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+parity_harness = { path = "../parity_harness" }
+serde_json = { workspace = true }

@@ -209,6 +209,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "flowline_capture"
+version = "0.1.0"
+dependencies = [
+ "flowline_ir",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "flowline_engine"
 version = "0.1.0"
 dependencies = [
@@ -266,6 +276,16 @@ name = "flowline_projections"
 version = "0.1.0"
 dependencies = [
  "flowline_ir",
+ "parity_harness",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "flowline_settings"
+version = "0.1.0"
+dependencies = [
  "parity_harness",
  "serde",
  "serde_json",
