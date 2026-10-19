@@ -1,10 +1,9 @@
 //! Projections: markdown / python / js / shell / mcp string generators (R/M2-05).
 //!
-//! NOTE: `flowline_ir` does not exist as a Rust crate yet (M2-01 has not
-//! landed), so the minimal `Session`/`Step` model needed for projection is
-//! defined locally here (serde-compatible with the Swift `StepSession` JSON).
-//! When `flowline_ir` lands, this model should be replaced with a dependency on
-//! it. Field shapes mirror `Sources/FlowlineIR/Model/StepSession.swift`.
+//! The canonical `Session`/`Step` model lives in `flowline_ir`; this crate
+//! re-exports it (`Step`, `StepSession`, `ScreenCoordinates`, `MediaAssets`)
+//! and defines the local projection inputs (`ScriptStep`, [`SecretSpan`])
+//! on top. Field shapes mirror `Sources/FlowlineIR/Model/StepSession.swift`.
 //!
 //! Redaction contract (shared by all generators): secret values NEVER appear
 //! in output. Callers supply pre-classified char-offset spans
@@ -13,10 +12,12 @@
 //! [`redact_placeholders`].
 
 pub mod js;
+pub mod key_visual;
 pub mod markdown;
 pub mod mcp;
 pub mod python;
 pub mod shell;
+pub mod webdoc;
 
 use serde::{Deserialize, Serialize};
 
